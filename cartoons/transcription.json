@@ -1,0 +1,237 @@
+[
+  {
+    "start": 9.780000000000001,
+    "end": 23.72,
+    "text": "Hello. How are you? I'm good. Thanks. Can I come in? Sure. Do you like apples?",
+    "words": [
+      {
+        "word": " Hello.",
+        "start": 9.780000000000001,
+        "end": 10.54
+      },
+      {
+        "word": " How",
+        "start": 11.1,
+        "end": 11.42
+      },
+      {
+        "word": " are",
+        "start": 11.42,
+        "end": 11.64
+      },
+      {
+        "word": " you?",
+        "start": 11.64,
+        "end": 12.0
+      },
+      {
+        "word": " I'm",
+        "start": 12.86,
+        "end": 13.08
+      },
+      {
+        "word": " good.",
+        "start": 13.08,
+        "end": 13.36
+      },
+      {
+        "word": " Thanks.",
+        "start": 14.1,
+        "end": 14.12
+      },
+      {
+        "word": " Can",
+        "start": 16.28,
+        "end": 17.04
+      },
+      {
+        "word": " I",
+        "start": 17.04,
+        "end": 17.24
+      },
+      {
+        "word": " come",
+        "start": 17.24,
+        "end": 17.46
+      },
+      {
+        "word": " in?",
+        "start": 17.46,
+        "end": 17.78
+      },
+      {
+        "word": " Sure.",
+        "start": 18.62,
+        "end": 19.14
+      },
+      {
+        "word": " Do",
+        "start": 22.14,
+        "end": 22.9
+      },
+      {
+        "word": " you",
+        "start": 22.9,
+        "end": 23.08
+      },
+      {
+        "word": " like",
+        "start": 23.08,
+        "end": 23.34
+      },
+      {
+        "word": " apples?",
+        "start": 23.34,
+        "end": 23.72
+      }
+    ]
+  },
+  {
+    "start": 24.72,
+    "end": 32.0,
+    "text": "Yes. I like apples. Help yourself. Thanks.",
+    "words": [
+      {
+        "word": " Yes.",
+        "start": 24.330000000000002,
+        "end": 24.82
+      },
+      {
+        "word": " I",
+        "start": 26.3,
+        "end": 26.5
+      },
+      {
+        "word": " like",
+        "start": 26.5,
+        "end": 26.74
+      },
+      {
+        "word": " apples.",
+        "start": 26.74,
+        "end": 27.12
+      },
+      {
+        "word": " Help",
+        "start": 29.02,
+        "end": 30.0
+      },
+      {
+        "word": " yourself.",
+        "start": 30.0,
+        "end": 30.38
+      },
+      {
+        "word": " Thanks.",
+        "start": 31.42,
+        "end": 32.0
+      }
+    ]
+  },
+  {
+    "start": 35.720000000000006,
+    "end": 40.02,
+    "text": "Do you want some more? No thanks.",
+    "words": [
+      {
+        "word": " Do",
+        "start": 35.720000000000006,
+        "end": 36.7
+      },
+      {
+        "word": " you",
+        "start": 36.7,
+        "end": 37.68
+      },
+      {
+        "word": " want",
+        "start": 37.68,
+        "end": 37.96
+      },
+      {
+        "word": " some",
+        "start": 37.96,
+        "end": 38.3
+      },
+      {
+        "word": " more?",
+        "start": 38.3,
+        "end": 38.62
+      },
+      {
+        "word": " No",
+        "start": 39.2,
+        "end": 39.66
+      },
+      {
+        "word": " thanks.",
+        "start": 39.66,
+        "end": 40.02
+      }
+    ]
+  },
+  {
+    "start": 47.32000000000001,
+    "end": 51.92,
+    "text": "Are you okay? I'm okay. Thank you.",
+    "words": [
+      {
+        "word": " Are",
+        "start": 47.32000000000001,
+        "end": 48.300000000000004
+      },
+      {
+        "word": " you",
+        "start": 48.300000000000004,
+        "end": 49.28
+      },
+      {
+        "word": " okay?",
+        "start": 49.28,
+        "end": 49.66
+      },
+      {
+        "word": " I'm",
+        "start": 50.12,
+        "end": 50.64
+      },
+      {
+        "word": " okay.",
+        "start": 50.64,
+        "end": 50.94
+      },
+      {
+        "word": " Thank",
+        "start": 51.46,
+        "end": 51.6
+      },
+      {
+        "word": " you.",
+        "start": 51.6,
+        "end": 51.92
+      }
+    ]
+  },
+  {
+    "start": 51.92,
+    "end": 53.86,
+    "text": "I'm so happy.",
+    "words": [
+      {
+        "word": " I'm",
+        "start": 51.92,
+        "end": 53.12
+      },
+      {
+        "word": " so",
+        "start": 53.12,
+        "end": 53.38
+      },
+      {
+        "word": " happy.",
+        "start": 53.38,
+        "end": 53.86
+      }
+    ]
+  }
+]
