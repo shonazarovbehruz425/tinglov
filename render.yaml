@@ -10,3 +10,7 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
+      - key: VITE_SUPABASE_URL
+        value: https://juzytimtoetduvkbigih.supabase.co
+      - key: VITE_SUPABASE_ANON_KEY
+        value: sb_publishable_1jH-EkUd3QmczGBi_ImTGQ_zVSYtCJG
