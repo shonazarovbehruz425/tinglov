@@ -372,11 +372,15 @@ class MovieListenApp {
     const practiceContainer = document.getElementById('practiceViewContainer');
     const profileContainer = document.getElementById('profileViewContainer');
     const settingsContainer = document.getElementById('settingsViewContainer');
+    const headerContainer = document.getElementById('statsHeaderContainer');
 
     if (libContainer) libContainer.style.display = view === 'library' ? 'block' : 'none';
     if (practiceContainer) practiceContainer.style.display = view === 'practice' ? 'block' : 'none';
     if (profileContainer) profileContainer.style.display = view === 'profile' ? 'block' : 'none';
     if (settingsContainer) settingsContainer.style.display = view === 'settings' ? 'block' : 'none';
+    if (headerContainer) headerContainer.style.display = view === 'practice' ? 'none' : 'block';
+
+    document.body.classList.toggle('in-practice-mode', view === 'practice');
 
     this.statsHeader.update();
     window.scrollTo({ top: 0, behavior: 'smooth' });

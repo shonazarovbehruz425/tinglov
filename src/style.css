@@ -214,6 +214,16 @@ body.minimalist-focus-mode .cinema-video-card {
   box-shadow: 0 16px 50px rgba(0, 0, 0, 0.4) !important;
 }
 
+/* Practice Mode: Hide Global Navbar During Movie/Cartoon Practice */
+body.in-practice-mode #statsHeaderContainer,
+body.in-practice-mode .app-header {
+  display: none !important;
+}
+
+body.in-practice-mode .app-main-content {
+  padding-top: 1.25rem;
+}
+
 /* Minimalist Exit Floating Badge */
 .minimalist-exit-badge {
   position: fixed;
