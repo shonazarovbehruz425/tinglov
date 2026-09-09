@@ -259,6 +259,23 @@ class ApiService {
     }
   }
 
+  public async signInWithGoogle(): Promise<{ error?: string }> {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
+      if (error) {
+        return { error: error.message };
+      }
+      return {};
+    } catch (e: any) {
+      return { error: e.message || 'Google orqali kirishda xatolik yuz berdi' };
+    }
+  }
+
   public async getMe(): Promise<MeResponse | null> {
     try {
       const { data: { session } } = await supabase.auth.getSession();
