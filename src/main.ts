@@ -56,9 +56,12 @@ class MovieListenApp {
     // Initialize cursor-position tracking glow for CTA buttons
     initCursorGlow();
 
-    // Automatically introduce key buttons to first-time visitors
+    // Check and enforce mandatory authentication on startup
+    this.checkAndEnforceAuth();
+
+    // Automatically introduce key buttons to first-time visitors once logged in
     setTimeout(() => {
-      if (onboardingStepper.shouldAutoOpen()) {
+      if (apiService.isAuthenticated() && onboardingStepper.shouldAutoOpen()) {
         onboardingStepper.open(1);
       }
     }, 450);
@@ -156,10 +159,26 @@ class MovieListenApp {
     // 2. Level / Scene Library
     this.levelSelector = new LevelSelector(libraryContainer);
     this.levelSelector.setCallbacks({
-      onSelectScene: (scene, initialIdx) => this.startScene(scene, initialIdx || 0),
-      onAddCustomScene: () => this.customSceneModal.open(),
-      onOpenYouTubeImport: () => this.youtubeImportModal.open(),
-      onOpenProfile: () => this.showProfilePage()
+      onSelectScene: (scene, initialIdx) => {
+        if (this.checkAndEnforceAuth()) {
+          this.startScene(scene, initialIdx || 0);
+        }
+      },
+      onAddCustomScene: () => {
+        if (this.checkAndEnforceAuth()) {
+          this.customSceneModal.open();
+        }
+      },
+      onOpenYouTubeImport: () => {
+        if (this.checkAndEnforceAuth()) {
+          this.youtubeImportModal.open();
+        }
+      },
+      onOpenProfile: () => {
+        if (this.checkAndEnforceAuth()) {
+          this.showProfilePage();
+        }
+      }
     });
 
     // 3. Cinema Animated Stage
@@ -281,9 +300,20 @@ class MovieListenApp {
     // 13. Real Auth Modal (Registration & Login)
     this.authModal = new AuthModal(authModalContainer);
     this.authModal.setOnAuthSuccess(() => {
+      document.body.classList.remove('auth-locked');
       this.statsHeader.update();
       if (this.currentView === 'profile') {
         this.profileView.render();
+      }
+    });
+
+    // React to auth state changes (e.g. sign out)
+    apiService.onAuthChange((user) => {
+      if (!user) {
+        document.body.classList.add('auth-locked');
+        this.authModal.open('login', true);
+      } else {
+        document.body.classList.remove('auth-locked');
       }
     });
 
@@ -291,13 +321,34 @@ class MovieListenApp {
     if (apiService.getToken()) {
       apiService.getMe().then((user) => {
         if (user) {
+          document.body.classList.remove('auth-locked');
           this.statsHeader.update();
           if (this.currentView === 'profile') {
             this.profileView.render();
           }
+        } else {
+          // Token expired or invalid
+          this.checkAndEnforceAuth();
         }
-      }).catch(() => {});
+      }).catch(() => {
+        // In case of transient offline, keep local state or lock
+        if (!apiService.isAuthenticated()) {
+          this.checkAndEnforceAuth();
+        }
+      });
+    } else {
+      this.checkAndEnforceAuth();
     }
+  }
+
+  private checkAndEnforceAuth(): boolean {
+    if (!apiService.isAuthenticated()) {
+      document.body.classList.add('auth-locked');
+      this.authModal.open('login', true);
+      return false;
+    }
+    document.body.classList.remove('auth-locked');
+    return true;
   }
 
   private handleLanguageChanged(skipSettingsRender: boolean = false): void {
@@ -332,6 +383,13 @@ class MovieListenApp {
     const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
     const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
     const searchParams = new URLSearchParams(window.location.search);
+
+    // If not authenticated, lock into library view with mandatory auth modal
+    if (!apiService.isAuthenticated()) {
+      this.showLibrary(false);
+      this.checkAndEnforceAuth();
+      return;
+    }
 
     // 1. Settings View
     if (rawPath === '/settings' || rawHash === 'settings') {
@@ -432,6 +490,7 @@ class MovieListenApp {
   }
 
   public showProfilePage(pushHistory: boolean = true): void {
+    if (!this.checkAndEnforceAuth()) return;
     this.switchView('profile');
     this.profileView.render();
     if (pushHistory) {
@@ -442,6 +501,7 @@ class MovieListenApp {
   }
 
   public showSettingsPage(pushHistory: boolean = true): void {
+    if (!this.checkAndEnforceAuth()) return;
     this.switchView('settings');
     this.settingsView.render();
     if (pushHistory) {
@@ -457,6 +517,8 @@ class MovieListenApp {
     pushHistory: boolean = true,
     challengePayload?: ChallengePayload | null
   ): void {
+    if (!this.checkAndEnforceAuth()) return;
+
     let initialSentenceIndex = 0;
     let push = pushHistory;
     if (typeof initialSentenceIndexOrPushHistory === 'boolean') {

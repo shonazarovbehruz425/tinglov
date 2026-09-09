@@ -6,6 +6,7 @@ export class AuthModal {
   private container: HTMLElement;
   private isOpen: boolean = false;
   private activeTab: 'login' | 'register' = 'login';
+  private isMandatory: boolean = true;
   private onAuthSuccessCallback: ((user: AuthUser) => void) | null = null;
 
   constructor(container: HTMLElement) {
@@ -16,14 +17,19 @@ export class AuthModal {
     this.onAuthSuccessCallback = callback;
   }
 
-  public open(initialTab: 'login' | 'register' = 'login'): void {
+  public open(initialTab: 'login' | 'register' = 'login', mandatory: boolean = true): void {
     this.isOpen = true;
     this.activeTab = initialTab;
+    this.isMandatory = mandatory;
     this.render();
     soundEffects.playKeyClick();
   }
 
-  public close(): void {
+  public close(force: boolean = false): void {
+    if (this.isMandatory && !apiService.isAuthenticated() && !force) {
+      soundEffects.triggerErrorFeedback();
+      return;
+    }
     this.isOpen = false;
     this.container.innerHTML = '';
   }
@@ -40,13 +46,17 @@ export class AuthModal {
       return;
     }
 
+    const isLocked = this.isMandatory && !apiService.isAuthenticated();
+
     this.container.innerHTML = `
-      <div class="auth-modal-backdrop" id="authModalBackdrop">
+      <div class="auth-modal-backdrop ${isLocked ? 'locked' : ''}" id="authModalBackdrop">
         <div class="auth-modal-dialog" role="dialog" aria-modal="true">
-          <!-- Close Button -->
+          <!-- Close Button (hidden if login is mandatory) -->
+          ${!isLocked ? `
           <button class="auth-modal-close-btn" id="authModalCloseBtn" title="Yopish">
             <i class="ph ph-x"></i>
           </button>
+          ` : ''}
 
           <!-- Modal Header -->
           <div class="auth-modal-header">
@@ -54,8 +64,19 @@ export class AuthModal {
               <img src="/logo.png" alt="Tinglov Logo" class="auth-logo-icon" />
             </div>
             <h3 class="auth-modal-title">Tinglov Akkaunti</h3>
-            <p class="auth-modal-sub">O‘rganish natijalaringizni bulutda saqlang va do‘stlaringiz bilan musobaqalashing</p>
+            <p class="auth-modal-sub">
+              ${isLocked 
+                ? 'Platformadan to‘liq foydalanish uchun hisobingizga kiring yoki ro‘yxatdan o‘ting' 
+                : 'O‘rganish natijalaringizni bulutda saqlang va do‘stlaringiz bilan musobaqalashing'}
+            </p>
           </div>
+
+          ${isLocked ? `
+          <div class="auth-mandatory-badge">
+            <i class="ph ph-lock-key"></i>
+            <span>Saytdan foydalanish uchun tizimga kirish talab qilinadi</span>
+          </div>
+          ` : ''}
 
           <!-- Tabs Switcher -->
           <div class="auth-tabs-bar">
@@ -247,13 +268,17 @@ export class AuthModal {
     // Backdrop click to close
     this.container.querySelector('#authModalBackdrop')?.addEventListener('click', (e) => {
       if ((e.target as HTMLElement).id === 'authModalBackdrop') {
-        this.close();
+        if (!this.isMandatory || apiService.isAuthenticated()) {
+          this.close();
+        }
       }
     });
 
     // Close button
     this.container.querySelector('#authModalCloseBtn')?.addEventListener('click', () => {
-      this.close();
+      if (!this.isMandatory || apiService.isAuthenticated()) {
+        this.close();
+      }
     });
 
     // Tab buttons
@@ -307,7 +332,7 @@ export class AuthModal {
         this.syncUserOnAuth(result.user);
 
         setTimeout(() => {
-          this.close();
+          this.close(true);
           this.onAuthSuccessCallback?.(result.user!);
         }, 700);
       }
@@ -346,7 +371,7 @@ export class AuthModal {
         this.syncUserOnAuth(result.user);
 
         setTimeout(() => {
-          this.close();
+          this.close(true);
           this.onAuthSuccessCallback?.(result.user!);
         }, 700);
       }
