@@ -15,13 +15,14 @@ import { ProfileModal } from './components/ProfileModal';
 import { ShadowingModal } from './components/ShadowingModal';
 import { FriendChallengeModal } from './components/FriendChallengeModal';
 import { AuthModal } from './components/AuthModal';
+import { AuthView } from './components/AuthView';
 import { apiService } from './services/apiService';
 import { ProfileView } from './components/ProfileView';
 import { SettingsView } from './components/SettingsView';
 import { onboardingStepper } from './components/OnboardingStepper';
 import { initCursorGlow } from './utils/cursorGlow';
 
-type AppViewMode = 'library' | 'practice' | 'profile' | 'settings';
+type AppViewMode = 'library' | 'practice' | 'profile' | 'settings' | 'auth';
 
 class MovieListenApp {
   private currentScene: Scene | null = null;
@@ -38,6 +39,7 @@ class MovieListenApp {
   private dictationInput!: DictationInput;
   private profileView!: ProfileView;
   private settingsView!: SettingsView;
+  private authView!: AuthView;
   private vocabModal!: VocabularyModal;
   private customSceneModal!: CustomSceneModal;
   private youtubeImportModal!: YouTubeImportModal;
@@ -98,6 +100,7 @@ class MovieListenApp {
 
         <div id="profileViewContainer" class="view-section" style="display: none;"></div>
         <div id="settingsViewContainer" class="view-section" style="display: none;"></div>
+        <div id="authViewContainer" class="view-section" style="display: none;"></div>
       </main>
 
       <!-- Modals Container -->
@@ -119,6 +122,7 @@ class MovieListenApp {
     const dictationContainer = document.getElementById('dictationInputContainer')!;
     const profileViewContainer = document.getElementById('profileViewContainer')!;
     const settingsViewContainer = document.getElementById('settingsViewContainer')!;
+    const authViewContainer = document.getElementById('authViewContainer')!;
     const vocabContainer = document.getElementById('vocabModalContainer')!;
     const customContainer = document.getElementById('customSceneModalContainer')!;
     const youtubeContainer = document.getElementById('youtubeModalContainer')!;
@@ -146,13 +150,11 @@ class MovieListenApp {
         }
       },
       onOpenAuth: (tab) => {
-        this.authModal.open(tab);
+        this.showAuthPage(tab);
       },
       onSignOut: () => {
-        this.statsHeader.update();
-        if (this.currentView === 'profile') {
-          this.profileView.render();
-        }
+        apiService.logout();
+        this.showAuthPage('login');
       }
     });
 
@@ -297,10 +299,16 @@ class MovieListenApp {
     const challengeContainer = document.getElementById('challengeModalContainer')!;
     this.friendChallengeModal = new FriendChallengeModal(challengeContainer);
 
-    // 13. Real Auth Modal (Registration & Login)
+    // 13. Dedicated Auth Page (Login & Register)
+    this.authView = new AuthView(authViewContainer);
+    this.authView.setOnAuthSuccess(() => {
+      this.showLibrary();
+      this.statsHeader.update();
+    });
+
+    // 14. Real Auth Modal (for in-app popups if needed)
     this.authModal = new AuthModal(authModalContainer);
     this.authModal.setOnAuthSuccess(() => {
-      document.body.classList.remove('auth-locked');
       this.statsHeader.update();
       if (this.currentView === 'profile') {
         this.profileView.render();
@@ -310,10 +318,9 @@ class MovieListenApp {
     // React to auth state changes (e.g. sign out)
     apiService.onAuthChange((user) => {
       if (!user) {
-        document.body.classList.add('auth-locked');
-        this.authModal.open('login', true);
+        this.showAuthPage('login');
       } else {
-        document.body.classList.remove('auth-locked');
+        this.statsHeader.update();
       }
     });
 
@@ -321,7 +328,6 @@ class MovieListenApp {
     if (apiService.getToken()) {
       apiService.getMe().then((user) => {
         if (user) {
-          document.body.classList.remove('auth-locked');
           this.statsHeader.update();
           if (this.currentView === 'profile') {
             this.profileView.render();
@@ -331,7 +337,6 @@ class MovieListenApp {
           this.checkAndEnforceAuth();
         }
       }).catch(() => {
-        // In case of transient offline, keep local state or lock
         if (!apiService.isAuthenticated()) {
           this.checkAndEnforceAuth();
         }
@@ -343,11 +348,9 @@ class MovieListenApp {
 
   private checkAndEnforceAuth(): boolean {
     if (!apiService.isAuthenticated()) {
-      document.body.classList.add('auth-locked');
-      this.authModal.open('login', true);
+      this.showAuthPage('login', false);
       return false;
     }
-    document.body.classList.remove('auth-locked');
     return true;
   }
 
@@ -384,26 +387,35 @@ class MovieListenApp {
     const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
     const searchParams = new URLSearchParams(window.location.search);
 
-    // If not authenticated, lock into library view with mandatory auth modal
-    if (!apiService.isAuthenticated()) {
-      this.showLibrary(false);
-      this.checkAndEnforceAuth();
+    // 1. Explicit Auth routes
+    if (rawPath === '/login' || rawHash === 'login' || rawPath === '/auth') {
+      this.showAuthPage('login', pushHistory);
+      return;
+    }
+    if (rawPath === '/register' || rawHash === 'register') {
+      this.showAuthPage('register', pushHistory);
       return;
     }
 
-    // 1. Settings View
+    // 2. If not authenticated, always show dedicated auth page
+    if (!apiService.isAuthenticated()) {
+      this.showAuthPage('login', false);
+      return;
+    }
+
+    // 3. Settings View
     if (rawPath === '/settings' || rawHash === 'settings') {
       this.showSettingsPage(pushHistory);
       return;
     }
 
-    // 2. Profile View
+    // 4. Profile View
     if (rawPath === '/profile' || rawHash === 'profile') {
       this.showProfilePage(pushHistory);
       return;
     }
 
-    // 3. Practice View
+    // 5. Practice View
     if (rawPath === '/practice' || rawPath.startsWith('/practice/') || rawHash.startsWith('practice')) {
       let sceneId = searchParams.get('scene');
       if (!sceneId && rawPath.startsWith('/practice/')) {
@@ -418,7 +430,7 @@ class MovieListenApp {
       }
     }
 
-    // 4. Default: Library
+    // 6. Default: Library
     this.showLibrary(pushHistory);
   }
 
@@ -449,6 +461,8 @@ class MovieListenApp {
       this.showProfilePage(false);
     } else if (this.currentView === 'settings') {
       this.showSettingsPage(false);
+    } else if (this.currentView === 'auth') {
+      this.showAuthPage('login', false);
     } else if (this.currentScene) {
       this.loadCurrentSentence();
     }
@@ -465,18 +479,33 @@ class MovieListenApp {
     const practiceContainer = document.getElementById('practiceViewContainer');
     const profileContainer = document.getElementById('profileViewContainer');
     const settingsContainer = document.getElementById('settingsViewContainer');
+    const authContainer = document.getElementById('authViewContainer');
     const headerContainer = document.getElementById('statsHeaderContainer');
 
     if (libContainer) libContainer.style.display = view === 'library' ? 'block' : 'none';
     if (practiceContainer) practiceContainer.style.display = view === 'practice' ? 'block' : 'none';
     if (profileContainer) profileContainer.style.display = view === 'profile' ? 'block' : 'none';
     if (settingsContainer) settingsContainer.style.display = view === 'settings' ? 'block' : 'none';
-    if (headerContainer) headerContainer.style.display = view === 'practice' ? 'none' : 'block';
+    if (authContainer) authContainer.style.display = view === 'auth' ? 'block' : 'none';
+    if (headerContainer) headerContainer.style.display = (view === 'practice' || view === 'auth') ? 'none' : 'block';
 
     document.body.classList.toggle('in-practice-mode', view === 'practice');
+    document.body.classList.toggle('in-auth-mode', view === 'auth');
 
-    this.statsHeader.update();
+    if (view !== 'auth') {
+      this.statsHeader.update();
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  public showAuthPage(tab: 'login' | 'register' = 'login', pushHistory: boolean = true): void {
+    this.switchView('auth');
+    this.authView.render(tab);
+    if (pushHistory) {
+      this.updateUrl(tab === 'register' ? '/register' : '/login', `${tab === 'register' ? 'Ro‘yxatdan o‘tish' : 'Kirish'} — Tinglov`);
+    } else {
+      document.title = `${tab === 'register' ? 'Ro‘yxatdan o‘tish' : 'Kirish'} — Tinglov`;
+    }
   }
 
   public showLibrary(pushHistory: boolean = true): void {
