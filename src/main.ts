@@ -14,6 +14,8 @@ import { CompletionModal } from './components/CompletionModal';
 import { ProfileModal } from './components/ProfileModal';
 import { ShadowingModal } from './components/ShadowingModal';
 import { FriendChallengeModal } from './components/FriendChallengeModal';
+import { AuthModal } from './components/AuthModal';
+import { apiService } from './services/apiService';
 import { ProfileView } from './components/ProfileView';
 import { SettingsView } from './components/SettingsView';
 import { onboardingStepper } from './components/OnboardingStepper';
@@ -43,6 +45,7 @@ class MovieListenApp {
   private profileModal!: ProfileModal;
   private shadowingModal!: ShadowingModal;
   private friendChallengeModal!: FriendChallengeModal;
+  private authModal!: AuthModal;
 
   constructor() {
     this.initDOM();
@@ -102,6 +105,7 @@ class MovieListenApp {
       <div id="profileModalContainer"></div>
       <div id="shadowingModalContainer"></div>
       <div id="challengeModalContainer"></div>
+      <div id="authModalContainer"></div>
     `;
   }
 
@@ -118,6 +122,7 @@ class MovieListenApp {
     const completionContainer = document.getElementById('completionModalContainer')!;
     const profileContainer = document.getElementById('profileModalContainer')!;
     const shadowingContainer = document.getElementById('shadowingModalContainer')!;
+    const authModalContainer = document.getElementById('authModalContainer')!;
 
     // 1. Stats Header
     this.statsHeader = new StatsHeader(headerContainer);
@@ -135,6 +140,15 @@ class MovieListenApp {
       onSearchQueryChange: (query) => {
         if (this.currentView === 'library') {
           this.levelSelector.setSearchQuery(query);
+        }
+      },
+      onOpenAuth: (tab) => {
+        this.authModal.open(tab);
+      },
+      onSignOut: () => {
+        this.statsHeader.update();
+        if (this.currentView === 'profile') {
+          this.profileView.render();
         }
       }
     });
@@ -263,6 +277,27 @@ class MovieListenApp {
     // 12. Friend Challenge Modal
     const challengeContainer = document.getElementById('challengeModalContainer')!;
     this.friendChallengeModal = new FriendChallengeModal(challengeContainer);
+
+    // 13. Real Auth Modal (Registration & Login)
+    this.authModal = new AuthModal(authModalContainer);
+    this.authModal.setOnAuthSuccess(() => {
+      this.statsHeader.update();
+      if (this.currentView === 'profile') {
+        this.profileView.render();
+      }
+    });
+
+    // Auto-restore session from backend JWT if user previously logged in
+    if (apiService.getToken()) {
+      apiService.getMe().then((user) => {
+        if (user) {
+          this.statsHeader.update();
+          if (this.currentView === 'profile') {
+            this.profileView.render();
+          }
+        }
+      }).catch(() => {});
+    }
   }
 
   private handleLanguageChanged(skipSettingsRender: boolean = false): void {
@@ -607,6 +642,17 @@ class MovieListenApp {
       isNewTopScore,
       rank
     });
+
+    // If authenticated, sync progress to backend SQLite database
+    if (apiService.isAuthenticated()) {
+      const stats = storageService.getStats();
+      apiService.syncProgress({
+        xp: stats.xp,
+        streak: stats.streak,
+        completedScenes: stats.completedScenes,
+        wordsCount: stats.savedWords.length
+      }).catch(() => {});
+    }
   }
 
   private loadNextSceneInLibrary(): void {

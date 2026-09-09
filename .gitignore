@@ -33,3 +33,9 @@ dist-ssr/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# SQLite Databases
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

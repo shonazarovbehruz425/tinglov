@@ -2,6 +2,7 @@ import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
 import { i18n, AppLanguage } from '../services/i18nService';
 import { searchByWord } from '../services/searchService';
+import { apiService } from '../services/apiService';
 import { Scene } from '../types';
 
 export type AppTheme = 'light' | 'dark' | 'oled';
@@ -19,6 +20,8 @@ export class StatsHeader {
   private onLanguageChangeCallback: ((lang: AppLanguage) => void) | null = null;
   private onSelectSceneAndSentenceCallback: ((scene: Scene, sentenceIndex: number) => void) | null = null;
   private onSearchQueryChangeCallback: ((query: string) => void) | null = null;
+  private onOpenAuthCallback: ((tab: 'login' | 'register') => void) | null = null;
+  private onSignOutCallback: (() => void) | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -41,6 +44,8 @@ export class StatsHeader {
     onLanguageChange?: (lang: AppLanguage) => void;
     onSelectSceneAndSentence?: (scene: Scene, sentenceIndex: number) => void;
     onSearchQueryChange?: (query: string) => void;
+    onOpenAuth?: (tab: 'login' | 'register') => void;
+    onSignOut?: () => void;
   }): void {
     this.onOpenVocabCallback = callbacks.onOpenVocab;
     this.onOpenCustomSceneCallback = callbacks.onOpenCustomScene;
@@ -51,6 +56,8 @@ export class StatsHeader {
     this.onLanguageChangeCallback = callbacks.onLanguageChange || null;
     this.onSelectSceneAndSentenceCallback = callbacks.onSelectSceneAndSentence || null;
     this.onSearchQueryChangeCallback = callbacks.onSearchQueryChange || null;
+    this.onOpenAuthCallback = callbacks.onOpenAuth || null;
+    this.onSignOutCallback = callbacks.onSignOut || null;
   }
 
   public update(): void {
@@ -123,29 +130,45 @@ export class StatsHeader {
             </button>
           </div>
 
+          ${!apiService.isAuthenticated() ? `
+          <!-- Guest Auth Action Buttons -->
+          <div class="header-auth-group">
+            <button class="header-auth-btn login" id="headerLoginBtn">
+              <i class="ph ph-sign-in"></i>
+              <span>Kirish</span>
+            </button>
+            <button class="header-auth-btn register" id="headerRegisterBtn">
+              <i class="ph ph-user-plus"></i>
+              <span>Ro‘yxatdan o‘tish</span>
+            </button>
+          </div>
+          ` : ''}
+
           <!-- User Profile Avatar with Dropdown Container -->
           <div class="user-profile-dropdown-wrapper" id="userProfileDropdownWrapper">
             <div class="user-profile-summary" id="userProfileSummary" title="${t.viewProfile}">
-              <div class="user-avatar-circle" style="background: linear-gradient(135deg, #A3E635, #BEF264); border: 2px solid #84CC16; color: #1A2E05;">
-                ${(stats.userName || 'Foydalanuvchi').charAt(0).toUpperCase()}
+              <div class="user-avatar-circle" style="background: ${apiService.isAuthenticated() ? 'linear-gradient(135deg, #6366F1, #8B5CF6)' : 'linear-gradient(135deg, #A3E635, #BEF264)'}; border: 2px solid ${apiService.isAuthenticated() ? '#818CF8' : '#84CC16'}; color: ${apiService.isAuthenticated() ? '#FFFFFF' : '#1A2E05'};">
+                ${(apiService.getCurrentUser()?.full_name || apiService.getCurrentUser()?.username || stats.userName || 'Mehmon').charAt(0).toUpperCase()}
               </div>
               <div class="user-names">
-                <span class="user-fullname">${stats.userName || 'vaporwaveapple1269'}</span>
-                ${stats.userHandle ? `<span class="user-handle">${stats.userHandle}</span>` : ''}
+                <span class="user-fullname">${apiService.getCurrentUser()?.full_name || apiService.getCurrentUser()?.username || stats.userName || 'Mehmon'}</span>
+                <span class="user-handle">${apiService.getCurrentUser() ? `@${apiService.getCurrentUser()?.username}` : (stats.userHandle || '@mehmon')}</span>
               </div>
               <i class="ph ph-caret-down user-dropdown-caret" id="userDropdownCaret"></i>
             </div>
 
-            <!-- Custom User Account Dropdown (Matching Screenshot) -->
+            <!-- Custom User Account Dropdown -->
             <div class="user-account-dropdown-menu" id="userAccountDropdownMenu">
               <!-- Header User Info -->
               <div class="dropdown-user-header">
                 <div class="dropdown-avatar-circle">
-                  <div class="dropdown-avatar-inner"></div>
+                  <div class="dropdown-avatar-inner" style="background: ${apiService.isAuthenticated() ? 'linear-gradient(135deg, #6366F1, #8B5CF6)' : 'linear-gradient(135deg, #A3E635, #BEF264)'}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px;">
+                    ${(apiService.getCurrentUser()?.full_name || apiService.getCurrentUser()?.username || stats.userName || 'M').charAt(0).toUpperCase()}
+                  </div>
                 </div>
                 <div class="dropdown-user-meta">
-                  <span class="dropdown-user-name">${stats.userName || 'vaporwaveapple1269'}</span>
-                  ${stats.userHandle ? `<span class="dropdown-user-plan">${stats.userHandle}</span>` : ''}
+                  <span class="dropdown-user-name">${apiService.getCurrentUser()?.full_name || apiService.getCurrentUser()?.username || stats.userName || 'Mehmon'}</span>
+                  <span class="dropdown-user-plan">${apiService.getCurrentUser() ? `@${apiService.getCurrentUser()?.username}` : (stats.userHandle || '@mehmon')}</span>
                 </div>
               </div>
 
@@ -204,12 +227,19 @@ export class StatsHeader {
 
               <div class="dropdown-divider-line"></div>
 
-              <!-- Sign Out Item -->
+              <!-- Sign Out or Log In Item -->
               <div class="dropdown-menu-items-group footer-group">
+                ${apiService.isAuthenticated() ? `
                 <button class="dropdown-menu-item signout" id="dropdownSignOutBtn">
                   <i class="ph ph-sign-out"></i>
                   <span>${t.signOut}</span>
                 </button>
+                ` : `
+                <button class="dropdown-menu-item" id="dropdownSignInBtn" style="color: var(--color-primary, #6366F1);">
+                  <i class="ph ph-sign-in"></i>
+                  <span>Kirish / Ro‘yxatdan o‘tish</span>
+                </button>
+                `}
               </div>
             </div>
           </div>
@@ -446,10 +476,26 @@ export class StatsHeader {
       window.open('https://discord.com', '_blank');
     });
 
+    // Auth buttons for guests
+    this.container.querySelector('#headerLoginBtn')?.addEventListener('click', () => {
+      this.onOpenAuthCallback?.('login');
+    });
+
+    this.container.querySelector('#headerRegisterBtn')?.addEventListener('click', () => {
+      this.onOpenAuthCallback?.('register');
+    });
+
+    this.container.querySelector('#dropdownSignInBtn')?.addEventListener('click', () => {
+      dropdownMenu?.classList.remove('show-dropdown');
+      this.onOpenAuthCallback?.('login');
+    });
+
     this.container.querySelector('#dropdownSignOutBtn')?.addEventListener('click', () => {
       dropdownMenu?.classList.remove('show-dropdown');
       if (confirm(i18n.t().signOutConfirm)) {
+        apiService.logout();
         storageService.updateProfile('Mehmon', '@mehmon');
+        this.onSignOutCallback?.();
         this.update();
       }
     });
