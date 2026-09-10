@@ -132,21 +132,21 @@ export function recordAuthFailure(key: string): { failures: number; delayMs: num
   // Exponential backoff calculation:
   // 1-2 attempts: 0s
   // 3 attempts: 3s
-  // 4 attempts: 8s
-  // 5 attempts: 60s
-  // 6+ attempts: 15 minutes lockout
+  // 4-14 attempts: 5s delay
+  // 15-19 attempts: 60s temporary lockout
+  // 20+ attempts: 15 minutes full lockout
   let delayMs = 0;
   let isLocked = false;
   let retryAfterSec = 0;
 
   if (record.failures === 3) {
     delayMs = 3000;
-  } else if (record.failures === 4) {
-    delayMs = 8000;
-  } else if (record.failures === 5) {
+  } else if (record.failures >= 4 && record.failures < 15) {
+    delayMs = 5000;
+  } else if (record.failures >= 15 && record.failures < 20) {
     delayMs = 60000;
     record.lockedUntil = now + delayMs;
-  } else if (record.failures >= 6) {
+  } else if (record.failures >= 20) {
     delayMs = 15 * 60 * 1000; // 15 minutes lockout
     record.lockedUntil = now + delayMs;
   }

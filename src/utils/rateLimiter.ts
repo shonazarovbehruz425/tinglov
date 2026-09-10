@@ -57,12 +57,12 @@ export function recordClientAuthFailure(serverRetryAfterSec?: number): ClientRat
     cooldownMs = serverRetryAfterSec * 1000;
   } else if (currentFailures === 3) {
     cooldownMs = 3000; // 3 seconds
-  } else if (currentFailures === 4) {
-    cooldownMs = 8000; // 8 seconds
-  } else if (currentFailures === 5) {
-    cooldownMs = 20000; // 20 seconds
-  } else if (currentFailures >= 6) {
-    cooldownMs = 60000; // 60 seconds
+  } else if (currentFailures >= 4 && currentFailures < 15) {
+    cooldownMs = 5000; // 5 seconds
+  } else if (currentFailures >= 15 && currentFailures < 20) {
+    cooldownMs = 60000; // 60 seconds (15 ta xato urinishda: 60 soniya)
+  } else if (currentFailures >= 20) {
+    cooldownMs = 15 * 60 * 1000; // 15 minutes lockout (20 va undan ortiq xato urinishda: 15 daqiqa)
   }
 
   const now = Date.now();
