@@ -53,6 +53,33 @@ export interface UserStats {
   savedWords: SavedWord[];
   userName?: string;
   userHandle?: string;
+  lastPositions?: Record<string, number>;
+}
+
+/**
+ * Progress toward the next level. Must be derived from the SAME formula
+ * storageService.addXP uses, otherwise the profile progress bar disagrees
+ * with the real level thresholds.
+ *
+ * addXP formula: level = floor(sqrt(xp / 25 + 0.25) - 0.5) + 1
+ * => level L starts at 25 * L * (L - 1) XP (L2=50, L3=150, L4=300, ...)
+ */
+export function getLevelProgress(xp: number): {
+  level: number;
+  levelStartXp: number;
+  nextLevelXp: number;
+  xpIntoLevel: number;
+  xpNeededForLevel: number;
+  progressPct: number;
+} {
+  const safeXp = Math.max(0, Math.floor(xp) || 0);
+  const level = Math.max(1, Math.floor(Math.sqrt((safeXp / 25) + 0.25) - 0.5) + 1);
+  const levelStartXp = 25 * level * (level - 1);
+  const nextLevelXp = 25 * (level + 1) * level;
+  const xpIntoLevel = safeXp - levelStartXp;
+  const xpNeededForLevel = Math.max(1, nextLevelXp - levelStartXp);
+  const progressPct = Math.min(100, Math.max(5, Math.round((xpIntoLevel / xpNeededForLevel) * 100)));
+  return { level, levelStartXp, nextLevelXp, xpIntoLevel, xpNeededForLevel, progressPct };
 }
 
 export interface SavedWord {

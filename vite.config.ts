@@ -26,6 +26,17 @@ export default defineConfig(({ mode }) => {
     build: {
       minify: 'esbuild',
       sourcemap: false, // Prevent exposing source code and internals in production
+      rollupOptions: {
+        output: {
+          // Split heavyweight vendor libraries into cached parallel chunks so
+          // the main bundle stays lean and browser caching stays effective.
+          manualChunks: {
+            supabase: ['@supabase/supabase-js'],
+            validation: ['zod'],
+            sanitizer: ['dompurify'],
+          },
+        },
+      },
     },
   };
 });

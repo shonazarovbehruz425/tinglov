@@ -89,10 +89,10 @@ export class OnboardingStepper {
           <div class="stepper-controls-showcase">
             <div class="stepper-keys-grid">
               <div class="stepper-key-card">
-                <kbd class="stepper-kbd">Alt</kbd> + <kbd class="stepper-kbd">S</kbd>
+                <kbd class="stepper-kbd">Space</kbd>
                 <div class="stepper-key-info">
-                  <strong>Shadowing (AI Ovoz)</strong>
-                  <span>Mikrofonga gapirib, talaffuzni AI orqali tekshirish</span>
+                  <strong>Qayta tinglash</strong>
+                  <span>Joriy replikani istalgan joyda qayta ishga tushirish</span>
                 </div>
               </div>
               <div class="stepper-key-card">

@@ -162,8 +162,9 @@ class VideoStreamService {
     const candidateSources = this.resolveVideoSources(scene);
     if (candidateSources.length === 0) return;
 
-    // Configure video element for cross-origin byte-range streaming
-    videoEl.crossOrigin = 'anonymous';
+    // Configure video element. NOTE: do NOT set crossOrigin='anonymous' —
+    // plain playback does not need it, and on CDNs that don't send CORS
+    // headers it makes the whole video fail to load.
     videoEl.preload = 'auto';
 
     let currentSourceIdx = 0;
@@ -235,15 +236,17 @@ class VideoStreamService {
       window.caches.open(this.cacheName).then(cache => {
         cache.match(primaryHttp).then(cached => {
           if (!cached) {
-            fetch(primaryHttp, { mode: 'no-cors' }).then(response => {
-              if (response.status === 200) {
-                cache.put(primaryHttp, response);
+            // CORS mode is required: opaque ('no-cors') responses always report
+            // status 0, so cache.put() previously never ran and prefetch was dead.
+            fetch(primaryHttp, { mode: 'cors' }).then(response => {
+              if (response.ok) {
+                cache.put(primaryHttp, response).catch(() => {});
               }
             }).catch(() => {
-              // Ignore background prefetch fail
+              // Cross-origin source without CORS headers — warming not possible
             });
           }
-        });
+        }).catch(() => {});
       }).catch(() => {
         // Ignore cache failure
       });

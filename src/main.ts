@@ -11,6 +11,8 @@ import { LevelSelector } from './components/LevelSelector';
 import { AnimatedStage } from './components/AnimatedStage';
 import { DictationInput } from './components/DictationInput';
 import { VocabularyModal } from './components/VocabularyModal';
+import { CustomSceneModal } from './components/CustomSceneModal';
+import { YouTubeImportModal } from './components/YouTubeImportModal';
 import { CompletionModal } from './components/CompletionModal';
 import { ProfileModal } from './components/ProfileModal';
 import { ShadowingModal } from './components/ShadowingModal';
@@ -24,7 +26,7 @@ import { LandingView } from './components/LandingView';
 import { AdminView } from './components/AdminView';
 import { onboardingStepper } from './components/OnboardingStepper';
 import { initCursorGlow } from './utils/cursorGlow';
-import { isValidYouTubeVideoId } from './utils/sanitize';
+import { escapeHtml, isValidYouTubeVideoId } from './utils/sanitize';
 
 type AppViewMode = 'landing' | 'library' | 'practice' | 'profile' | 'settings' | 'auth' | 'admin';
 
@@ -36,6 +38,8 @@ class MovieListenApp {
   private sessionWpms: number[] = [];
   private sceneStartTime: number = Date.now();
   private isAuthReady: boolean = false;
+  private advanceTimeoutId: number | null = null;
+  private autoPlayTimeoutId: number | null = null;
 
   // UI Components
   private statsHeader!: StatsHeader;
@@ -48,6 +52,8 @@ class MovieListenApp {
   private landingView!: LandingView;
   private adminView!: AdminView;
   private vocabModal!: VocabularyModal;
+  private customSceneModal!: CustomSceneModal;
+  private youtubeImportModal!: YouTubeImportModal;
   private completionModal!: CompletionModal;
   private profileModal!: ProfileModal;
   private shadowingModal!: ShadowingModal;
@@ -116,6 +122,8 @@ class MovieListenApp {
 
       <!-- Modals Container -->
       <div id="vocabModalContainer"></div>
+      <div id="customSceneModalContainer"></div>
+      <div id="youtubeModalContainer"></div>
       <div id="completionModalContainer"></div>
       <div id="profileModalContainer"></div>
       <div id="shadowingModalContainer"></div>
@@ -134,6 +142,8 @@ class MovieListenApp {
     const settingsViewContainer = document.getElementById('settingsViewContainer')!;
     const authViewContainer = document.getElementById('authViewContainer')!;
     const vocabContainer = document.getElementById('vocabModalContainer')!;
+    const customContainer = document.getElementById('customSceneModalContainer')!;
+    const youtubeContainer = document.getElementById('youtubeModalContainer')!;
     const completionContainer = document.getElementById('completionModalContainer')!;
     const profileContainer = document.getElementById('profileModalContainer')!;
     const shadowingContainer = document.getElementById('shadowingModalContainer')!;
@@ -198,6 +208,16 @@ class MovieListenApp {
       onSelectScene: (scene, initialIdx) => {
         if (this.checkAndEnforceAuth()) {
           this.startScene(scene, initialIdx || 0);
+        }
+      },
+      onAddCustomScene: () => {
+        if (this.checkAndEnforceAuth()) {
+          this.customSceneModal.open();
+        }
+      },
+      onOpenYouTubeImport: () => {
+        if (this.checkAndEnforceAuth()) {
+          this.youtubeImportModal.open();
         }
       },
       onOpenProfile: () => {
@@ -274,7 +294,21 @@ class MovieListenApp {
     this.vocabModal = new VocabularyModal(vocabContainer);
     this.vocabModal.setOnClose(() => this.statsHeader.update());
 
-    // 8. Completion Modal
+    // 8. Custom Scene Modal
+    this.customSceneModal = new CustomSceneModal(customContainer);
+    this.customSceneModal.setCallbacks({
+      onClose: () => this.statsHeader.update(),
+      onCreated: (newScene) => this.startScene(newScene)
+    });
+
+    // 9. YouTube Import Modal
+    this.youtubeImportModal = new YouTubeImportModal(youtubeContainer);
+    this.youtubeImportModal.setCallbacks({
+      onClose: () => this.statsHeader.update(),
+      onLessonCreated: (newScene) => this.startScene(newScene)
+    });
+
+    // 10. Completion Modal
     this.completionModal = new CompletionModal(completionContainer);
     this.completionModal.setCallbacks({
       onNextScene: () => this.loadNextSceneInLibrary(),
@@ -421,8 +455,9 @@ class MovieListenApp {
       }
     });
 
-    // Initialize router with async auth verification
-    this.initRouter();
+    // NOTE: initRouter() is invoked exactly once from the constructor.
+    // Registering it here previously duplicated the popstate/hashchange
+    // listeners and ran the initial routing twice.
   }
 
   private checkAndEnforceAuth(): boolean {
@@ -681,6 +716,7 @@ class MovieListenApp {
     this.currentView = view;
     speechService.stop();
     if (view !== 'practice') {
+      this.clearSentenceTimers();
       this.animatedStage?.stopPlayback();
     }
 
@@ -779,12 +815,22 @@ class MovieListenApp {
   }
 
   public startScene(
-    scene: Scene, 
-    initialSentenceIndexOrPushHistory: number | boolean = 0, 
+    scene: Scene,
+    initialSentenceIndexOrPushHistory: number | boolean = 0,
     pushHistory: boolean = true,
     challengePayload?: ChallengePayload | null
   ): void {
     if (!this.checkAndEnforceAuth()) return;
+
+    // A scene without dialogues is unplayable: previously it would instantly
+    // trigger finishScene() and award free completion XP.
+    if (!scene.dialogues || scene.dialogues.length === 0) {
+      this.showInfoToast('🚫', 'Bu darsda hozircha replikalar mavjud emas');
+      this.showLibrary();
+      return;
+    }
+
+    this.clearSentenceTimers();
 
     let initialSentenceIndex = 0;
     let push = pushHistory;
@@ -826,6 +872,10 @@ class MovieListenApp {
       return;
     }
 
+    // Remember the furthest replica the user reached so practice resumes here
+    // after a reload or on another device (synced via cloud sync).
+    storageService.updateLastPosition(this.currentScene.id, this.currentSentenceIndex);
+
     this.animatedStage.updateSceneAndSentence(
       this.currentScene,
       sentence,
@@ -836,7 +886,11 @@ class MovieListenApp {
     this.dictationInput.setSceneAndSentence(this.currentScene, sentence, this.currentSentenceIndex);
 
     // Auto-play current dialogue after short delay
-    setTimeout(() => {
+    if (this.autoPlayTimeoutId !== null) {
+      clearTimeout(this.autoPlayTimeoutId);
+    }
+    this.autoPlayTimeoutId = window.setTimeout(() => {
+      this.autoPlayTimeoutId = null;
       this.playCurrentDialogue();
     }, 400);
   }
@@ -852,7 +906,9 @@ class MovieListenApp {
   }
 
   public openShadowingMode(): void {
-    // Shadowing mode temporarily disabled as requested by user
+    // Shadowing (AI pronunciation practice) is temporarily disabled; keep users
+    // informed instead of silently swallowing the Alt+S hotkey.
+    this.showInfoToast('🎙️', 'Shadowing (AI talaffuz) rejimi tez orada qo‘shiladi');
   }
 
   private handleSentenceCompleted(accuracy: number, wpm: number, hintsUsed: number): void {
@@ -874,13 +930,29 @@ class MovieListenApp {
     }
 
     // Advance to next sentence smoothly
-    setTimeout(() => {
+    if (this.advanceTimeoutId !== null) {
+      clearTimeout(this.advanceTimeoutId);
+    }
+    this.advanceTimeoutId = window.setTimeout(() => {
+      this.advanceTimeoutId = null;
       this.goToNextSentence();
     }, 600);
   }
 
+  private clearSentenceTimers(): void {
+    if (this.advanceTimeoutId !== null) {
+      clearTimeout(this.advanceTimeoutId);
+      this.advanceTimeoutId = null;
+    }
+    if (this.autoPlayTimeoutId !== null) {
+      clearTimeout(this.autoPlayTimeoutId);
+      this.autoPlayTimeoutId = null;
+    }
+  }
+
   private goToPrevSentence(): void {
     if (!this.currentScene) return;
+    this.clearSentenceTimers();
     if (this.currentSentenceIndex > 0) {
       this.currentSentenceIndex--;
       this.loadCurrentSentence();
@@ -889,6 +961,7 @@ class MovieListenApp {
 
   private goToNextSentence(): void {
     if (!this.currentScene) return;
+    this.clearSentenceTimers();
 
     if (this.currentSentenceIndex < this.currentScene.dialogues.length - 1) {
       this.currentSentenceIndex++;
@@ -900,6 +973,7 @@ class MovieListenApp {
 
   private jumpToSentence(index: number): void {
     if (!this.currentScene) return;
+    this.clearSentenceTimers();
     if (index >= 0 && index < this.currentScene.dialogues.length) {
       this.currentSentenceIndex = index;
       this.loadCurrentSentence();
@@ -969,6 +1043,22 @@ class MovieListenApp {
 
   private speedToastTimeout: number | null = null;
 
+  private showInfoToast(icon: string, message: string): void {
+    let toast = document.getElementById('speedToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'speedToast';
+      toast.className = 'speed-toast-indicator';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = `<span class="toast-icon">${icon}</span> <span class="toast-label">${escapeHtml(message)}</span>`;
+    toast.classList.add('visible');
+    if (this.speedToastTimeout) clearTimeout(this.speedToastTimeout);
+    this.speedToastTimeout = window.setTimeout(() => {
+      toast?.classList.remove('visible');
+    }, 2200);
+  }
+
   private showSpeedToast(speed: number): void {
     let toast = document.getElementById('speedToast');
     if (!toast) {
@@ -994,8 +1084,23 @@ class MovieListenApp {
 
       if (e.key === 'Escape') {
         this.vocabModal.close();
+        this.customSceneModal.close();
+        this.youtubeImportModal.close();
         this.completionModal.hide();
         return;
+      }
+
+      // Space: Replay current dialogue (only outside text inputs/buttons so it
+      // never blocks typing or button activation)
+      if (e.code === 'Space' && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+        const target = e.target as HTMLElement | null;
+        const isTyping = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable || target.tagName === 'BUTTON');
+        if (this.currentScene && !isTyping && !isModalOpen) {
+          e.preventDefault();
+          this.playCurrentDialogue();
+          this.dictationInput.focusInput();
+          return;
+        }
       }
 
       // Tab: Replay current dialogue without losing typing focus!

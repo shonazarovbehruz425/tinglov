@@ -11,6 +11,7 @@ import {
   findUserById,
   createUser,
   updateUserStats,
+  updateUserAuthMeta,
   saveUserWord,
   deleteUserWord,
   getUserSavedWords,
@@ -41,6 +42,7 @@ import { safeValidate, registerSchema, loginSchema } from '../src/utils/validati
 import {
   apiLimiter,
   registerLimiter,
+  createRateLimiter,
   checkAuthRateLimit,
   recordAuthFailure,
   resetAuthFailure,
@@ -211,6 +213,44 @@ const COOKIE_OPTIONS = {
 
 const AVATAR_COLORS = ['#A3E635', '#FF5B37', '#38BDF8', '#F59E0B', '#EC4899', '#8B5CF6', '#10B981'];
 
+// Supabase identity verification: proves the caller actually owns a Supabase
+// account before a session token may be issued for an existing backend user.
+const SUPABASE_URL = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+
+async function verifySupabaseIdentity(accessToken: unknown): Promise<{ id: string; email: string } | null> {
+  const token = typeof accessToken === 'string' ? accessToken.trim() : '';
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !token) return null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+    });
+    if (!res.ok) return null;
+    const data: any = await res.json();
+    if (data?.id) {
+      return { id: String(data.id), email: String(data.email || '').toLowerCase() };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeLastPositions(raw: unknown): string | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const clean: Record<string, number> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    const idx = Math.max(0, Math.floor(Number(value)));
+    if (key && Number.isFinite(idx) && Object.keys(clean).length < 200) {
+      clean[key.slice(0, 120)] = idx;
+    }
+  }
+  return Object.keys(clean).length > 0 ? JSON.stringify(clean) : undefined;
+}
+
 function sanitizeUser(user: any) {
   const { password_hash, ...safe } = user;
   return safe;
@@ -355,9 +395,13 @@ app.post('/api/auth/login', checkAuthRateLimit, requireCsrf, async (req, res) =>
 });
 
 // 2.3. Establish / Sync session from authenticated client (issues HttpOnly cookie)
+// SECURITY: if the backend account already exists, the caller must prove
+// ownership of the matching Supabase identity (valid access token whose
+// uuid/email matches) before a session token is issued for that account.
+// Unverified requests may only CREATE a brand-new account.
 app.post('/api/auth/session', requireCsrf, async (req, res) => {
   try {
-    const { email, username, fullName, avatarColor, authProvider, uuid } = req.body;
+    const { email, username, fullName, avatarColor, authProvider, uuid, supabaseAccessToken } = req.body;
     if (!email && !username) {
       res.status(400).json({ error: 'Foydalanuvchi ma’lumotlari yetarli emas' });
       return;
@@ -372,7 +416,28 @@ app.post('/api/auth/session', requireCsrf, async (req, res) => {
       user = findUserByUsername(cleanUsername);
     }
 
-    if (!user) {
+    if (user) {
+      // Existing account: verify the claimed Supabase identity first
+      const verified = await verifySupabaseIdentity(supabaseAccessToken);
+      const identityMatches = Boolean(
+        verified &&
+        (
+          (uuid && verified.id === String(uuid)) ||
+          (cleanEmail && verified.email === cleanEmail)
+        )
+      );
+      if (!identityMatches) {
+        res.status(401).json({ error: 'Sessiyani tiklash uchun identifikatsiya talab qilinadi. Iltimos, qaytadan tizimga kiring.' });
+        return;
+      }
+
+      updateUserAuthMeta(user.id, {
+        auth_provider: provider,
+        uuid: (uuid as string) || verified!.id,
+        email: cleanEmail || undefined,
+      });
+      user = findUserById(user.id) || user;
+    } else {
       const dummyPasswordHash = await hashPassword(crypto.randomBytes(16).toString('hex'));
       user = createUser({
         username: cleanUsername,
@@ -383,18 +448,6 @@ app.post('/api/auth/session', requireCsrf, async (req, res) => {
         auth_provider: provider,
         uuid: uuid || null,
       });
-    } else {
-      // Update existing user with latest auth_provider and uuid
-      try {
-        db.prepare(`
-          UPDATE users 
-          SET auth_provider = ?, 
-              uuid = COALESCE(?, uuid),
-              email = CASE WHEN email LIKE '%@user.tinglov' OR email LIKE '%@tinglov.uz' THEN COALESCE(NULLIF(?, ''), email) ELSE email END
-          WHERE id = ?
-        `).run(provider, uuid || null, cleanEmail, user.id);
-        user = findUserById(user.id) || user;
-      } catch {}
     }
 
     const token = generateToken(user);
@@ -428,11 +481,19 @@ app.get('/api/auth/me', requireAuth, (req: AuthenticatedRequest, res) => {
   const completedScenes = getUserCompletedScenes(user.id);
   const completedSceneIds = Array.from(new Set(completedScenes.map(s => s.scene_id)));
 
+  let lastPositions: Record<string, number> = {};
+  try {
+    if (user.last_positions) {
+      lastPositions = JSON.parse(user.last_positions);
+    }
+  } catch {}
+
   res.json({
     user: sanitizeUser(user),
     savedWords,
     completedScenes,
-    completedSceneIds
+    completedSceneIds,
+    lastPositions
   });
 });
 
@@ -440,17 +501,24 @@ app.get('/api/auth/me', requireAuth, (req: AuthenticatedRequest, res) => {
 app.post('/api/user/sync', requireAuth, requireCsrf, (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const { xp, streak, level, lastActiveDate, savedWords, completedScene, completedScenes } = req.body;
+    const { xp, streak, level, lastActiveDate, savedWords, completedScene, completedScenes, lastPositions: lastPositionsRaw } = req.body;
 
     const newXp = Math.max(user.xp, Number(xp) || 0);
-    const newStreak = Math.max(user.streak, Number(streak) || 1);
+    // Streak is client-authoritative: the client owns the reset logic (inactivity
+    // breaks the streak), so a LOWER value sent by the client must be accepted —
+    // Math.max here previously made streaks permanently frozen.
+    const parsedStreak = Number(streak);
+    const newStreak = streak !== undefined && Number.isFinite(parsedStreak)
+      ? Math.max(1, Math.floor(parsedStreak))
+      : user.streak;
     const newLevel = Math.max(user.level, Number(level) || 1);
 
     updateUserStats(user.id, {
       xp: newXp,
       streak: newStreak,
       level: newLevel,
-      last_active_date: lastActiveDate || new Date().toISOString().split('T')[0]
+      last_active_date: lastActiveDate || new Date().toISOString().split('T')[0],
+      last_positions: sanitizeLastPositions(lastPositionsRaw)
     });
 
     // Save words if passed
@@ -488,12 +556,20 @@ app.post('/api/user/sync', requireAuth, requireCsrf, (req: AuthenticatedRequest,
     const allCompleted = getUserCompletedScenes(user.id);
     const completedSceneIds = Array.from(new Set(allCompleted.map(s => s.scene_id)));
 
+    let lastPositions: Record<string, number> = {};
+    try {
+      if (updatedUser.last_positions) {
+        lastPositions = JSON.parse(updatedUser.last_positions);
+      }
+    } catch {}
+
     res.json({
       success: true,
       user: sanitizeUser(updatedUser),
       savedWords: getUserSavedWords(user.id),
       completedScenes: allCompleted,
-      completedSceneIds
+      completedSceneIds,
+      lastPositions
     });
   } catch (err: any) {
     console.error('Sync error:', err);
@@ -502,7 +578,7 @@ app.post('/api/user/sync', requireAuth, requireCsrf, (req: AuthenticatedRequest,
 });
 
 // 5. Save / Remove Word
-app.post('/api/user/words', requireAuth, (req: AuthenticatedRequest, res) => {
+app.post('/api/user/words', requireAuth, requireCsrf, (req: AuthenticatedRequest, res) => {
   const user = req.user!;
   const { action, word, translation, sceneTitle } = req.body;
 
@@ -561,8 +637,15 @@ app.get('/api/scenes', (_req, res) => {
   }
 });
 
-// C. Admin Login
-app.post('/api/admin/login', (req, res) => {
+// C. Admin Login (rate-limited to slow down brute-force attempts)
+const adminLoginLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  keyPrefix: 'admin-login',
+  message: 'Admin kirish urinishlari soni me‘yordan oshdi. Iltimos, 15 daqiqadan so‘ng qayta urinib ko‘ring.'
+});
+
+app.post('/api/admin/login', adminLoginLimiter, (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
     res.status(400).json({ error: 'Login va parol kiritilishi shart' });
@@ -705,8 +788,23 @@ app.post('/api/admin/scenes', requireAdminAuth, (req: AdminRequest, res) => {
       return;
     }
 
+    // A scene without dialogues is unplayable and instantly awards completion XP
+    let parsedDialogues: unknown = dialogues || [];
+    if (typeof parsedDialogues === 'string') {
+      try {
+        parsedDialogues = JSON.parse(parsedDialogues);
+      } catch {
+        res.status(400).json({ error: 'Dialoglar formati noto‘g‘ri (JSON parse xatosi)' });
+        return;
+      }
+    }
+    if (!Array.isArray(parsedDialogues) || parsedDialogues.length === 0) {
+      res.status(400).json({ error: 'Kamida bitta replika (dialog) kiritilishi shart' });
+      return;
+    }
+
     const sceneId = id || `custom_admin_${Date.now()}`;
-    const dialoguesJson = typeof dialogues === 'string' ? dialogues : JSON.stringify(dialogues || []);
+    const dialoguesJson = JSON.stringify(parsedDialogues);
 
     const created = createAdminScene({
       id: sceneId,

@@ -6,6 +6,17 @@ import { i18n } from '../services/i18nService';
 import { storageService } from '../services/storageService';
 import { escapeHtml, isValidYouTubeVideoId, buildSecureYouTubeEmbedUrl } from '../utils/sanitize';
 
+/**
+ * Formats seconds as m:ss (e.g. 75 → "1:15"). The previous inline formatting
+ * showed "0:75" once a sentence started past the 59-second mark.
+ */
+function formatTimecode(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds || 0));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
 export class AnimatedStage {
   private container: HTMLElement;
   private currentScene: Scene | null = null;
@@ -505,7 +516,7 @@ export class AnimatedStage {
                 </button>
 
                 <div class="yt-time-badge">
-                  <span id="videoTimeDisplay">0:${Math.floor(this.currentSentence.startTime).toString().padStart(2, '0')} / ${Math.floor(totalDuration / 60)}:${Math.floor(totalDuration % 60).toString().padStart(2, '0')}</span>
+                  <span id="videoTimeDisplay">${formatTimecode(this.currentSentence.startTime)} / ${formatTimecode(totalDuration)}</span>
                 </div>
               </div>
 
@@ -682,8 +693,8 @@ export class AnimatedStage {
       }
     });
 
-    // Speed selection
-    const speedChips = this.container.querySelectorAll('.speed-chip-btn');
+    // Speed selection (chips are rendered with the .yt-speed-chip class)
+    const speedChips = this.container.querySelectorAll('.yt-speed-chip');
     speedChips.forEach(chip => {
       chip.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;

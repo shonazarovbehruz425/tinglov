@@ -1,3 +1,4 @@
+import { getLevelProgress } from '../types';
 import { storageService } from '../services/storageService';
 import { i18n } from '../services/i18nService';
 import { escapeHtml } from '../utils/sanitize';
@@ -34,12 +35,13 @@ export class ProfileView {
       ? Math.round(stats.wpmHistory.reduce((a, b) => a + b, 0) / stats.wpmHistory.length)
       : 0;
 
-    const currentLevel = stats.level;
-    const currentLevelBaseXP = Math.pow(currentLevel - 1, 2) * 100;
-    const nextLevelXP = Math.pow(currentLevel, 2) * 100;
-    const xpIntoLevel = Math.max(0, stats.xp - currentLevelBaseXP);
-    const xpNeededForLevel = Math.max(1, nextLevelXP - currentLevelBaseXP);
-    const progressPct = Math.min(100, Math.max(5, Math.round((xpIntoLevel / xpNeededForLevel) * 100)));
+    // Shared leveling formula (same one storageService.addXP applies) so the
+    // progress bar matches real thresholds — the old (L-1)²·100 math kept the
+    // bar pinned at its 5% floor from level 2 onward.
+    const levelInfo = getLevelProgress(stats.xp);
+    const currentLevel = levelInfo.level;
+    const nextLevelXP = levelInfo.nextLevelXp;
+    const progressPct = levelInfo.progressPct;
 
     const userName = stats.userName || 'Foydalanuvchi';
     const userHandle = stats.userHandle || '@til_organuvchi';

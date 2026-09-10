@@ -1,12 +1,26 @@
-import { UserStats, SavedWord, Scene, HighScoreRecord, ChallengePayload } from '../types';
+import { UserStats, SavedWord, Scene, HighScoreRecord, ChallengePayload, getLevelProgress } from '../types';
 import { INITIAL_SCENES } from '../data/scenes';
-import { escapeHtml } from '../utils/sanitize';
 import { apiService, MeResponse } from './apiService';
 
 const STATS_KEY = 'lingua_movie_user_stats';
 const CUSTOM_SCENES_KEY = 'lingua_movie_custom_scenes';
 const HIGH_SCORES_KEY = 'lingua_movie_scene_highscores';
 const PENDING_SYNC_KEY = 'lingua_movie_pending_sync';
+
+/**
+ * Decodes legacy HTML-escaped values. Older builds stored userName/userHandle
+ * pre-escaped (O'Brien → O&#039;Brien), which then compounded on every save.
+ * Names are now stored raw and escaped only at render time.
+ */
+function unescapeHtml(value: string): string {
+  if (!value) return value;
+  return value
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;|&apos;|&#x27;/gi, "'")
+    .replace(/&amp;/g, '&');
+}
 
 export class StorageService {
   private stats: UserStats;
@@ -30,16 +44,7 @@ export class StorageService {
   }
 
   private loadStats(): UserStats {
-    try {
-      const data = localStorage.getItem(STATS_KEY);
-      if (data) {
-        return JSON.parse(data);
-      }
-    } catch {
-      // Fallback
-    }
-
-    return {
+    const defaults: UserStats = {
       xp: 0,
       level: 1,
       streak: 1,
@@ -50,8 +55,34 @@ export class StorageService {
       wpmHistory: [],
       savedWords: [],
       userName: 'Foydalanuvchi',
-      userHandle: '@til_organuvchi'
+      userHandle: '@til_organuvchi',
+      lastPositions: {}
     };
+
+    try {
+      const data = localStorage.getItem(STATS_KEY);
+      if (data) {
+        const parsed = JSON.parse(data);
+        // Normalize legacy/partial records so missing fields can never crash
+        const merged: UserStats = {
+          ...defaults,
+          ...parsed,
+          completedScenes: Array.isArray(parsed.completedScenes) ? parsed.completedScenes : [],
+          wpmHistory: Array.isArray(parsed.wpmHistory) ? parsed.wpmHistory : [],
+          savedWords: Array.isArray(parsed.savedWords) ? parsed.savedWords : [],
+          lastPositions: parsed.lastPositions && typeof parsed.lastPositions === 'object' && !Array.isArray(parsed.lastPositions)
+            ? parsed.lastPositions
+            : {},
+          userName: parsed.userName ? unescapeHtml(parsed.userName) : defaults.userName,
+          userHandle: parsed.userHandle ? unescapeHtml(parsed.userHandle) : defaults.userHandle
+        };
+        return merged;
+      }
+    } catch {
+      // Fallback
+    }
+
+    return defaults;
   }
 
   private loadCustomScenes(): Scene[] {
@@ -148,7 +179,7 @@ export class StorageService {
     if (existingIndex >= 0) {
       const existing = this.highScores[sceneId][existingIndex];
       // Update if current attempt has better accuracy, or same accuracy and higher WPM
-      const isBetter = accuracy > existing.accuracy || 
+      const isBetter = accuracy > existing.accuracy ||
         (accuracy === existing.accuracy && wpm > existing.wpm) ||
         (accuracy === existing.accuracy && wpm === existing.wpm && timeSpentSeconds < existing.timeSpentSeconds);
 
@@ -177,9 +208,12 @@ export class StorageService {
 
     this.saveHighScores();
 
-    // Check rank of current user
-    const rankIndex = this.highScores[sceneId].findIndex(r => r.id === newRecord.id);
-    const rank = rankIndex >= 0 ? rankIndex + 1 : 999;
+    // Check rank of the user's BEST record for this scene (not just this
+    // attempt — when the previous best already stands, its rank is reported).
+    const bestIndex = this.highScores[sceneId].findIndex(r =>
+      r.userHandle.toLowerCase() === currentUserHandle.toLowerCase()
+    );
+    const rank = bestIndex >= 0 ? bestIndex + 1 : 999;
     const top3 = this.getSceneHighScores(sceneId);
 
     // Push scene completion to cloud
@@ -246,10 +280,12 @@ export class StorageService {
 
   public updateProfile(name: string, handle: string): void {
     const rawName = name.trim() || 'Foydalanuvchi';
-    this.stats.userName = escapeHtml(rawName);
+    // Store RAW text; every render site escapes via escapeHtml(). Pre-escaping
+    // here caused double-escaped names (O&#039;Brien) that compounded on save.
+    this.stats.userName = rawName;
     const trimmedHandle = handle.trim();
     const rawHandle = trimmedHandle ? (trimmedHandle.startsWith('@') ? trimmedHandle : `@${trimmedHandle}`) : '@til_organuvchi';
-    this.stats.userHandle = escapeHtml(rawHandle);
+    this.stats.userHandle = rawHandle;
     this.saveStats();
   }
 
@@ -265,7 +301,8 @@ export class StorageService {
       savedWords: [],
       lastActiveDate: new Date().toISOString().split('T')[0],
       userName: 'Mehmon',
-      userHandle: '@mehmon'
+      userHandle: '@mehmon',
+      lastPositions: {}
     };
     this.saveStats();
   }
@@ -314,22 +351,39 @@ export class StorageService {
   public addXP(amount: number): { leveledUp: boolean; newLevel: number } {
     const oldLevel = this.stats.level;
     this.stats.xp += amount;
-    
-    // Dynamic progressive leveling:
-    // Level 1: 0-49 XP, Level 2: 50 XP, Level 3: 130 XP, Level 4: 240 XP, Level 5: 380 XP...
-    // Formula: level = floor(sqrt(xp / 25 + 0.25) - 0.5) + 1
-    // Provides frequent rewarding level-ups in the beginning to sustain high user motivation.
-    const newLevel = Math.max(1, Math.floor(Math.sqrt((this.stats.xp / 25) + 0.25) - 0.5) + 1);
-    this.stats.level = newLevel;
+
+    // Single source of truth for leveling (shared with Profile/ProfileModal UI)
+    const { level } = getLevelProgress(this.stats.xp);
+    this.stats.level = level;
     this.saveStats();
 
     // Trigger debounced cloud synchronization
     this.scheduleCloudSync();
 
     return {
-      leveledUp: newLevel > oldLevel,
-      newLevel
+      leveledUp: level > oldLevel,
+      newLevel: level
     };
+  }
+
+  /**
+   * Remembers the furthest replica reached in a scene so practice can resume
+   * where the user left off (persisted locally and synced to the cloud).
+   */
+  public updateLastPosition(sceneId: string, sentenceIndex: number): void {
+    if (!this.stats.lastPositions) {
+      this.stats.lastPositions = {};
+    }
+    const current = this.stats.lastPositions[sceneId];
+    if (current !== sentenceIndex) {
+      this.stats.lastPositions[sceneId] = sentenceIndex;
+      this.saveStats();
+      this.scheduleCloudSync();
+    }
+  }
+
+  public getLastPosition(sceneId: string): number | undefined {
+    return this.stats.lastPositions?.[sceneId];
   }
 
   public recordSentenceCompleted(sceneId: string, wordsCount: number, accuracy: number, wpm: number): void {
@@ -397,7 +451,8 @@ export class StorageService {
     this.stats.level = Math.max(localLevel, sUser.level || 1);
 
     if (sUser.full_name) {
-      this.stats.userName = escapeHtml(sUser.full_name);
+      // Store raw; render sites escape. (Previously escaped here → double-escape.)
+      this.stats.userName = sUser.full_name;
     }
     if (sUser.username) {
       this.stats.userHandle = `@${sUser.username}`;
@@ -410,6 +465,20 @@ export class StorageService {
     const mergedScenes = Array.from(new Set([...this.stats.completedScenes, ...serverSceneIds]));
     this.stats.completedScenes = mergedScenes;
     const hasNewLocalScenes = mergedScenes.length > serverSceneIds.length;
+
+    // 2.1 Merge last-viewed replica positions: local value wins when present
+    // (it reflects the most recent activity), server fills in missing scenes.
+    const serverPositions = (serverData as any).lastPositions;
+    if (serverPositions && typeof serverPositions === 'object' && !Array.isArray(serverPositions)) {
+      if (!this.stats.lastPositions) {
+        this.stats.lastPositions = {};
+      }
+      for (const [sceneId, idx] of Object.entries(serverPositions)) {
+        if (this.stats.lastPositions[sceneId] === undefined) {
+          this.stats.lastPositions[sceneId] = Math.max(0, Math.floor(Number(idx)) || 0);
+        }
+      }
+    }
 
     // 3. Merge saved words
     const localWordsMap = new Map<string, SavedWord>();
@@ -471,6 +540,7 @@ export class StorageService {
         level: this.stats.level,
         lastActiveDate: this.stats.lastActiveDate,
         completedScenes: this.stats.completedScenes,
+        lastPositions: this.stats.lastPositions || {},
         savedWords: this.stats.savedWords.map(sw => ({
           word: sw.word,
           translation: sw.translation,

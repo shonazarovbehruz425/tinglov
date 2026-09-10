@@ -1,13 +1,14 @@
 import { Scene, DialogueSentence, Difficulty } from '../types';
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
-import { escapeHtml, sanitizeUrl } from '../utils/sanitize';
+import { sanitizeUrl } from '../utils/sanitize';
 import { safeValidate, customSceneSchema } from '../utils/validation';
 
 export class CustomSceneModal {
   private container: HTMLElement;
   private onCloseCallback: (() => void) | null = null;
   private onCreatedCallback: ((scene: Scene) => void) | null = null;
+  private isClosing = false;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -22,15 +23,21 @@ export class CustomSceneModal {
   }
 
   public open(): void {
+    // Ignore clicks while the closing animation is still pending — the deferred
+    // cleanup below would otherwise wipe a freshly rendered modal.
+    if (this.isClosing) return;
     this.render();
   }
 
   public close(): void {
+    if (this.isClosing) return;
     const backdrop = this.container.querySelector('.modal-backdrop');
     if (backdrop) {
+      this.isClosing = true;
       backdrop.classList.add('modal-closing');
       setTimeout(() => {
         this.container.innerHTML = '';
+        this.isClosing = false;
         this.onCloseCallback?.();
       }, 260);
     } else {
@@ -228,22 +235,23 @@ export class CustomSceneModal {
       }
 
       const validatedData = validation.data;
-      const movieName = escapeHtml(validatedData.movieName);
+      // Store RAW user text: all render sites escape via escapeHtml(), and the
+      // dictation/pronunciation logic must compare against what the user
+      // actually types. Pre-escaping here made words like "Don't" (stored as
+      // "Don&#039;t") impossible to complete.
+      const movieName = validatedData.movieName;
       const resolvedVideoUrl = sanitizeUrl(validatedData.videoUrl || '') || undefined;
 
       const dialogues: DialogueSentence[] = validatedData.dialogues.map((d, idx) => {
-        const charName = escapeHtml(d.character);
-        const textEn = escapeHtml(d.textEn);
-        const textUz = escapeHtml(d.textUz);
         return {
           id: `custom-dialogue-${Date.now()}-${idx}`,
-          character: charName,
+          character: d.character,
           characterAvatar: '🗣️',
           startTime: idx * 4,
           endTime: (idx + 1) * 4,
-          text: textEn,
-          cleanText: textEn.replace(/[.,/#!$%^&*;:{}=\-_`~()?"'’]/g, ''),
-          uzbekTranslation: textUz,
+          text: d.textEn,
+          cleanText: d.textEn.replace(/[.,/#!$%^&*;:{}=\-_`~()?"'’]/g, ''),
+          uzbekTranslation: d.textUz,
           wordDictionary: {}
         };
       });

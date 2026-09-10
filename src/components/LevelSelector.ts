@@ -9,6 +9,8 @@ export class LevelSelector {
   private selectedCategory: string = 'all';
   private searchQuery: string = '';
   private onSelectSceneCallback: ((scene: Scene, sentenceIndex?: number) => void) | null = null;
+  private onAddCustomSceneCallback: (() => void) | null = null;
+  private onOpenYouTubeImportCallback: (() => void) | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -16,9 +18,13 @@ export class LevelSelector {
 
   public setCallbacks(callbacks: {
     onSelectScene: (scene: Scene, sentenceIndex?: number) => void;
+    onAddCustomScene: () => void;
+    onOpenYouTubeImport?: () => void;
     onOpenProfile?: () => void;
   }): void {
     this.onSelectSceneCallback = callbacks.onSelectScene;
+    this.onAddCustomSceneCallback = callbacks.onAddCustomScene || null;
+    this.onOpenYouTubeImportCallback = callbacks.onOpenYouTubeImport || null;
   }
 
   public setOnSelectScene(callback: (scene: Scene, sentenceIndex?: number) => void): void {
@@ -171,10 +177,22 @@ export class LevelSelector {
 
   private renderCoursesGridHtml(scenes: Scene[], stats: any): string {
     if (scenes.length === 0) {
+      // Actionable empty state: the user can immediately import a lesson from
+      // YouTube or create a custom one instead of staring at a dead end.
+      const t = i18n.t();
       return `
         <div class="clean-empty-box" style="grid-column: 1 / -1;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;"><i class="ph ph-film-strip"></i></div>
           <h3>Darslar topilmadi</h3>
-          <p>Ushbu kategoriya bo'yicha hozircha darslar mavjud emas.</p>
+          <p>Ushbu kategoriya bo'yicha hozircha darslar mavjud emas. Birinchi darsni yarating:</p>
+          <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-top: 1.1rem;">
+            <button class="header-action-pill primary" id="emptyStateYouTubeImportBtn">
+              <i class="ph-fill ph-youtube-logo"></i> ${t.youtubeImport}
+            </button>
+            <button class="header-action-pill subtle" id="emptyStateAddBtn">
+              <i class="ph ph-plus-circle"></i> ${t.newScene}
+            </button>
+          </div>
         </div>
       `;
     }
@@ -369,7 +387,9 @@ export class LevelSelector {
       });
 
       if (countEl) {
-        countEl.textContent = `${filteredScenes.length} ta dars mavjud`;
+        // Keep the localized label — a hardcoded Uzbek string previously
+        // reappeared as soon as the user filtered or searched.
+        countEl.textContent = `${filteredScenes.length} ${i18n.t().scenesCount}`;
       }
 
       if (wordResultsContainer) {
@@ -379,6 +399,7 @@ export class LevelSelector {
 
       grid.innerHTML = this.renderCoursesGridHtml(filteredScenes, stats);
       this.bindGridCardEvents(allScenes);
+      this.bindEmptyStateActions();
 
       requestAnimationFrame(() => {
         grid.classList.remove('filter-animating');
@@ -411,7 +432,20 @@ export class LevelSelector {
     });
   }
 
+  /** Wires the actionable empty-state buttons; called from both render paths. */
+  private bindEmptyStateActions(): void {
+    this.container.querySelector('#emptyStateYouTubeImportBtn')?.addEventListener('click', () => {
+      this.onOpenYouTubeImportCallback?.();
+    });
+    this.container.querySelector('#emptyStateAddBtn')?.addEventListener('click', () => {
+      this.onAddCustomSceneCallback?.();
+    });
+  }
+
   private bindEvents(allScenes: Scene[]): void {
+    // Empty state actions (YouTube import / custom scene)
+    this.bindEmptyStateActions();
+
     // Category filter pills with smooth gliding transition
     const categoryBtns = this.container.querySelectorAll('#categoryFilters .category-pill');
     categoryBtns.forEach(btn => {

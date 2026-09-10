@@ -1,3 +1,4 @@
+import { getLevelProgress } from '../types';
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
 import { i18n, AppLanguage } from '../services/i18nService';
@@ -52,12 +53,11 @@ export class ProfileModal {
       ? Math.round(stats.wpmHistory.reduce((a, b) => a + b, 0) / stats.wpmHistory.length)
       : 0;
 
-    const currentLevel = stats.level;
-    const currentLevelBaseXP = Math.pow(currentLevel - 1, 2) * 100;
-    const nextLevelXP = Math.pow(currentLevel, 2) * 100;
-    const xpIntoLevel = Math.max(0, stats.xp - currentLevelBaseXP);
-    const xpNeededForLevel = Math.max(1, nextLevelXP - currentLevelBaseXP);
-    const progressPct = Math.min(100, Math.max(5, Math.round((xpIntoLevel / xpNeededForLevel) * 100)));
+    // Shared leveling formula (same one storageService.addXP applies).
+    const levelInfo = getLevelProgress(stats.xp);
+    const currentLevel = levelInfo.level;
+    const nextLevelXP = levelInfo.nextLevelXp;
+    const progressPct = levelInfo.progressPct;
 
     const rawUserName = stats.userName || 'Foydalanuvchi';
     const rawUserHandle = stats.userHandle || '@til_organuvchi';

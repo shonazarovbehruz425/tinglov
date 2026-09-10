@@ -11,6 +11,7 @@ export class SettingsView {
   private onOpenProfileCallback: (() => void) | null = null;
   private onSettingsChangedCallback: (() => void) | null = null;
   private onThemeOrSoundChangedCallback: (() => void) | null = null;
+  private resizeHandler: (() => void) | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -298,10 +299,15 @@ export class SettingsView {
       });
     });
 
-    window.addEventListener('resize', () => {
+    // Named handler replaced on re-render so resize listeners never accumulate
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+    }
+    this.resizeHandler = () => {
       const active = this.container.querySelector<HTMLElement>('.settings-lang-item.active');
       if (active) this.updateGlider(active, false);
-    });
+    };
+    window.addEventListener('resize', this.resizeHandler);
 
     // Profile form
     const form = this.container.querySelector<HTMLFormElement>('#settingsProfileForm');

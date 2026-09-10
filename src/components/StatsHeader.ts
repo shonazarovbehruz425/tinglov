@@ -22,6 +22,7 @@ export class StatsHeader {
   private onSearchQueryChangeCallback: ((query: string) => void) | null = null;
   private onOpenAuthCallback: ((tab: 'login' | 'register') => void) | null = null;
   private onSignOutCallback: (() => void) | null = null;
+  private documentClickHandler: ((e: MouseEvent) => void) | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -59,6 +60,11 @@ export class StatsHeader {
   }
 
   public update(): void {
+    // Re-read the theme on every update — Settings changes it via localStorage
+    // and the header must not keep showing a stale theme state/icon.
+    const savedTheme = (localStorage.getItem('movielisten_theme') as AppTheme) || 'light';
+    this.currentTheme = savedTheme;
+
     const stats = storageService.getStats();
     const t = i18n.t();
     const curLang = i18n.getLanguage();
@@ -368,6 +374,30 @@ export class StatsHeader {
     });
   }
 
+  /**
+   * Binds ONE document-level click handler that closes the search and account
+   * dropdowns when clicking outside. It re-queries the DOM on every click, so
+   * re-renders never leak stale detached elements; earlier versions added two
+   * new anonymous document listeners on every update().
+   */
+  private ensureDocumentClickHandler(): void {
+    if (this.documentClickHandler) return;
+    this.documentClickHandler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const searchDropdown = this.container.querySelector<HTMLElement>('#headerSearchDropdown');
+      if (searchDropdown?.classList.contains('show-dropdown')
+        && !this.container.querySelector('#headerCenterSearch')?.contains(target)) {
+        searchDropdown.classList.remove('show-dropdown');
+      }
+      const accountMenu = this.container.querySelector<HTMLElement>('#userAccountDropdownMenu');
+      if (accountMenu?.classList.contains('show-dropdown')
+        && !this.container.querySelector('#userProfileDropdownWrapper')?.contains(target)) {
+        accountMenu.classList.remove('show-dropdown');
+      }
+    };
+    document.addEventListener('click', this.documentClickHandler);
+  }
+
   private bindEvents(): void {
     // Real-time search by word
     const searchInput = this.container.querySelector<HTMLInputElement>('#topHeaderSearchInput');
@@ -381,12 +411,8 @@ export class StatsHeader {
       }, 120);
     });
 
-    // Close search dropdown on click outside
-    document.addEventListener('click', (e) => {
-      if (!this.container.querySelector('#headerCenterSearch')?.contains(e.target as Node)) {
-        searchDropdown?.classList.remove('show-dropdown');
-      }
-    });
+    // Close search dropdown on click outside (single shared document handler)
+    this.ensureDocumentClickHandler();
 
     // Escape to close search dropdown
     searchInput?.addEventListener('keydown', (e) => {
@@ -420,12 +446,8 @@ export class StatsHeader {
       dropdownMenu?.classList.toggle('show-dropdown');
     });
 
-    // Close on document click
-    document.addEventListener('click', (e) => {
-      if (!this.container.querySelector('#userProfileDropdownWrapper')?.contains(e.target as Node)) {
-        dropdownMenu?.classList.remove('show-dropdown');
-      }
-    });
+    // Close on document click (single shared handler — see ensureDocumentClickHandler)
+    this.ensureDocumentClickHandler();
 
     // Toggle Language drawer inside dropdown
     const langTrigger = this.container.querySelector('#dropdownLangTriggerBtn');

@@ -279,7 +279,7 @@ export class DictationInput {
           <textarea
             id="dictationInput"
             class="dictation-big-textarea"
-            placeholder="${t.typePlaceholder} (masalan: ${this.currentSentence.text.slice(0, 5)}...)"
+            placeholder="${escapeHtml(`${t.typePlaceholder} (masalan: ${this.currentSentence.text.slice(0, 5)}...)`)}"
             rows="2"
             autocomplete="off"
             autocorrect="off"

@@ -31,6 +31,7 @@ export interface MeResponse {
   savedWords: Array<{ id: string | number; word: string; translation: string | null; scene_title: string | null }>;
   completedScenes: Array<{ id: string | number; scene_id: string; accuracy: number; wpm: number }>;
   completedSceneIds?: string[];
+  lastPositions?: Record<string, number>;
 }
 
 const TOKEN_KEY = 'tinglov_auth_token';
@@ -55,7 +56,7 @@ class ApiService {
       if (session?.user) {
         this.setToken(session.access_token);
         await this.loadUserProfile(session.user);
-        this.syncBackendSession(session.user).catch(() => {});
+        this.syncBackendSession(session.user, session.access_token).catch(() => {});
       } else if (event === 'SIGNED_OUT') {
         this.clearSession();
         this.notifyAuthChange();
@@ -132,11 +133,21 @@ class ApiService {
   }
 
   // Synchronize authenticated session to backend to set secure HttpOnly cookie
-  private async syncBackendSession(user: any): Promise<void> {
+  private async syncBackendSession(user: any, supabaseAccessToken?: string): Promise<void> {
     try {
       const isGoogle = user.app_metadata?.provider === 'google'
         || (Array.isArray(user.identities) && user.identities.some((i: any) => i.provider === 'google'));
       const provider: 'google' | 'email' = isGoogle ? 'google' : 'email';
+
+      // Resolve a Supabase access token so the backend can VERIFY our identity
+      // before attaching the session to an existing account.
+      let accessToken = supabaseAccessToken || user.access_token || '';
+      if (!accessToken) {
+        try {
+          const { data } = await supabase.auth.getSession();
+          accessToken = data?.session?.access_token || '';
+        } catch {}
+      }
 
       await fetch('/api/auth/session', {
         method: 'POST',
@@ -152,6 +163,7 @@ class ApiService {
           fullName: user.user_metadata?.full_name || '',
           avatarColor: user.user_metadata?.avatar_color,
           authProvider: provider,
+          supabaseAccessToken: accessToken,
         }),
       });
     } catch {
@@ -332,7 +344,7 @@ class ApiService {
         await this.syncBackendSession({
           email: cleanEmail,
           user_metadata: { username: cleanUsername, full_name: cleanFullName, avatar_color: '#FF5722' }
-        });
+        }, data.session?.access_token);
         this.notifyAuthChange();
 
         return {
@@ -390,12 +402,9 @@ class ApiService {
             this.currentUser = resData.user;
             this.saveUserToStorage(resData.user);
             this.setToken('httponly_session');
-            this.authReadyPromise = Promise.resolve({
-              user: resData.user,
-              savedWords: [],
-              completedScenes: [],
-              completedSceneIds: [],
-            });
+            // Invalidate the cached profile snapshot so the next waitForAuth()
+            // performs a real /api/auth/me fetch (words, scenes, positions).
+            this.authReadyPromise = null;
             this.notifyAuthChange();
             return {
               message: resData.message || 'Xush kelibsiz!',
@@ -403,9 +412,9 @@ class ApiService {
               token: resData.token,
             };
           }
-        } else if (backendRes.status === 400 || backendRes.status === 429) {
+        } else if (backendRes.status === 400 || backendRes.status === 401 || backendRes.status === 429) {
           const errData = await backendRes.json().catch(() => null);
-          if (errData?.requiresCaptcha || errData?.retryAfter) {
+          if (errData?.error || errData?.requiresCaptcha || errData?.retryAfter) {
             return {
               error: errData.error,
               requiresCaptcha: errData.requiresCaptcha,
@@ -466,7 +475,7 @@ class ApiService {
       if (data.user && data.session) {
         this.setToken(data.session.access_token);
         const user = await this.loadUserProfile(data.user);
-        await this.syncBackendSession(data.user);
+        await this.syncBackendSession(data.user, data.session.access_token);
         this.authReadyPromise = Promise.resolve(user ? {
           user,
           savedWords: [],
@@ -511,6 +520,8 @@ class ApiService {
     let completedScenes: Array<{ id: string | number; scene_id: string; accuracy: number; wpm: number }> = [];
     let completedSceneIds: string[] = [];
 
+    let lastPositions: Record<string, number> | undefined;
+
     // 1. Check backend HttpOnly cookie session (cross-tab & persistent across tab closes)
     try {
       const res = await fetch('/api/auth/me', {
@@ -526,7 +537,14 @@ class ApiService {
           savedWords = data.savedWords || [];
           completedScenes = data.completedScenes || [];
           completedSceneIds = data.completedSceneIds || completedScenes.map((s: any) => s.scene_id);
+          if (data.lastPositions && typeof data.lastPositions === 'object') {
+            lastPositions = data.lastPositions;
+          }
         }
+      } else if (res.status === 401) {
+        // Backend explicitly rejected the cached session (expired/invalid) —
+        // drop it instead of keeping a stale "logged in" UI forever.
+        this.clearSession();
       }
     } catch {
       // Backend offline or user not logged in via cookie
@@ -591,6 +609,7 @@ class ApiService {
         savedWords,
         completedScenes,
         completedSceneIds,
+        lastPositions
       };
     }
 
@@ -605,6 +624,7 @@ class ApiService {
     savedWords?: Array<{ word: string; translation?: string; sceneTitle?: string }>;
     completedScene?: { sceneId: string; accuracy?: number; wpm?: number };
     completedScenes?: string[];
+    lastPositions?: Record<string, number>;
     wordsCount?: number;
   }): Promise<any> {
     if (!this.currentUser) return null;
@@ -1080,15 +1100,15 @@ class ApiService {
               || (Array.isArray(currentAuthUser.identities) && currentAuthUser.identities.some((i: any) => i.provider === 'google'));
             provider = isGoogle ? 'google' : 'email';
           } else {
-            // Intelligent detection for Google vs Email login
-            const isGoogle = Boolean((userEmail && userEmail.endsWith('@gmail.com'))
-              || p.avatar_color === '#FF5722'
-              || p.raw_user_meta_data?.iss?.includes('google')
-              || p.raw_app_meta_data?.provider === 'google');
+            // Detect provider strictly from stored metadata. Do NOT infer Google
+            // from the default avatar color (#FF5722 is assigned at registration
+            // to every new user) and never fabricate placeholder emails.
+            const isGoogle = Boolean(
+              p.raw_app_meta_data?.provider === 'google'
+              || (Array.isArray(p.identities) && p.identities.some((i: any) => i.provider === 'google'))
+            );
             provider = isGoogle ? 'google' : 'email';
-            if (!userEmail) {
-              userEmail = isGoogle ? `${p.username}@gmail.com` : `${p.username}@mail.com`;
-            }
+            userEmail = userEmail || '';
           }
 
           return {
