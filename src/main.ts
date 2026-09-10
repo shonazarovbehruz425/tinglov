@@ -20,11 +20,12 @@ import { apiService } from './services/apiService';
 import { ProfileView } from './components/ProfileView';
 import { SettingsView } from './components/SettingsView';
 import { LandingView } from './components/LandingView';
+import { AdminView } from './components/AdminView';
 import { onboardingStepper } from './components/OnboardingStepper';
 import { initCursorGlow } from './utils/cursorGlow';
 import { isValidYouTubeVideoId } from './utils/sanitize';
 
-type AppViewMode = 'landing' | 'library' | 'practice' | 'profile' | 'settings' | 'auth';
+type AppViewMode = 'landing' | 'library' | 'practice' | 'profile' | 'settings' | 'auth' | 'admin';
 
 class MovieListenApp {
   private currentScene: Scene | null = null;
@@ -43,6 +44,7 @@ class MovieListenApp {
   private settingsView!: SettingsView;
   private authView!: AuthView;
   private landingView!: LandingView;
+  private adminView!: AdminView;
   private vocabModal!: VocabularyModal;
   private customSceneModal!: CustomSceneModal;
   private youtubeImportModal!: YouTubeImportModal;
@@ -102,6 +104,7 @@ class MovieListenApp {
         <div id="profileViewContainer" class="view-section" style="display: none;"></div>
         <div id="settingsViewContainer" class="view-section" style="display: none;"></div>
         <div id="authViewContainer" class="view-section" style="display: none;"></div>
+        <div id="adminViewContainer" class="view-section" style="display: none;"></div>
       </main>
 
       <!-- Modals Container -->
@@ -344,11 +347,64 @@ class MovieListenApp {
       }
     });
 
+    // 15. Dedicated Admin Panel View
+    const adminContainer = document.getElementById('adminViewContainer')!;
+    this.adminView = new AdminView(adminContainer);
+    this.adminView.setCallbacks({
+      onNavigateHome: () => this.showLandingPage(true),
+    });
+
+    // Warm up admin config and fetch global custom scenes from server
+    apiService.fetchAdminConfig().catch(() => {});
+    apiService.getPublicScenes().then((serverScenes) => {
+      if (serverScenes && serverScenes.length > 0) {
+        const mappedScenes: Scene[] = [];
+        serverScenes.forEach((s: any) => {
+          try {
+            const parsedDialogues = typeof s.dialogues_json === 'string' ? JSON.parse(s.dialogues_json) : (s.dialogues || []);
+            const dialogues: DialogueSentence[] = parsedDialogues.map((d: any, idx: number) => ({
+              id: d.id || `line_${idx + 1}`,
+              character: d.character || 'Qahramon',
+              characterAvatar: '🎬',
+              startTime: Number(d.startTime) || 0,
+              endTime: Number(d.endTime) || (Number(d.startTime) || 0) + 3,
+              text: d.text || '',
+              cleanText: (d.text || '').replace(/[^\w\s]/g, '').toLowerCase().trim(),
+              uzbekTranslation: d.uzbekTranslation || d.translation || '',
+              wordDictionary: d.wordDictionary || {},
+            }));
+
+            mappedScenes.push({
+              id: s.id,
+              title: s.title,
+              movieName: s.title,
+              coverEmoji: '🎬',
+              coverImage: s.poster_url || undefined,
+              category: (s.category === 'Animation' ? 'Cartoon' : s.category === 'Anime' ? 'Anime' : 'Cinema') as any,
+              difficulty: (s.difficulty?.toLowerCase() || 'intermediate') as any,
+              duration: '1:30',
+              accent: 'Neutral',
+              videoUrl: s.video_url,
+              dialogues,
+            });
+          } catch {
+            // Ignored
+          }
+        });
+        if (mappedScenes.length > 0) {
+          storageService.mergeServerScenes(mappedScenes);
+          if (this.currentView === 'library') {
+            this.levelSelector.render();
+          }
+        }
+      }
+    }).catch(() => {});
+
     // React to auth state changes (e.g. sign out or Google OAuth sign in)
     apiService.onAuthChange((user) => {
       if (!user) {
         // If user signed out while in protected app views, return to landing page
-        if (this.currentView !== 'landing' && this.currentView !== 'auth') {
+        if (this.currentView !== 'landing' && this.currentView !== 'auth' && this.currentView !== 'admin') {
           this.showLandingPage(true);
         }
       } else {
@@ -374,19 +430,23 @@ class MovieListenApp {
           this.showLibrary(true);
         }
       } else {
-        // Only enforce auth if current route is protected (never kick visitors off the landing page)
+        // Only enforce auth if current route is protected (never kick visitors off the landing page or admin page)
         const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
         const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-        const isPublic = rawPath === '/' || rawPath === '/login' || rawPath === '/register' || rawHash === 'landing' || rawHash === 'login' || rawHash === 'register';
-        if (!isPublic && this.currentView !== 'landing') {
+        const adminPath = apiService.getAdminRoutePath();
+        const adminHash = adminPath.replace(/^\//, '').toLowerCase();
+        const isPublic = rawPath === '/' || rawPath === '/login' || rawPath === '/register' || rawPath === adminPath || rawHash === 'landing' || rawHash === 'login' || rawHash === 'register' || rawHash === adminHash;
+        if (!isPublic && this.currentView !== 'landing' && this.currentView !== 'admin') {
           this.checkAndEnforceAuth();
         }
       }
     }).catch(() => {
       const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
       const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-      const isPublic = rawPath === '/' || rawPath === '/login' || rawPath === '/register' || rawHash === 'landing' || rawHash === 'login' || rawHash === 'register';
-      if (!isPublic && this.currentView !== 'landing' && !apiService.isAuthenticated()) {
+      const adminPath = apiService.getAdminRoutePath();
+      const adminHash = adminPath.replace(/^\//, '').toLowerCase();
+      const isPublic = rawPath === '/' || rawPath === '/login' || rawPath === '/register' || rawPath === adminPath || rawHash === 'landing' || rawHash === 'login' || rawHash === 'register' || rawHash === adminHash;
+      if (!isPublic && this.currentView !== 'landing' && this.currentView !== 'admin' && !apiService.isAuthenticated()) {
         this.checkAndEnforceAuth();
       }
     });
@@ -448,6 +508,15 @@ class MovieListenApp {
 
     const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
     const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+
+    // 0. Dynamic Admin Route Check (configured via Render.com env: ADMIN_PATH or VITE_ADMIN_PATH)
+    const adminPath = apiService.getAdminRoutePath();
+    const normalizedAdminPath = adminPath.startsWith('/') ? adminPath : '/' + adminPath;
+    const adminHash = normalizedAdminPath.replace(/^\//, '').toLowerCase();
+    if (rawPath === normalizedAdminPath || rawHash === adminHash) {
+      this.showAdminPage(pushHistory);
+      return;
+    }
 
     // 1. Explicit Auth routes (/login, /register, /auth)
     if (rawPath === '/login' || rawHash === 'login' || rawPath === '/auth') {
@@ -549,6 +618,8 @@ class MovieListenApp {
       this.showSettingsPage(false);
     } else if (this.currentView === 'auth') {
       this.showAuthPage('login', false);
+    } else if (this.currentView === 'admin') {
+      this.showAdminPage(false);
     } else if (this.currentScene) {
       this.loadCurrentSentence();
     }
@@ -567,6 +638,7 @@ class MovieListenApp {
     const profileContainer = document.getElementById('profileViewContainer');
     const settingsContainer = document.getElementById('settingsViewContainer');
     const authContainer = document.getElementById('authViewContainer');
+    const adminContainer = document.getElementById('adminViewContainer');
     const headerContainer = document.getElementById('statsHeaderContainer');
 
     if (landingContainer) landingContainer.style.display = view === 'landing' ? 'block' : 'none';
@@ -575,16 +647,29 @@ class MovieListenApp {
     if (profileContainer) profileContainer.style.display = view === 'profile' ? 'block' : 'none';
     if (settingsContainer) settingsContainer.style.display = view === 'settings' ? 'block' : 'none';
     if (authContainer) authContainer.style.display = view === 'auth' ? 'block' : 'none';
-    if (headerContainer) headerContainer.style.display = (view === 'practice' || view === 'auth' || view === 'landing') ? 'none' : 'block';
+    if (adminContainer) adminContainer.style.display = view === 'admin' ? 'block' : 'none';
+    if (headerContainer) headerContainer.style.display = (view === 'practice' || view === 'auth' || view === 'landing' || view === 'admin') ? 'none' : 'block';
 
     document.body.classList.toggle('in-landing-mode', view === 'landing');
     document.body.classList.toggle('in-practice-mode', view === 'practice');
     document.body.classList.toggle('in-auth-mode', view === 'auth');
+    document.body.classList.toggle('in-admin-mode', view === 'admin');
 
-    if (view !== 'auth' && view !== 'landing') {
+    if (view !== 'auth' && view !== 'landing' && view !== 'admin') {
       this.statsHeader.update();
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  public showAdminPage(pushHistory: boolean = true): void {
+    const adminPath = apiService.getAdminRoutePath();
+    this.switchView('admin');
+    this.adminView.render();
+    if (pushHistory) {
+      this.updateUrl(adminPath, 'Tinglov — Boshqaruv Markazi (Admin)');
+    } else {
+      document.title = 'Tinglov — Boshqaruv Markazi (Admin)';
+    }
   }
 
   public showLandingPage(pushHistory: boolean = true): void {

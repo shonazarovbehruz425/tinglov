@@ -271,6 +271,17 @@ export class StorageService {
     }
   }
 
+  public mergeServerScenes(scenes: Scene[]): void {
+    scenes.forEach(scene => {
+      const idx = this.customScenes.findIndex(s => s.id === scene.id);
+      if (idx >= 0) {
+        this.customScenes[idx] = scene;
+      } else {
+        this.customScenes.push(scene);
+      }
+    });
+  }
+
   public deleteCustomScene(sceneId: string): void {
     this.customScenes = this.customScenes.filter(s => s.id !== sceneId);
     try {

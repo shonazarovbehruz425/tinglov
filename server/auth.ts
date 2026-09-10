@@ -42,6 +42,12 @@ export function extractToken(req: Request): string | null {
   if (req.cookies && req.cookies.token) {
     return req.cookies.token;
   }
+  if (req.headers.cookie) {
+    const match = req.headers.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+    if (match) {
+      return decodeURIComponent(match[1]);
+    }
+  }
   // 2. Fallback to Bearer token in Authorization header
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -86,4 +92,59 @@ export function optionalAuth(req: AuthenticatedRequest, _res: Response, next: Ne
     }
   }
   next();
+}
+
+export interface AdminRequest extends Request {
+  admin?: {
+    username: string;
+    role: 'admin';
+  };
+}
+
+export function generateAdminToken(username: string): string {
+  return jwt.sign(
+    { username, role: 'admin' },
+    JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+}
+
+export function extractAdminToken(req: Request): string | null {
+  if (req.cookies && req.cookies.admin_token) {
+    return req.cookies.admin_token;
+  }
+  if (req.headers.cookie) {
+    const match = req.headers.cookie.match(/(?:^|;\s*)admin_token=([^;]+)/);
+    if (match) {
+      return decodeURIComponent(match[1]);
+    }
+  }
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.split(' ')[1];
+  }
+  return null;
+}
+
+export function requireAdminAuth(req: AdminRequest, res: Response, next: NextFunction): void {
+  const token = extractAdminToken(req);
+  if (!token) {
+    res.status(401).json({ error: 'Admin huquqi talab qilinadi (Token topilmadi)' });
+    return;
+  }
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { username: string; role: string };
+    if (payload.role !== 'admin') {
+      res.status(403).json({ error: 'Ruxsat berilmagan: faqat admin uchun' });
+      return;
+    }
+    req.admin = {
+      username: payload.username,
+      role: 'admin'
+    };
+    next();
+  } catch {
+    res.status(401).json({ error: 'Admin seansi yaroqsiz yoki muddati tugagan' });
+  }
 }

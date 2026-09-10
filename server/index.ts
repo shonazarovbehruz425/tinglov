@@ -16,10 +16,26 @@ import {
   getUserSavedWords,
   recordUserCompletedScene,
   getUserCompletedScenes,
-  getGlobalLeaderboard
+  getGlobalLeaderboard,
+  getAllUsers,
+  deleteUserById,
+  updateUserStatsAdmin,
+  getAdminStats,
+  getAllAdminScenes,
+  createAdminScene,
+  deleteAdminScene
 } from './db';
 import crypto from 'node:crypto';
-import { hashPassword, comparePassword, generateToken, requireAuth, AuthenticatedRequest } from './auth';
+import {
+  hashPassword,
+  comparePassword,
+  generateToken,
+  requireAuth,
+  AuthenticatedRequest,
+  generateAdminToken,
+  requireAdminAuth,
+  AdminRequest
+} from './auth';
 import { safeValidate, registerSchema, loginSchema } from '../src/utils/validation';
 import {
   apiLimiter,
@@ -425,11 +441,216 @@ app.get('/api/leaderboard', (_req, res) => {
 });
 
 // --------------------------------------------------------------------------
+// Admin Panel Configuration & Endpoints
+// --------------------------------------------------------------------------
+
+function normalizeRoutePath(rawPath: string | undefined): string {
+  if (!rawPath) return '/admin';
+  let p = rawPath.trim();
+  if (!p.startsWith('/')) p = '/' + p;
+  if (p.length > 1 && p.endsWith('/')) p = p.replace(/\/+$/, '');
+  return p;
+}
+
+const ADMIN_PATH = normalizeRoutePath(process.env.ADMIN_PATH || process.env.VITE_ADMIN_PATH || '/admin');
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'tinglov_admin_2026';
+
+// A. Public endpoint to check active admin path
+app.get('/api/admin/config', (_req, res) => {
+  res.json({ adminPath: ADMIN_PATH });
+});
+
+// B. Public endpoint to get all admin-created lessons for players
+app.get('/api/scenes', (_req, res) => {
+  try {
+    const scenes = getAllAdminScenes();
+    res.json({ scenes });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Darslarni yuklashda xatolik yuz berdi' });
+  }
+});
+
+// C. Admin Login
+app.post('/api/admin/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    res.status(400).json({ error: 'Login va parol kiritilishi shart' });
+    return;
+  }
+
+  const trimmedUser = String(username).trim();
+  const trimmedPass = String(password).trim();
+
+  if (trimmedUser !== ADMIN_USERNAME || trimmedPass !== ADMIN_PASSWORD) {
+    res.status(401).json({ error: 'Noto‘g‘ri admin login yoki parol' });
+    return;
+  }
+
+  const token = generateAdminToken(ADMIN_USERNAME);
+  res.cookie('admin_token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  });
+
+  res.json({
+    success: true,
+    token,
+    admin: { username: ADMIN_USERNAME, role: 'admin' },
+    adminPath: ADMIN_PATH
+  });
+});
+
+// D. Admin Logout
+app.post('/api/admin/logout', (_req, res) => {
+  res.clearCookie('admin_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  });
+  res.json({ success: true, message: 'Admin tizimidan muvaffaqiyatli chiqildi' });
+});
+
+// E. Check Admin Session
+app.get('/api/admin/check', requireAdminAuth, (req: AdminRequest, res) => {
+  res.json({
+    authenticated: true,
+    admin: req.admin,
+    adminPath: ADMIN_PATH
+  });
+});
+
+// F. Admin Dashboard Stats
+app.get('/api/admin/stats', requireAdminAuth, (_req: AdminRequest, res) => {
+  try {
+    const dbStats = getAdminStats();
+    const mem = process.memoryUsage();
+    res.json({
+      success: true,
+      stats: dbStats,
+      system: {
+        adminPath: ADMIN_PATH,
+        nodeVersion: process.version,
+        uptimeSeconds: Math.floor(process.uptime()),
+        memoryRssMb: Math.round(mem.rss / 1024 / 1024),
+        memoryHeapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+        redisConfigured: Boolean(process.env.REDIS_URL),
+        csrfProtection: true,
+        hstsProtection: true
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Statistikani yuklashda xatolik yuz berdi' });
+  }
+});
+
+// G. List Users (Search & Filter)
+app.get('/api/admin/users', requireAdminAuth, (req: AdminRequest, res) => {
+  try {
+    const searchQuery = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const users = getAllUsers(searchQuery);
+    res.json({ success: true, users, count: users.length });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Foydalanuvchilarni yuklashda xatolik yuz berdi' });
+  }
+});
+
+// H. Delete User
+app.delete('/api/admin/users/:id', requireAdminAuth, (req: AdminRequest, res) => {
+  try {
+    const userId = Number(req.params.id);
+    if (!userId || isNaN(userId)) {
+      res.status(400).json({ error: 'Yaroqsiz foydalanuvchi ID' });
+      return;
+    }
+    const success = deleteUserById(userId);
+    if (!success) {
+      res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+      return;
+    }
+    res.json({ success: true, message: 'Foydalanuvchi muvaffaqiyatli o‘chirildi' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Foydalanuvchini o‘chirishda xatolik yuz berdi' });
+  }
+});
+
+// I. Update User Stats (XP, Streak, Level)
+app.post('/api/admin/users/:id/update', requireAdminAuth, (req: AdminRequest, res) => {
+  try {
+    const userId = Number(req.params.id);
+    const { xp, streak, level } = req.body;
+    updateUserStatsAdmin(userId, {
+      xp: xp !== undefined ? Number(xp) : undefined,
+      streak: streak !== undefined ? Number(streak) : undefined,
+      level: level !== undefined ? Number(level) : undefined
+    });
+    res.json({ success: true, message: 'Foydalanuvchi ma‘lumotlari yangilandi' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Foydalanuvchini yangilashda xatolik yuz berdi' });
+  }
+});
+
+// J. Manage Admin Scenes
+app.get('/api/admin/scenes', requireAdminAuth, (_req: AdminRequest, res) => {
+  try {
+    const scenes = getAllAdminScenes();
+    res.json({ success: true, scenes });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Darslarni yuklashda xatolik yuz berdi' });
+  }
+});
+
+app.post('/api/admin/scenes', requireAdminAuth, (req: AdminRequest, res) => {
+  try {
+    const { id, title, category, difficulty, video_url, poster_url, dialogues } = req.body;
+    if (!title || !category || !difficulty || !video_url) {
+      res.status(400).json({ error: 'Sarlavha, kategoriya, qiyinchilik va video havolasi talab qilinadi' });
+      return;
+    }
+
+    const sceneId = id || `custom_admin_${Date.now()}`;
+    const dialoguesJson = typeof dialogues === 'string' ? dialogues : JSON.stringify(dialogues || []);
+
+    const created = createAdminScene({
+      id: sceneId,
+      title,
+      category,
+      difficulty,
+      video_url,
+      poster_url: poster_url || '',
+      dialogues_json: dialoguesJson
+    });
+
+    res.json({ success: true, scene: created });
+  } catch (err: any) {
+    console.error('Admin create scene error:', err);
+    res.status(500).json({ error: 'Darsni saqlashda xatolik yuz berdi' });
+  }
+});
+
+app.delete('/api/admin/scenes/:id', requireAdminAuth, (req: AdminRequest, res) => {
+  try {
+    const sceneId = req.params.id;
+    const deleted = deleteAdminScene(sceneId);
+    if (!deleted) {
+      res.status(404).json({ error: 'Dars topilmadi' });
+      return;
+    }
+    res.json({ success: true, message: 'Dars muvaffaqiyatli o‘chirildi' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Darsni o‘chirishda xatolik yuz berdi' });
+  }
+});
+
+// --------------------------------------------------------------------------
 // Static SPA Serving (Render.com Web Service & Production)
 // --------------------------------------------------------------------------
 const distPath = path.resolve(process.cwd(), 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath, {
+    index: false,
     setHeaders: (res) => {
       res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
       res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -441,10 +662,29 @@ if (fs.existsSync(distPath)) {
   app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-    res.sendFile(path.join(distPath, 'index.html'));
+    const indexHtmlPath = path.join(distPath, 'index.html');
+    if (fs.existsSync(indexHtmlPath)) {
+      try {
+        let html = fs.readFileSync(indexHtmlPath, 'utf8');
+        const scriptInjection = `<script>window.__ADMIN_PATH__ = ${JSON.stringify(ADMIN_PATH)};</script>`;
+        if (html.includes('</head>')) {
+          html = html.replace('</head>', `${scriptInjection}</head>`);
+        } else {
+          html = `${scriptInjection}${html}`;
+        }
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+      } catch {
+        res.sendFile(indexHtmlPath);
+      }
+    } else {
+      next();
+    }
   });
 }
 
 app.listen(PORT, () => {
   console.log(`🚀 Tinglov Web Service server ishga tushdi: http://localhost:${PORT}`);
+  console.log(`🔒 Admin panel faol marshrut: ${ADMIN_PATH}`);
 });
+

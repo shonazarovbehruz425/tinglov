@@ -36,6 +36,8 @@ class ApiService {
   private token: string | null = null;
   private currentUser: AuthUser | null = null;
   private onAuthChangeCallbacks: Array<(user: AuthUser | null) => void> = [];
+  private adminToken: string | null = null;
+  private cachedAdminPath: string | null = null;
 
   constructor() {
     // 1. Purge any tokens accidentally stored in sessionStorage or localStorage by previous versions
@@ -560,6 +562,205 @@ class ApiService {
     this.purgeStorageTokens();
     this.notifyAuthChange();
   }
+
+  // ------------------------------------------------------------------------
+  // Admin Panel Methods
+  // ------------------------------------------------------------------------
+
+  public getAdminRoutePath(): string {
+    if (this.cachedAdminPath) return this.cachedAdminPath;
+    const globalPath = (window as any)?.__ADMIN_PATH__;
+    const envPath = (import.meta.env.VITE_ADMIN_PATH as string);
+    let p = (globalPath || envPath || '/admin').trim();
+    if (!p.startsWith('/')) p = '/' + p;
+    if (p.length > 1 && p.endsWith('/')) p = p.replace(/\/+$/, '');
+    this.cachedAdminPath = p;
+    return p;
+  }
+
+  public async fetchAdminConfig(): Promise<string> {
+    try {
+      const res = await fetch('/api/admin/config');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.adminPath) {
+          let p = data.adminPath.trim();
+          if (!p.startsWith('/')) p = '/' + p;
+          if (p.length > 1 && p.endsWith('/')) p = p.replace(/\/+$/, '');
+          this.cachedAdminPath = p;
+          return p;
+        }
+      }
+    } catch {
+      // Fallback to local
+    }
+    return this.getAdminRoutePath();
+  }
+
+  public isAdminAuthenticated(): boolean {
+    return Boolean(this.adminToken);
+  }
+
+  public async adminLogin(username: string, password: string): Promise<{ success: boolean; error?: string; admin?: any }> {
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getCsrfHeaders(),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || 'Admin login muvaffaqiyatsiz bo‘ldi' };
+      }
+      this.adminToken = data.token || 'authenticated';
+      return { success: true, admin: data.admin };
+    } catch {
+      return { success: false, error: 'Server bilan bog‘lanishda xatolik yuz berdi' };
+    }
+  }
+
+  public async adminLogout(): Promise<void> {
+    this.adminToken = null;
+    try {
+      await fetch('/api/admin/logout', {
+        method: 'POST',
+        headers: {
+          ...getCsrfHeaders(),
+        },
+        credentials: 'include',
+      });
+    } catch {
+      // Ignore
+    }
+  }
+
+  public async adminCheckAuth(): Promise<boolean> {
+    try {
+      const res = await fetch('/api/admin/check', {
+        method: 'GET',
+        headers: {
+          ...getCsrfHeaders(),
+          ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+        },
+        credentials: 'include',
+      });
+      if (res.ok) {
+        this.adminToken = this.adminToken || 'authenticated';
+        return true;
+      }
+    } catch {
+      // Ignore
+    }
+    this.adminToken = null;
+    return false;
+  }
+
+  public async adminGetStats(): Promise<any> {
+    const res = await fetch('/api/admin/stats', {
+      headers: {
+        ...getCsrfHeaders(),
+        ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+      },
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Statistika yuklanmadi');
+    return res.json();
+  }
+
+  public async adminGetUsers(search?: string): Promise<any[]> {
+    const url = search ? `/api/admin/users?search=${encodeURIComponent(search)}` : '/api/admin/users';
+    const res = await fetch(url, {
+      headers: {
+        ...getCsrfHeaders(),
+        ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+      },
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Foydalanuvchilar yuklanmadi');
+    const data = await res.json();
+    return data.users || [];
+  }
+
+  public async adminDeleteUser(id: number): Promise<boolean> {
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: 'DELETE',
+      headers: {
+        ...getCsrfHeaders(),
+        ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+      },
+      credentials: 'include',
+    });
+    return res.ok;
+  }
+
+  public async adminUpdateUser(id: number, data: { xp?: number; streak?: number; level?: number }): Promise<boolean> {
+    const res = await fetch(`/api/admin/users/${id}/update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getCsrfHeaders(),
+        ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+    return res.ok;
+  }
+
+  public async adminGetScenes(): Promise<any[]> {
+    const res = await fetch('/api/admin/scenes', {
+      headers: {
+        ...getCsrfHeaders(),
+        ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+      },
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Darslar yuklanmadi');
+    const data = await res.json();
+    return data.scenes || [];
+  }
+
+  public async adminCreateScene(scene: any): Promise<boolean> {
+    const res = await fetch('/api/admin/scenes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getCsrfHeaders(),
+        ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(scene),
+    });
+    return res.ok;
+  }
+
+  public async adminDeleteScene(id: string): Promise<boolean> {
+    const res = await fetch(`/api/admin/scenes/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: {
+        ...getCsrfHeaders(),
+        ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+      },
+      credentials: 'include',
+    });
+    return res.ok;
+  }
+
+  public async getPublicScenes(): Promise<any[]> {
+    try {
+      const res = await fetch('/api/scenes');
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.scenes || [];
+    } catch {
+      return [];
+    }
+  }
 }
 
 export const apiService = new ApiService();
+
