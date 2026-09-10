@@ -19,17 +19,19 @@ export class AuthView {
     this.activeTab = tab;
     this.container.innerHTML = `
       <div class="auth-page-wrapper">
+        <div class="auth-page-grid-overlay"></div>
         <div class="auth-page-bg-glow glow-1"></div>
         <div class="auth-page-bg-glow glow-2"></div>
+        <div class="auth-page-bg-glow glow-3"></div>
 
         <div class="auth-page-container">
           <!-- Left: Hero Branding & Features -->
           <div class="auth-page-hero">
             <div class="auth-hero-brand">
-              <img src="/logo.png" alt="Tinglov" class="auth-hero-logo" />
-              <div class="auth-hero-brand-info">
-                <h1 class="auth-hero-brand-name">Ting<span>lov</span></h1>
-                <span class="auth-hero-brand-tag">Language Mastery</span>
+              <img src="/logo-full.png" alt="Tinglov Logo" class="auth-hero-logo" />
+              <div class="auth-hero-tag-badge">
+                <span class="auth-tag-pulse"></span>
+                <span>Language Mastery Platform</span>
               </div>
             </div>
 
@@ -37,7 +39,7 @@ export class AuthView {
               Kino va multfilmlar orqali ingliz tilini <span>eshitib tushuning</span>
             </h2>
             <p class="auth-hero-sub">
-              Dunyodagi eng sevimli filmlar audio dialoglari asosida listening va imloni interaktiv diktant bilan o‘rganing.
+              Dunyodagi eng sara film va multfilm dialoglari asosida listening hamda imloni interaktiv diktant bilan o‘rganing.
             </p>
 
             <div class="auth-hero-features">
@@ -45,7 +47,7 @@ export class AuthView {
                 <div class="auth-feature-icon"><i class="ph ph-film-slate"></i></div>
                 <div class="auth-feature-text">
                   <h4>Haqiqiy dialoglar</h4>
-                  <p>Jonli aktyorlar va qahramonlar talaffuzida o‘rganing</p>
+                  <p>Jonli aktyorlar va qahramonlar talaffuzida eshitish ko‘nikmasi</p>
                 </div>
               </div>
 
@@ -53,7 +55,7 @@ export class AuthView {
                 <div class="auth-feature-icon"><i class="ph ph-keyboard"></i></div>
                 <div class="auth-feature-text">
                   <h4>Interaktiv diktant</h4>
-                  <p>Harflarni yozib, har bir so‘zni chuqur eslab qoling</p>
+                  <p>Harflarni yozib, har bir so‘zni aniq va chuqur eslab qoling</p>
                 </div>
               </div>
 
@@ -61,7 +63,7 @@ export class AuthView {
                 <div class="auth-feature-icon"><i class="ph ph-fire"></i></div>
                 <div class="auth-feature-text">
                   <h4>Streak va XP reytingi</h4>
-                  <p>Har kuni dars qilib, boshqa foydalanuvchilar bilan bellashing</p>
+                  <p>Har kuni dars qilib, do‘stlaringiz va boshqalar bilan bellashing</p>
                 </div>
               </div>
             </div>
