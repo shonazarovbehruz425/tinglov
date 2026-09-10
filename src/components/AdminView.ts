@@ -493,8 +493,7 @@ export class AdminView {
     `;
   }
 
-  private renderUsersTab(): string {
-    // Filter users based on this.userFilter
+  private getFilteredUsers(): any[] {
     let filteredUsers = [...this.users];
     if (this.userFilter === 'google') {
       filteredUsers = filteredUsers.filter((u) => u.auth_provider === 'google');
@@ -503,13 +502,16 @@ export class AdminView {
     } else if (this.userFilter === 'top_xp') {
       filteredUsers.sort((a, b) => (b.xp || 0) - (a.xp || 0));
     }
+    return filteredUsers;
+  }
 
-    const googleCount = this.users.filter((u) => u.auth_provider === 'google').length;
-    const emailCount = this.users.length - googleCount;
-    const totalXp = this.users.reduce((acc, u) => acc + (u.xp || 0), 0);
-    const avgXp = this.users.length > 0 ? Math.round(totalXp / this.users.length) : 0;
+  private renderUserRows(): string {
+    const filteredUsers = this.getFilteredUsers();
+    if (filteredUsers.length === 0) {
+      return `<tr><td colspan="7" class="admin-table-empty">Tanlangan filtr bo‘yicha hech qanday foydalanuvchi topilmadi</td></tr>`;
+    }
 
-    const userRows = filteredUsers.map((u) => {
+    return filteredUsers.map((u) => {
       const initials = (u.full_name || u.username || 'U').slice(0, 1).toUpperCase();
       const regDate = u.created_at ? new Date(u.created_at).toLocaleDateString('uz-UZ') : '—';
       return `
@@ -567,6 +569,13 @@ export class AdminView {
         </tr>
       `;
     }).join('');
+  }
+
+  private renderUsersTab(): string {
+    const googleCount = this.users.filter((u) => u.auth_provider === 'google').length;
+    const emailCount = this.users.length - googleCount;
+    const totalXp = this.users.reduce((acc, u) => acc + (u.xp || 0), 0);
+    const avgXp = this.users.length > 0 ? Math.round(totalXp / this.users.length) : 0;
 
     return `
       <div class="admin-tab-pane">
@@ -586,19 +595,22 @@ export class AdminView {
                 value="${escapeHtml(this.searchQuery)}"
               />
             </div>
+            <div style="font-size: 0.82rem; font-weight: 700; color: #94A3B8; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.5rem 0.9rem; border-radius: 12px; white-space: nowrap;">
+              O‘rtacha: <strong style="color: #A3E635;">${avgXp} XP</strong>
+            </div>
             <button id="adminExportUsersTabBtn" class="admin-btn admin-btn-secondary" title="Foydalanuvchilar ro‘yxatini CSV faylga yuklash">
               <i class="ph ph-bold ph-download-simple"></i> CSV
             </button>
           </div>
         </div>
 
-        <!-- Filter Pills and Metrics Bar -->
+        <!-- Filter Pills Bar with Sliding Active Glow -->
         <div class="admin-filters-bar">
           <button class="admin-filter-pill ${this.userFilter === 'all' ? 'active' : ''}" data-filter="all">
             Barchasi (${this.users.length})
           </button>
           <button class="admin-filter-pill ${this.userFilter === 'google' ? 'active' : ''}" data-filter="google">
-            <svg viewBox="0 0 24 24" width="12" height="12" style="margin-right: 4px; vertical-align: -1px;"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/></svg>
+            <svg viewBox="0 0 24 24" width="13" height="13" style="margin-right: 4px; vertical-align: -1px;"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/></svg>
             Google (${googleCount})
           </button>
           <button class="admin-filter-pill ${this.userFilter === 'email' ? 'active' : ''}" data-filter="email">
@@ -607,9 +619,6 @@ export class AdminView {
           <button class="admin-filter-pill ${this.userFilter === 'top_xp' ? 'active' : ''}" data-filter="top_xp">
             <i class="ph ph-bold ph-trophy" style="color: #FACC15; margin-right: 3px;"></i> Top XP (Reyting)
           </button>
-          <div style="margin-left: auto; font-size: 0.8rem; color: #94A3B8;">
-            O‘rtacha tajriba: <strong style="color: #A3E635;">${avgXp} XP</strong>
-          </div>
         </div>
 
         <div class="admin-table-container">
@@ -625,8 +634,8 @@ export class AdminView {
                 <th>Amallar</th>
               </tr>
             </thead>
-            <tbody>
-              ${userRows.length > 0 ? userRows : `<tr><td colspan="7" class="admin-table-empty">Tanlangan filtr bo‘yicha hech qanday foydalanuvchi topilmadi</td></tr>`}
+            <tbody id="adminUsersTableBody" class="admin-table-fade">
+              ${this.renderUserRows()}
             </tbody>
           </table>
         </div>
@@ -1155,14 +1164,36 @@ export class AdminView {
       });
     }
 
-    // Filter pills in Users Tab
+    // Filter pills in Users Tab with Smooth Sliding Animation
     const filterPills = this.container.querySelectorAll('.admin-filter-pill');
     filterPills.forEach((pill) => {
       pill.addEventListener('click', (e) => {
-        const filter = (e.currentTarget as HTMLElement).getAttribute('data-filter') as any;
-        if (filter) {
-          this.userFilter = filter;
-          this.refreshActiveTabContent();
+        const target = e.currentTarget as HTMLElement;
+        const filter = target.getAttribute('data-filter') as any;
+        if (!filter || filter === this.userFilter) return;
+
+        this.userFilter = filter;
+
+        // Smoothly toggle active state on pills with CSS transitions
+        filterPills.forEach((p) => p.classList.remove('active'));
+        target.classList.add('active');
+
+        // Smoothly update table rows without re-rendering the whole panel
+        const tbody = this.container.querySelector('#adminUsersTableBody') as HTMLElement;
+        if (tbody) {
+          const updateContent = () => {
+            tbody.innerHTML = this.renderUserRows();
+            this.bindUserRowEvents();
+          };
+
+          if ('startViewTransition' in document && typeof (document as any).startViewTransition === 'function') {
+            (document as any).startViewTransition(() => updateContent());
+          } else {
+            tbody.classList.remove('admin-table-fade');
+            void tbody.offsetWidth; // Force CSS reflow to re-trigger smooth fade
+            updateContent();
+            tbody.classList.add('admin-table-fade');
+          }
         }
       });
     });
@@ -1202,62 +1233,22 @@ export class AdminView {
         this.searchQuery = (e.target as HTMLInputElement).value;
         debounceTimer = setTimeout(async () => {
           this.users = await apiService.adminGetUsers(this.searchQuery).catch(() => []);
-          const tbody = this.container.querySelector('.admin-table tbody');
+          const tbody = this.container.querySelector('#adminUsersTableBody') as HTMLElement;
           if (tbody) {
+            tbody.classList.remove('admin-table-fade');
+            void tbody.offsetWidth;
+            tbody.innerHTML = this.renderUserRows();
+            tbody.classList.add('admin-table-fade');
+            this.bindUserRowEvents();
+          } else {
             this.refreshActiveTabContent();
           }
         }, 300);
       });
     }
 
-    // Users: Delete User
-    const delUserBtns = this.container.querySelectorAll('.admin-btn-del-user');
-    delUserBtns.forEach((btn) => {
-      btn.addEventListener('click', async (e) => {
-        const userId = (e.currentTarget as HTMLElement).getAttribute('data-user-id') || '';
-        const userName = (e.currentTarget as HTMLElement).getAttribute('data-user-name');
-        if (!userId) return;
-
-        if (confirm(`Haqiqatan ham "${userName}" foydalanuvchisini butunlay o‘chirmoqchimisiz?`)) {
-          const success = await apiService.adminDeleteUser(userId);
-          if (success) {
-            this.successMsg = `Foydalanuvchi "${userName}" muvaffaqiyatli o‘chirildi.`;
-            await this.loadAllData();
-            this.refreshActiveTabContent();
-          } else {
-            this.errorMsg = 'Foydalanuvchini o‘chirishda xatolik yuz berdi.';
-            this.refreshActiveTabContent();
-          }
-        }
-      });
-    });
-
-    // Users: Edit XP/Level
-    const editUserBtns = this.container.querySelectorAll('.admin-btn-edit-user');
-    editUserBtns.forEach((btn) => {
-      btn.addEventListener('click', async (e) => {
-        const target = e.currentTarget as HTMLElement;
-        const userId = target.getAttribute('data-user-id') || '';
-        const curXp = target.getAttribute('data-user-xp') || '0';
-        if (!userId) return;
-
-        const newXpStr = prompt('Yangi XP miqdorini kiriting:', curXp);
-        if (newXpStr === null) return;
-        const newXp = parseInt(newXpStr, 10);
-        if (isNaN(newXp) || newXp < 0) {
-          alert('Noto‘g‘ri XP miqdori');
-          return;
-        }
-
-        const newLevel = Math.max(1, Math.floor(newXp / 100) + 1);
-        const ok = await apiService.adminUpdateUser(userId, { xp: newXp, level: newLevel });
-        if (ok) {
-          this.successMsg = `Foydalanuvchi tajribasi muvaffaqiyatli yangilandi: ${newXp} XP (Level ${newLevel})`;
-          await this.loadAllData();
-          this.refreshActiveTabContent();
-        }
-      });
-    });
+    // Bind User Table Row Actions (Delete, Edit)
+    this.bindUserRowEvents();
 
     // Scenes: Open Modal
     const openSceneModalBtn = this.container.querySelector('#adminOpenNewSceneModalBtn');
@@ -1369,6 +1360,57 @@ export class AdminView {
             this.errorMsg = 'Darsni o‘chirishda xatolik yuz berdi.';
             this.refreshActiveTabContent();
           }
+        }
+      });
+    });
+  }
+
+  private bindUserRowEvents(): void {
+    // Users: Delete User
+    const delUserBtns = this.container.querySelectorAll('.admin-btn-del-user');
+    delUserBtns.forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const userId = (e.currentTarget as HTMLElement).getAttribute('data-user-id') || '';
+        const userName = (e.currentTarget as HTMLElement).getAttribute('data-user-name');
+        if (!userId) return;
+
+        if (confirm(`Haqiqatan ham "${userName}" foydalanuvchisini butunlay o‘chirmoqchimisiz?`)) {
+          const success = await apiService.adminDeleteUser(userId);
+          if (success) {
+            this.successMsg = `Foydalanuvchi "${userName}" muvaffaqiyatli o‘chirildi.`;
+            await this.loadAllData();
+            this.refreshActiveTabContent();
+          } else {
+            this.errorMsg = 'Foydalanuvchini o‘chirishda xatolik yuz berdi.';
+            this.refreshActiveTabContent();
+          }
+        }
+      });
+    });
+
+    // Users: Edit XP/Level
+    const editUserBtns = this.container.querySelectorAll('.admin-btn-edit-user');
+    editUserBtns.forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const userId = target.getAttribute('data-user-id') || '';
+        const curXp = target.getAttribute('data-user-xp') || '0';
+        if (!userId) return;
+
+        const newXpStr = prompt('Yangi XP miqdorini kiriting:', curXp);
+        if (newXpStr === null) return;
+        const newXp = parseInt(newXpStr, 10);
+        if (isNaN(newXp) || newXp < 0) {
+          alert('Noto‘g‘ri XP miqdori');
+          return;
+        }
+
+        const newLevel = Math.max(1, Math.floor(newXp / 100) + 1);
+        const ok = await apiService.adminUpdateUser(userId, { xp: newXp, level: newLevel });
+        if (ok) {
+          this.successMsg = `Foydalanuvchi tajribasi muvaffaqiyatli yangilandi: ${newXp} XP (Level ${newLevel})`;
+          await this.loadAllData();
+          this.refreshActiveTabContent();
         }
       });
     });

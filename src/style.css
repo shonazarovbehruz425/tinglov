@@ -11278,37 +11278,91 @@ body.in-admin-mode .app-header {
   letter-spacing: -0.02em;
 }
 
-/* Filter Pills Bar for Users Tab */
+/* Filter Pills Bar for Users Tab with Sliding Active Indicator */
 .admin-filters-bar {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  margin-bottom: 1rem;
+  gap: 0.35rem;
+  margin-bottom: 1.35rem;
+  background: rgba(14, 18, 26, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.35rem;
+  border-radius: 9999px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .admin-filter-pill {
-  padding: 0.45rem 0.95rem;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 1.15rem;
   border-radius: 9999px;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  border: 1px solid transparent;
   color: #94A3B8;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  user-select: none;
+  transition: color 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+  z-index: 1;
 }
 
-.admin-filter-pill:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #FFF;
+.admin-filter-pill:hover:not(.active) {
+  color: #F8FAFC;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-filter-pill:active {
+  transform: scale(0.96);
 }
 
 .admin-filter-pill.active {
-  background: rgba(163, 230, 53, 0.15);
-  border-color: rgba(163, 230, 53, 0.4);
+  background: linear-gradient(135deg, rgba(163, 230, 53, 0.22) 0%, rgba(163, 230, 53, 0.08) 100%);
+  border-color: rgba(163, 230, 53, 0.45);
   color: #BEF264;
-  box-shadow: 0 0 15px rgba(163, 230, 53, 0.15);
+  box-shadow: 
+    0 4px 20px -2px rgba(163, 230, 53, 0.35),
+    0 0 0 1px rgba(163, 230, 53, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: scale(1.02);
+}
+
+.admin-filter-pill svg,
+.admin-filter-pill i {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-filter-pill:hover svg,
+.admin-filter-pill:hover i {
+  transform: scale(1.12);
+}
+
+.admin-filter-pill.active svg,
+.admin-filter-pill.active i {
+  transform: scale(1.15);
+}
+
+/* User table body transition */
+.admin-table-fade {
+  animation: adminTableFade 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes adminTableFade {
+  0% {
+    opacity: 0.3;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Progress bar inside stats / memory */
