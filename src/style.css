@@ -12320,4 +12320,266 @@ body:not(.in-admin-mode) .app-skeleton-box {
   }
 }
 
+/* ==========================================================================
+   Modern Shimmer Skeleton Loader (Instant, Smooth Reload & Data Fetching)
+   ========================================================================== */
+
+@keyframes tinglovShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  ) !important;
+  background-size: 200% 100% !important;
+  animation: tinglovShimmer 1.5s infinite ease-in-out !important;
+}
+
+[data-theme="light"] .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.04) 0%,
+    rgba(0, 0, 0, 0.09) 50%,
+    rgba(0, 0, 0, 0.04) 100%
+  ) !important;
+  background-size: 200% 100% !important;
+}
+
+.skeleton-dashboard-wrapper,
+.skeleton-practice-wrapper {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* Hero Banner Skeleton */
+.skeleton-hero-card {
+  width: 100%;
+  min-height: 280px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.skeleton-hero-content {
+  max-width: 600px;
+}
+
+.skeleton-line {
+  border-radius: 8px;
+  height: 16px;
+  margin-bottom: 0.85rem;
+}
+
+.skeleton-badge {
+  width: 140px;
+  height: 24px;
+  border-radius: 20px;
+  margin-bottom: 1.25rem;
+}
+
+.skeleton-title {
+  width: 85%;
+  height: 38px;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+.skeleton-subtitle {
+  width: 50%;
+  height: 20px;
+  margin-bottom: 0.85rem;
+}
+
+.skeleton-desc {
+  width: 95%;
+  height: 16px;
+  margin-bottom: 1.5rem;
+}
+
+.skeleton-meta-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.skeleton-pill {
+  width: 90px;
+  height: 28px;
+  border-radius: 14px;
+}
+
+/* Filters Row Skeleton */
+.skeleton-filters-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.skeleton-category-pill {
+  width: 110px;
+  height: 38px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+/* Movie Grid Skeleton */
+.skeleton-movie-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.5rem;
+}
+
+.skeleton-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.skeleton-card-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+}
+
+.skeleton-card-body {
+  padding: 1.25rem;
+}
+
+.skeleton-card-badge {
+  width: 80px;
+  height: 18px;
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+}
+
+.skeleton-card-title {
+  width: 90%;
+  height: 22px;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-card-sub {
+  width: 60%;
+  height: 14px;
+  margin-bottom: 1.25rem;
+}
+
+.skeleton-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.skeleton-card-meta {
+  width: 70px;
+  height: 16px;
+  margin: 0;
+}
+
+.skeleton-card-btn {
+  width: 80px;
+  height: 32px;
+  border-radius: 16px;
+  margin: 0;
+}
+
+/* Practice View Skeleton */
+.skeleton-video-stage {
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 1rem;
+}
+
+.skeleton-video-viewport {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  margin-bottom: 1rem;
+}
+
+.skeleton-stage-controls {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.skeleton-control-pill {
+  width: 100px;
+  height: 36px;
+  border-radius: 18px;
+  margin: 0;
+}
+
+.skeleton-dictation-card {
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 1.5rem;
+}
+
+.skeleton-dictation-title {
+  width: 70%;
+  height: 24px;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.skeleton-dictation-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.skeleton-chip {
+  width: 70px;
+  height: 34px;
+  border-radius: 8px;
+  margin: 0;
+}
+
+.skeleton-dictation-input-box {
+  width: 100%;
+  height: 90px;
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
+}
+
+.skeleton-dictation-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.skeleton-action-btn {
+  width: 120px;
+  height: 42px;
+  border-radius: 12px;
+  margin: 0;
+}
+
+
 

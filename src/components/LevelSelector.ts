@@ -37,6 +37,12 @@ export class LevelSelector {
     this.updateFilteredGrid(allScenes);
   }
 
+  public renderSkeleton(): void {
+    import('./SkeletonLoader').then(({ SkeletonLoader }) => {
+      this.container.innerHTML = SkeletonLoader.getDashboardSkeletonHtml();
+    });
+  }
+
   public render(): void {
     const allScenes = storageService.getAllScenes();
     const stats = storageService.getStats();

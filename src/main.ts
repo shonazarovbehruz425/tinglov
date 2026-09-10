@@ -523,17 +523,27 @@ class MovieListenApp {
       this.isAuthReady = true;
       this.routeCurrentUrl(false);
 
-      // Verify and sync in background
+      // Always fetch freshest data from server on reload and update UI smoothly
       apiService.waitForAuth().then((data) => {
         if (data) {
           storageService.syncWithServer(data);
+          this.statsHeader.update();
+          if (this.currentView === 'library') {
+            this.levelSelector.render();
+          } else if (this.currentView === 'profile') {
+            this.profileView.render();
+          }
         }
-        this.statsHeader.update();
       }).catch(() => {});
       return;
     }
 
-    // Otherwise, wait for network auth verification before routing or redirecting to login
+    // Otherwise, show skeleton preview while awaiting server network authentication
+    if (rawPath === '/dashboard' || rawPath === '/library') {
+      this.switchView('library');
+      this.levelSelector.renderSkeleton();
+    }
+
     try {
       const data = await apiService.waitForAuth();
       this.isAuthReady = true;
@@ -608,6 +618,10 @@ class MovieListenApp {
 
     // 2. Landing Page at Root (/)
     if (rawPath === '/' && (!rawHash || rawHash === 'landing')) {
+      if (apiService.isAuthenticated() && rawHash !== 'landing') {
+        this.showLibrary(pushHistory);
+        return;
+      }
       this.showLandingPage(pushHistory);
       return;
     }
