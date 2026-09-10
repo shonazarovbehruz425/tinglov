@@ -41,61 +41,46 @@ class ApiService {
   private onAuthChangeCallbacks: Array<(user: AuthUser | null) => void> = [];
   private adminToken: string | null = null;
   private cachedAdminPath: string | null = null;
+  private authReadyPromise: Promise<MeResponse | null> | null = null;
 
   constructor() {
-    // 1. Purge any tokens accidentally stored in sessionStorage or localStorage by previous versions
+    // 1. Purge legacy custom tokens from older versions
     this.purgeStorageTokens();
 
     // Listen to real-time auth state changes in Supabase
-    supabase.auth.onAuthStateChange(async (_event, session) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         this.setToken(session.access_token);
         await this.loadUserProfile(session.user);
         this.syncBackendSession(session.user).catch(() => {});
-      } else {
+      } else if (event === 'SIGNED_OUT') {
         this.clearSession();
         this.notifyAuthChange();
       }
     });
 
-    // Check existing active session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        this.setToken(session.access_token);
-        await this.loadUserProfile(session.user);
-        this.syncBackendSession(session.user).catch(() => {});
-      }
-    }).catch(() => {});
-
-    // Sync or warm up CSRF token with backend
+    // Warm up CSRF token with backend
     syncCsrfWithBackend().catch(() => {});
   }
 
-  // Purge any tokens stored in client-side storage to enforce in-memory / HttpOnly cookie security
+  public async waitForAuth(): Promise<MeResponse | null> {
+    if (!this.authReadyPromise) {
+      this.authReadyPromise = this.getMe();
+    }
+    return this.authReadyPromise;
+  }
+
+  // Purge legacy custom tokens stored in client-side storage from older versions
   private purgeStorageTokens(): void {
     try {
       if (typeof window !== 'undefined') {
         if (window.sessionStorage) {
           sessionStorage.removeItem(TOKEN_KEY);
           sessionStorage.removeItem('tinglov_token');
-          for (let i = sessionStorage.length - 1; i >= 0; i--) {
-            const key = sessionStorage.key(i);
-            if (key && (key.startsWith('sb-') || key.includes('auth-token') || key.includes('token'))) {
-              if (key !== 'tin_csrf_token' && key !== 'tinglov_auth_failures' && key !== 'tinglov_auth_cooldown' && key !== 'tinglov_admin_jwt') {
-                sessionStorage.removeItem(key);
-              }
-            }
-          }
         }
         if (window.localStorage) {
           localStorage.removeItem(TOKEN_KEY);
           localStorage.removeItem('tinglov_token');
-          for (let i = localStorage.length - 1; i >= 0; i--) {
-            const key = localStorage.key(i);
-            if (key && (key.startsWith('sb-') || key.includes('auth-token') || key.includes('token'))) {
-              localStorage.removeItem(key);
-            }
-          }
         }
       }
     } catch {
@@ -106,7 +91,6 @@ class ApiService {
   // Tokens are strictly maintained in-memory for the current runtime session
   private setToken(token: string | null): void {
     this.token = token;
-    this.purgeStorageTokens();
   }
 
   // Synchronize authenticated session to backend to set secure HttpOnly cookie
@@ -320,6 +304,56 @@ class ApiService {
         return { error: validation.error };
       }
 
+      // 1. Try Backend /api/auth/login first (natively supports both username and email + sets HttpOnly cookie)
+      try {
+        const backendRes = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getCsrfHeaders(),
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            identifier: validation.data.identifier,
+            password: validation.data.password,
+            captchaToken: params.captchaToken,
+            captchaAnswer: params.captchaAnswer,
+          }),
+        });
+
+        if (backendRes.ok) {
+          const resData = await backendRes.json();
+          if (resData.user) {
+            this.currentUser = resData.user;
+            this.setToken('httponly_session');
+            this.authReadyPromise = Promise.resolve({
+              user: resData.user,
+              savedWords: [],
+              completedScenes: [],
+              completedSceneIds: [],
+            });
+            this.notifyAuthChange();
+            return {
+              message: resData.message || 'Xush kelibsiz!',
+              user: resData.user,
+              token: resData.token,
+            };
+          }
+        } else if (backendRes.status === 400 || backendRes.status === 429) {
+          const errData = await backendRes.json().catch(() => null);
+          if (errData?.requiresCaptcha || errData?.retryAfter) {
+            return {
+              error: errData.error,
+              requiresCaptcha: errData.requiresCaptcha,
+              retryAfter: errData.retryAfter,
+            };
+          }
+        }
+      } catch {
+        // Backend offline or network error, fallback to Supabase
+      }
+
+      // 2. Fallback to Supabase Auth
       let email = validation.data.identifier.toLowerCase();
 
       // If user typed username instead of email, check if email column exists or if we can resolve it
@@ -334,11 +368,10 @@ class ApiService {
           if (profile && (profile as any).email) {
             email = (profile as any).email;
           } else {
-            // If email column isn't in profiles table, prompt the user
-            return { error: 'Iltimos, tizimga kirish uchun to‘liq Email manzilingizni kiriting.' };
+            return { error: 'Bunday foydalanuvchi topilmadi yoki parol noto‘g‘ri' };
           }
         } catch {
-          return { error: 'Iltimos, tizimga kirish uchun to‘liq Email manzilingizni kiriting.' };
+          return { error: 'Bunday foydalanuvchi topilmadi yoki parol noto‘g‘ri' };
         }
       }
 
@@ -370,6 +403,12 @@ class ApiService {
         this.setToken(data.session.access_token);
         const user = await this.loadUserProfile(data.user);
         await this.syncBackendSession(data.user);
+        this.authReadyPromise = Promise.resolve(user ? {
+          user,
+          savedWords: [],
+          completedScenes: [],
+          completedSceneIds: [],
+        } : null);
 
         return {
           message: 'Xush kelibsiz!',
@@ -699,6 +738,7 @@ class ApiService {
       // Ignore network errors on logout
     }
 
+    this.authReadyPromise = null;
     this.clearSession();
     this.purgeStorageTokens();
     this.notifyAuthChange();

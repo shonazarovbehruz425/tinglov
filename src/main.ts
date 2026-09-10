@@ -37,6 +37,7 @@ class MovieListenApp {
   private sessionAccuracies: number[] = [];
   private sessionWpms: number[] = [];
   private sceneStartTime: number = Date.now();
+  private isAuthReady: boolean = false;
 
   // UI Components
   private statsHeader!: StatsHeader;
@@ -411,7 +412,7 @@ class MovieListenApp {
           this.showLandingPage(true);
         }
       } else {
-        apiService.getMe().then((data) => {
+        apiService.waitForAuth().then((data) => {
           if (data) {
             storageService.syncWithServer(data);
           }
@@ -437,47 +438,16 @@ class MovieListenApp {
       }
     });
 
-    // Auto-restore session from backend HttpOnly cookie or Supabase session
-    apiService.getMe().then((data) => {
-      if (data) {
-        storageService.syncWithServer(data);
-        this.statsHeader.update();
-        if (this.currentView === 'profile') {
-          this.profileView.render();
-        } else if (this.currentView === 'auth') {
-          this.showLibrary(true);
-        } else if (this.currentView === 'library') {
-          this.levelSelector.render();
-        }
-      } else {
-        // Only enforce auth if current route is protected (never kick visitors off the landing page or admin page)
-        const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
-        const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-        const adminPath = apiService.getAdminRoutePath();
-        const adminHash = adminPath.replace(/^\//, '').toLowerCase();
-        const isPublic = rawPath === '/' || rawPath === '/login' || rawPath === '/register' || rawPath === adminPath || rawHash === 'landing' || rawHash === 'login' || rawHash === 'register' || rawHash === adminHash;
-        if (!isPublic && this.currentView !== 'landing' && this.currentView !== 'admin') {
-          this.checkAndEnforceAuth();
-        }
-      }
-    }).catch(() => {
-      const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
-      const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-      const adminPath = apiService.getAdminRoutePath();
-      const adminHash = adminPath.replace(/^\//, '').toLowerCase();
-      const isPublic = rawPath === '/' || rawPath === '/login' || rawPath === '/register' || rawPath === adminPath || rawHash === 'landing' || rawHash === 'login' || rawHash === 'register' || rawHash === adminHash;
-      if (!isPublic && this.currentView !== 'landing' && this.currentView !== 'admin' && !apiService.isAuthenticated()) {
-        this.checkAndEnforceAuth();
-      }
-    });
+    // Initialize router with async auth verification
+    this.initRouter();
   }
 
   private checkAndEnforceAuth(): boolean {
-    if (!apiService.isAuthenticated()) {
+    if (this.isAuthReady && !apiService.isAuthenticated()) {
       this.showAuthPage('login', false);
       return false;
     }
-    return true;
+    return apiService.isAuthenticated();
   }
 
   private handleLanguageChanged(skipSettingsRender: boolean = false): void {
@@ -504,8 +474,56 @@ class MovieListenApp {
       this.routeCurrentUrl(false);
     });
 
-    // Handle initial route on startup
-    this.routeCurrentUrl(false);
+    // Handle initial route on startup with asynchronous auth restoration
+    this.routeInitialUrl();
+  }
+
+  private async routeInitialUrl(): Promise<void> {
+    const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
+    const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+    const adminPath = apiService.getAdminRoutePath();
+    const adminHash = adminPath.replace(/^\//, '').toLowerCase();
+    const isPublic = rawPath === '/' || rawPath === '/login' || rawPath === '/register' || rawPath === adminPath || rawHash === 'landing' || rawHash === 'login' || rawHash === 'register' || rawHash === adminHash;
+
+    if (isPublic) {
+      // 1. If public route (landing, login, register, admin), route immediately
+      this.routeCurrentUrl(false);
+
+      // Check session in background to update header stats if user is already logged in
+      apiService.waitForAuth().then((data) => {
+        this.isAuthReady = true;
+        if (data) {
+          storageService.syncWithServer(data);
+          this.statsHeader.update();
+          // If already logged in and visitor is on login/register, navigate to dashboard
+          if (rawPath === '/login' || rawPath === '/register' || rawHash === 'login' || rawHash === 'register') {
+            this.showLibrary(true);
+          }
+        }
+      }).catch(() => {
+        this.isAuthReady = true;
+      });
+      return;
+    }
+
+    // 2. Protected routes (/dashboard, /library, /practice, /profile, /settings):
+    // DO NOT prematurely kick to login! Wait for auth resolution first!
+    try {
+      const data = await apiService.waitForAuth();
+      this.isAuthReady = true;
+
+      if (data) {
+        storageService.syncWithServer(data);
+        this.statsHeader.update();
+        this.routeCurrentUrl(false);
+      } else {
+        // Genuinely not authenticated, redirect to login
+        this.checkAndEnforceAuth();
+      }
+    } catch {
+      this.isAuthReady = true;
+      this.checkAndEnforceAuth();
+    }
   }
 
   private routeCurrentUrl(pushHistory: boolean = false): void {
