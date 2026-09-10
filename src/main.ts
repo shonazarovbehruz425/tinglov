@@ -11,8 +11,6 @@ import { LevelSelector } from './components/LevelSelector';
 import { AnimatedStage } from './components/AnimatedStage';
 import { DictationInput } from './components/DictationInput';
 import { VocabularyModal } from './components/VocabularyModal';
-import { CustomSceneModal } from './components/CustomSceneModal';
-import { YouTubeImportModal } from './components/YouTubeImportModal';
 import { CompletionModal } from './components/CompletionModal';
 import { ProfileModal } from './components/ProfileModal';
 import { ShadowingModal } from './components/ShadowingModal';
@@ -50,8 +48,6 @@ class MovieListenApp {
   private landingView!: LandingView;
   private adminView!: AdminView;
   private vocabModal!: VocabularyModal;
-  private customSceneModal!: CustomSceneModal;
-  private youtubeImportModal!: YouTubeImportModal;
   private completionModal!: CompletionModal;
   private profileModal!: ProfileModal;
   private shadowingModal!: ShadowingModal;
@@ -120,8 +116,6 @@ class MovieListenApp {
 
       <!-- Modals Container -->
       <div id="vocabModalContainer"></div>
-      <div id="customSceneModalContainer"></div>
-      <div id="youtubeModalContainer"></div>
       <div id="completionModalContainer"></div>
       <div id="profileModalContainer"></div>
       <div id="shadowingModalContainer"></div>
@@ -140,8 +134,6 @@ class MovieListenApp {
     const settingsViewContainer = document.getElementById('settingsViewContainer')!;
     const authViewContainer = document.getElementById('authViewContainer')!;
     const vocabContainer = document.getElementById('vocabModalContainer')!;
-    const customContainer = document.getElementById('customSceneModalContainer')!;
-    const youtubeContainer = document.getElementById('youtubeModalContainer')!;
     const completionContainer = document.getElementById('completionModalContainer')!;
     const profileContainer = document.getElementById('profileModalContainer')!;
     const shadowingContainer = document.getElementById('shadowingModalContainer')!;
@@ -178,7 +170,6 @@ class MovieListenApp {
     this.statsHeader = new StatsHeader(headerContainer);
     this.statsHeader.setCallbacks({
       onOpenVocab: () => this.vocabModal.open(),
-      onOpenCustomScene: () => this.customSceneModal.open(),
       onOpenLibrary: () => this.showLibrary(),
       onOpenProfile: () => this.showProfilePage(),
       onOpenSettings: () => this.showSettingsPage(),
@@ -207,16 +198,6 @@ class MovieListenApp {
       onSelectScene: (scene, initialIdx) => {
         if (this.checkAndEnforceAuth()) {
           this.startScene(scene, initialIdx || 0);
-        }
-      },
-      onAddCustomScene: () => {
-        if (this.checkAndEnforceAuth()) {
-          this.customSceneModal.open();
-        }
-      },
-      onOpenYouTubeImport: () => {
-        if (this.checkAndEnforceAuth()) {
-          this.youtubeImportModal.open();
         }
       },
       onOpenProfile: () => {
@@ -293,21 +274,7 @@ class MovieListenApp {
     this.vocabModal = new VocabularyModal(vocabContainer);
     this.vocabModal.setOnClose(() => this.statsHeader.update());
 
-    // 8. Custom Scene Modal
-    this.customSceneModal = new CustomSceneModal(customContainer);
-    this.customSceneModal.setCallbacks({
-      onClose: () => this.statsHeader.update(),
-      onCreated: (newScene) => this.startScene(newScene)
-    });
-
-    // 9. YouTube Import Modal
-    this.youtubeImportModal = new YouTubeImportModal(youtubeContainer);
-    this.youtubeImportModal.setCallbacks({
-      onClose: () => this.statsHeader.update(),
-      onLessonCreated: (newScene) => this.startScene(newScene)
-    });
-
-    // 10. Completion Modal
+    // 8. Completion Modal
     this.completionModal = new CompletionModal(completionContainer);
     this.completionModal.setCallbacks({
       onNextScene: () => this.loadNextSceneInLibrary(),
@@ -1023,11 +990,10 @@ class MovieListenApp {
   private bindKeyboardShortcuts(): void {
     window.addEventListener('keydown', (e) => {
       // Check if any modal is active
-      const isModalOpen = document.querySelector('.modal.active, .completion-modal.active, #customSceneModal.active, #vocabReviewModal.active');
+      const isModalOpen = document.querySelector('.modal.active, .completion-modal.active, #vocabReviewModal.active');
 
       if (e.key === 'Escape') {
         this.vocabModal.close();
-        this.customSceneModal.close();
         this.completionModal.hide();
         return;
       }

@@ -9,8 +9,6 @@ export class LevelSelector {
   private selectedCategory: string = 'all';
   private searchQuery: string = '';
   private onSelectSceneCallback: ((scene: Scene, sentenceIndex?: number) => void) | null = null;
-  private onAddCustomSceneCallback: (() => void) | null = null;
-  private onOpenYouTubeImportCallback: (() => void) | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -18,13 +16,9 @@ export class LevelSelector {
 
   public setCallbacks(callbacks: {
     onSelectScene: (scene: Scene, sentenceIndex?: number) => void;
-    onAddCustomScene: () => void;
-    onOpenYouTubeImport?: () => void;
     onOpenProfile?: () => void;
   }): void {
     this.onSelectSceneCallback = callbacks.onSelectScene;
-    this.onAddCustomSceneCallback = callbacks.onAddCustomScene;
-    this.onOpenYouTubeImportCallback = callbacks.onOpenYouTubeImport || null;
   }
 
   public setOnSelectScene(callback: (scene: Scene, sentenceIndex?: number) => void): void {
@@ -131,12 +125,6 @@ export class LevelSelector {
               <button class="category-pill ${this.selectedCategory === 'cinema' ? 'active' : ''}" data-category="cinema">${t.cinema}</button>
               <button class="category-pill ${this.selectedCategory === 'daily life' ? 'active' : ''}" data-category="daily life">${t.dailyLife}</button>
             </div>
-
-            <!-- YouTube Quick Importer Button -->
-            <button class="catalog-youtube-action-btn" id="catalogYouTubeImportBtn" title="${t.youtubeImport}">
-              <i class="ph-fill ph-youtube-logo"></i>
-              <span>${t.youtubeImport}</span>
-            </button>
           </div>
         </div>
 
@@ -187,9 +175,6 @@ export class LevelSelector {
         <div class="clean-empty-box" style="grid-column: 1 / -1;">
           <h3>Darslar topilmadi</h3>
           <p>Ushbu kategoriya bo'yicha hozircha darslar mavjud emas.</p>
-          <button class="header-action-pill primary" id="emptyStateAddBtn">
-            <i class="ph ph-plus"></i> Yangi Lavha Qo'shish
-          </button>
         </div>
       `;
     }
@@ -395,10 +380,6 @@ export class LevelSelector {
       grid.innerHTML = this.renderCoursesGridHtml(filteredScenes, stats);
       this.bindGridCardEvents(allScenes);
 
-      this.container.querySelector('#emptyStateAddBtn')?.addEventListener('click', () => {
-        this.onAddCustomSceneCallback?.();
-      });
-
       requestAnimationFrame(() => {
         grid.classList.remove('filter-animating');
       });
@@ -431,16 +412,6 @@ export class LevelSelector {
   }
 
   private bindEvents(allScenes: Scene[]): void {
-    // Empty state add
-    this.container.querySelector('#emptyStateAddBtn')?.addEventListener('click', () => {
-      this.onAddCustomSceneCallback?.();
-    });
-
-    // YouTube Import Button
-    this.container.querySelector('#catalogYouTubeImportBtn')?.addEventListener('click', () => {
-      this.onOpenYouTubeImportCallback?.();
-    });
-
     // Category filter pills with smooth gliding transition
     const categoryBtns = this.container.querySelectorAll('#categoryFilters .category-pill');
     categoryBtns.forEach(btn => {

@@ -61,12 +61,15 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_admin_scenes_created ON admin_scenes(created_at DESC);
 `);
 
-// Safe migrations for auth_provider and uuid
+// Safe migrations for auth_provider, uuid and last_positions
 try {
   db.exec(`ALTER TABLE users ADD COLUMN auth_provider TEXT DEFAULT 'email';`);
 } catch {}
 try {
   db.exec(`ALTER TABLE users ADD COLUMN uuid TEXT;`);
+} catch {}
+try {
+  db.exec(`ALTER TABLE users ADD COLUMN last_positions TEXT;`);
 } catch {}
 
 export interface DbUser {
@@ -82,6 +85,7 @@ export interface DbUser {
   level: number;
   last_active_date: string | null;
   auth_provider?: 'google' | 'email';
+  last_positions?: string | null;
   created_at: string;
 }
 
@@ -153,6 +157,7 @@ export function updateUserStats(userId: number, stats: {
   last_active_date?: string;
   full_name?: string;
   avatar_color?: string;
+  last_positions?: string;
 }): void {
   const current = findUserById(userId);
   if (!current) return;
@@ -163,13 +168,38 @@ export function updateUserStats(userId: number, stats: {
   const lastActive = stats.last_active_date || current.last_active_date;
   const fullName = stats.full_name || current.full_name;
   const avatarColor = stats.avatar_color || current.avatar_color;
+  const lastPositions = stats.last_positions !== undefined ? stats.last_positions : current.last_positions;
 
   const stmt = db.prepare(`
     UPDATE users
-    SET xp = ?, streak = ?, level = ?, last_active_date = ?, full_name = ?, avatar_color = ?
+    SET xp = ?, streak = ?, level = ?, last_active_date = ?, full_name = ?, avatar_color = ?, last_positions = ?
     WHERE id = ?
   `);
-  stmt.run(xp, streak, level, lastActive, fullName, avatarColor, userId);
+  stmt.run(xp, streak, level, lastActive, fullName, avatarColor, lastPositions, userId);
+}
+
+/**
+ * Updates OAuth metadata for an existing user (provider, Supabase uuid and
+ * placeholder email). Used by /api/auth/session after the caller's identity
+ * has been verified against Supabase.
+ */
+export function updateUserAuthMeta(id: number, meta: { auth_provider?: string; uuid?: string | null; email?: string }): void {
+  const current = findUserById(id);
+  if (!current) return;
+  const provider = (meta.auth_provider === 'google' ? 'google' : 'email') as 'google' | 'email';
+  const uuid = meta.uuid || current.uuid || null;
+  const emailIsPlaceholder = !current.email
+    || current.email.endsWith('@user.tinglov')
+    || current.email.endsWith('@tinglov.uz');
+  let email = current.email;
+  if (meta.email && emailIsPlaceholder && meta.email !== current.email) {
+    email = meta.email;
+  }
+  try {
+    db.prepare(`UPDATE users SET auth_provider = ?, uuid = ?, email = ? WHERE id = ?`).run(provider, uuid, email, id);
+  } catch {
+    // Email UNIQUE conflict (another account already owns it) — keep current email
+  }
 }
 
 export function saveUserWord(userId: number, word: string, translation?: string, sceneTitle?: string): void {

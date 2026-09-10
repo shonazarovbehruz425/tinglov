@@ -115,17 +115,41 @@ function cleanMemoryStore<T extends { resetTime?: number; lockedUntil?: number }
 // Periodic cleanup every 5 minutes
 setInterval(() => {
   cleanMemoryStore(memoryIpStore, MAX_STORE_ENTRIES);
-  cleanMemoryStore(memoryAuthStore, MAX_STORE_ENTRIES);
+  cleanAuthMemoryStore(memoryAuthStore, MAX_STORE_ENTRIES);
 }, 5 * 60 * 1000).unref();
 
 /**
- * Gets real client IP handling proxies/load balancers
+ * Cleanup for auth-attempt records: entries stay for 30 minutes after the last
+ * failure (matching the inactivity reset window) so accumulated failure counts
+ * survive a temporary lock expiry, while genuinely stale entries are evicted.
+ */
+function cleanAuthMemoryStore(store: Map<string, AuthAttemptRecord>, maxEntries: number): void {
+  const now = Date.now();
+  for (const [key, val] of store.entries()) {
+    if (now - val.lastFailureTime > 30 * 60 * 1000 && (!val.lockedUntil || val.lockedUntil <= now)) {
+      store.delete(key);
+    }
+  }
+  if (store.size > maxEntries) {
+    const excess = store.size - Math.floor(maxEntries * 0.8);
+    let removed = 0;
+    for (const key of store.keys()) {
+      store.delete(key);
+      removed++;
+      if (removed >= excess) break;
+    }
+  }
+}
+
+/**
+ * Gets real client IP handling proxies/load balancers.
+ * Relies on Express `trust proxy` (see app.set('trust proxy', 1)) so `req.ip`
+ * resolves to the rightmost trusted hop instead of the spoofable leftmost
+ * X-Forwarded-For entry that attackers fully control.
  */
 export function getClientIp(req: Request): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
-    return ips.trim();
+  if (req.ip) {
+    return req.ip;
   }
   return req.socket.remoteAddress || 'unknown';
 }
@@ -449,9 +473,37 @@ export function generateCaptchaChallenge(): CaptchaChallenge {
   };
 }
 
+// Single-use store for consumed CAPTCHA tokens (bounded, cleaned lazily).
+// Without this, one solved challenge could be replayed for 5 minutes straight.
+const usedCaptchaTokens = new Map<string, number>();
+const CAPTCHA_USED_TTL = 10 * 60 * 1000; // keep a bit longer than challenge validity
+
+function markCaptchaTokenUsed(token: string): void {
+  const now = Date.now();
+  if (usedCaptchaTokens.size > 5000) {
+    for (const [key, usedAt] of usedCaptchaTokens.entries()) {
+      if (now - usedAt > CAPTCHA_USED_TTL) {
+        usedCaptchaTokens.delete(key);
+      }
+    }
+  }
+  usedCaptchaTokens.set(token, now);
+}
+
+function isCaptchaTokenUsed(token: string): boolean {
+  const usedAt = usedCaptchaTokens.get(token);
+  if (usedAt === undefined) return false;
+  if (Date.now() - usedAt > CAPTCHA_USED_TTL) {
+    usedCaptchaTokens.delete(token);
+    return false;
+  }
+  return true;
+}
+
 export function verifyCaptchaSolution(token: string, userAnswer: string | number): boolean {
   try {
     if (!token || userAnswer === undefined || userAnswer === null) return false;
+    if (isCaptchaTokenUsed(token)) return false; // Replay protection
     const [payloadB64, signature] = token.split('.');
     if (!payloadB64 || !signature) return false;
 
@@ -468,7 +520,11 @@ export function verifyCaptchaSolution(token: string, userAnswer: string | number
       return false; // Expired
     }
 
-    return String(expectedAnswer).trim() === String(userAnswer).trim();
+    if (String(expectedAnswer).trim() === String(userAnswer).trim()) {
+      markCaptchaTokenUsed(token);
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }

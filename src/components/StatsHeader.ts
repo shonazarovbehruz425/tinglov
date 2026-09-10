@@ -13,7 +13,6 @@ export class StatsHeader {
   private currentTheme: AppTheme = 'light';
   private searchDebounceTimer: number | null = null;
   private onOpenVocabCallback: (() => void) | null = null;
-  private onOpenCustomSceneCallback: (() => void) | null = null;
   private onOpenLibraryCallback: (() => void) | null = null;
   private onOpenProfileCallback: (() => void) | null = null;
   private onOpenSettingsCallback: (() => void) | null = null;
@@ -37,7 +36,6 @@ export class StatsHeader {
 
   public setCallbacks(callbacks: {
     onOpenVocab: () => void;
-    onOpenCustomScene: () => void;
     onOpenLibrary: () => void;
     onOpenProfile: () => void;
     onOpenSettings?: () => void;
@@ -49,7 +47,6 @@ export class StatsHeader {
     onSignOut?: () => void;
   }): void {
     this.onOpenVocabCallback = callbacks.onOpenVocab;
-    this.onOpenCustomSceneCallback = callbacks.onOpenCustomScene;
     this.onOpenLibraryCallback = callbacks.onOpenLibrary;
     this.onOpenProfileCallback = callbacks.onOpenProfile;
     this.onOpenSettingsCallback = callbacks.onOpenSettings || null;
@@ -119,11 +116,6 @@ export class StatsHeader {
             <span>${t.vocab} (${stats.savedWords.length})</span>
           </button>
 
-          <!-- Subtle Add Scene Button -->
-          <button class="header-action-pill subtle" id="openCustomSceneBtn" title="${t.newScene}">
-            <i class="ph ph-plus-circle"></i>
-            <span>${t.newScene}</span>
-          </button>
 
           <!-- Quick Tools (Tour, Sound & Dark Mode) Group -->
           <div class="header-tools-cluster">
@@ -413,10 +405,6 @@ export class StatsHeader {
 
     this.container.querySelector('#openVocabBtn')?.addEventListener('click', () => {
       this.onOpenVocabCallback?.();
-    });
-
-    this.container.querySelector('#openCustomSceneBtn')?.addEventListener('click', () => {
-      this.onOpenCustomSceneCallback?.();
     });
 
     this.container.querySelector('#tourGuideBtn')?.addEventListener('click', () => {
