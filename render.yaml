@@ -30,5 +30,7 @@ services:
         sync: false
       - key: VITE_CLOUDFLARE_R2_URL
         sync: false
+      - key: RENDER_EXTERNAL_URL
+        sync: false
 
 

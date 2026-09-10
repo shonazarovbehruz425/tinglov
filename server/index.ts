@@ -108,6 +108,49 @@ app.use((req, res, next) => {
   next();
 });
 
+// --------------------------------------------------------------------------
+// UptimeRobot & Health Check Endpoints (Zero-overhead, rate-limit exempt)
+// --------------------------------------------------------------------------
+const healthCheckHandler = (_req: express.Request, res: express.Response) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('X-Render-KeepAlive', 'active');
+
+  res.status(200).json({
+    status: 'ok',
+    service: 'tinglov',
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.floor(process.uptime()),
+    renderExternalUrl: process.env.RENDER_EXTERNAL_URL || null,
+    message: 'Tinglov server is awake and healthy'
+  });
+};
+
+// Mount before rate limiter so UptimeRobot / uptime monitors never get 429 Too Many Requests
+app.get('/health', healthCheckHandler);
+app.head('/health', healthCheckHandler);
+app.get('/ping', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(200).send('pong');
+});
+app.head('/ping', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(200).end();
+});
+
+// Also support /api/health and /api/ping
+app.get('/api/health', healthCheckHandler);
+app.head('/api/health', healthCheckHandler);
+app.get('/api/ping', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(200).send('pong');
+});
+app.head('/api/ping', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(200).end();
+});
+
 // Apply rate limiting to all /api endpoints (120 requests/minute per IP)
 app.use('/api', apiLimiter);
 
@@ -542,7 +585,10 @@ app.get('/api/admin/stats', requireAdminAuth, (_req: AdminRequest, res) => {
         memoryHeapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
         redisConfigured: Boolean(process.env.REDIS_URL),
         csrfProtection: true,
-        hstsProtection: true
+        hstsProtection: true,
+        healthEndpoint: '/health',
+        keepAliveActive: true,
+        renderExternalUrl: process.env.RENDER_EXTERNAL_URL || null
       }
     });
   } catch (err: any) {
@@ -687,8 +733,48 @@ if (fs.existsSync(distPath)) {
   });
 }
 
+// --------------------------------------------------------------------------
+// Automatic Self-Ping Keep-Alive Heartbeat for Render.com Free Tier
+// --------------------------------------------------------------------------
+function startKeepAliveHeartbeat(): void {
+  const targetUrl = (
+    process.env.RENDER_EXTERNAL_URL ||
+    process.env.APP_URL ||
+    process.env.KEEP_ALIVE_URL ||
+    ''
+  ).trim().replace(/\/+$/, '');
+
+  // Render.com free tier sleeps after 15 minutes of inactivity.
+  // We send a ping every 12 minutes (720,000 ms) to keep the web service awake.
+  const PING_INTERVAL_MS = 12 * 60 * 1000;
+
+  if (targetUrl && (targetUrl.startsWith('http://') || targetUrl.startsWith('https://'))) {
+    const healthUrl = `${targetUrl}/health`;
+    console.log(`⏱️ Auto Keep-Alive faol: Har 12 daqiqada ${healthUrl} ga so‘rov yuboriladi.`);
+
+    setInterval(async () => {
+      try {
+        const response = await fetch(healthUrl, {
+          method: 'GET',
+          headers: { 'User-Agent': 'Tinglov-KeepAlive-Heartbeat/1.0' }
+        });
+        if (response.ok) {
+          console.log(`[KeepAlive] Render uyqudan saqlandi: ${healthUrl} (Status: ${response.status})`);
+        }
+      } catch (err: any) {
+        console.warn(`[KeepAlive] So‘rov yuborishda xatolik: ${err?.message}`);
+      }
+    }, PING_INTERVAL_MS);
+  } else {
+    console.log('ℹ️ RENDER_EXTERNAL_URL topilmadi. UptimeRobot orqali https://<sizning-service>.onrender.com/health ga so‘rov yuboring.');
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`🚀 Tinglov Web Service server ishga tushdi: http://localhost:${PORT}`);
   console.log(`🔒 Admin panel faol marshrut: ${ADMIN_PATH}`);
+  console.log(`🩺 Health check monitoring URL: http://localhost:${PORT}/health (yoki /ping)`);
+  startKeepAliveHeartbeat();
 });
+
 

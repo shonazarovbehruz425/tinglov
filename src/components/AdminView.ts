@@ -355,6 +355,14 @@ export class AdminView {
                     <span class="admin-badge admin-badge-green">HttpOnly Cookies: Faol</span>
                   </td>
                 </tr>
+                <tr>
+                  <td><strong>Keep-Alive & Monitoring:</strong></td>
+                  <td>
+                    <span class="admin-badge admin-badge-green"><i class="ph-bold ph-heartbeat"></i> /health Faol</span>
+                    <span class="admin-badge admin-badge-blue"><i class="ph-bold ph-bell-ringing"></i> UptimeRobot Tayyor</span>
+                    <a href="/health" target="_blank" class="admin-link-btn" style="margin-left: 8px; font-size: 0.75rem;"><i class="ph-bold ph-arrow-square-out"></i> Tekshirish</a>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -668,6 +676,40 @@ export class AdminView {
             <p class="admin-text-muted" style="margin-top: 8px;">
               <i class="ph-bold ph-info"></i> Sozlangandan so'ng, dars yaratishda to‘liq URL yoki shunchaki <code>r2:kino_nomi.mp4</code> kiritishingiz kifoya! Player avtomatik Cloudflare R2 Edge Streaming bilan ulanadi.
             </p>
+          </div>
+
+          <!-- Guide 5: Render.com Keep-Alive & UptimeRobot Setup -->
+          <div class="admin-card-section">
+            <h3 class="admin-section-subtitle"><i class="ph-bold ph-heartbeat" style="color: #10B981;"></i> Render.com Uxlab Qolmasligi (UptimeRobot & Keep-Alive)</h3>
+            <p class="admin-text-muted">
+              Render.com bepul tarifida 15 daqiqa davomida so‘rov kelmasa, server "Spin down" (uyqu) rejimiga o‘tadi va keyingi ochilishda 50 soniya kutdiradi. Server doimo 24/7 uyg‘oq turishi uchun <strong>UptimeRobot</strong> orqali bepul monitoring yoqing:
+            </p>
+            <ol class="admin-guide-steps">
+              <li><strong>1. UptimeRobot saytiga kiring</strong>: <a href="https://uptimerobot.com" target="_blank" rel="noopener noreferrer" style="color: #A3E635; text-decoration: underline;">UptimeRobot.com</a> (50 ta bepul monitor taqdim etadi).</li>
+              <li><strong>2. "+ Add New Monitor"</strong> tugmasini bosing:
+                <ul style="margin: 6px 0 6px 18px; line-height: 1.6;">
+                  <li><strong>Monitor Type</strong>: <code>HTTP(s)</code></li>
+                  <li><strong>Friendly Name</strong>: <code>Tinglov Web App</code></li>
+                  <li><strong>URL (or IP)</strong>: <code>https://tinglov.onrender.com/health</code> (yoki o‘z domeningiz + <code>/health</code>)</li>
+                  <li><strong>Monitoring Interval</strong>: <code>Every 5 minutes</code> (yoki <code>10 minutes</code>)</li>
+                </ul>
+              </li>
+              <li><strong>3. "Create Monitor"</strong> tugmasini bosing. Endi UptimeRobot har 5 daqiqada <code>/health</code> ga so‘rov yuboradi va Render hech qachon uxlab qolmaydi!</li>
+              <li><strong>4. Ichki avtomatik Keep-Alive (Qo‘shimcha kafolat)</strong>:
+                <p style="margin: 4px 0;">Render.com Environment bo‘limiga quyidagi parametrni qo‘shing:</p>
+                <div class="admin-code-snippet">
+                  <strong>RENDER_EXTERNAL_URL</strong> = <code>https://tinglov.onrender.com</code>
+                </div>
+              </li>
+            </ol>
+            <div style="margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <a href="/health" target="_blank" class="admin-btn admin-btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">
+                <i class="ph-bold ph-heartbeat"></i> /health Endpointini Sinash
+              </a>
+              <a href="/ping" target="_blank" class="admin-btn admin-btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">
+                <i class="ph-bold ph-bell-ringing"></i> /ping (Pong) Sinash
+              </a>
+            </div>
           </div>
         </div>
       </div>
