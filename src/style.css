@@ -8612,16 +8612,16 @@ body.in-admin-mode .app-header {
   width: 100%;
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 3rem 4rem;
+  padding: clamp(2.5rem, 6vh, 5rem) 2rem;
   background: #090B10;
   background-image: 
     radial-gradient(at 0% 0%, rgba(255, 91, 55, 0.18) 0px, transparent 48%),
     radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.22) 0px, transparent 52%),
     radial-gradient(at 80% 10%, rgba(245, 158, 11, 0.08) 0px, transparent 40%),
     radial-gradient(at 15% 90%, rgba(139, 92, 246, 0.12) 0px, transparent 45%);
-  overflow: hidden;
+  overflow-x: hidden;
   box-sizing: border-box;
 }
 
@@ -8676,8 +8676,8 @@ body.in-admin-mode .app-header {
   display: grid;
   grid-template-columns: 1.15fr 1fr;
   gap: 4.5rem;
-  align-items: center;
-  margin: auto 0;
+  align-items: flex-start;
+  margin: 0 auto;
 }
 
 /* Left Hero */
@@ -8685,6 +8685,8 @@ body.in-admin-mode .app-header {
   display: flex;
   flex-direction: column;
   gap: 1.65rem;
+  position: sticky;
+  top: clamp(2.5rem, 6vh, 5rem);
 }
 
 .auth-hero-brand {
@@ -9216,6 +9218,7 @@ body.in-admin-mode .app-header {
   .auth-page-hero {
     text-align: center;
     align-items: center;
+    position: static;
   }
 
   .auth-hero-brand {

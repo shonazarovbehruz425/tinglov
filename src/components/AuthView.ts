@@ -428,7 +428,7 @@ export class AuthView {
         loginSlide.classList.remove('slide-in-right', 'slide-in-left');
         void loginSlide.offsetWidth; // trigger reflow
         loginSlide.classList.add('active', 'slide-in-left');
-        this.container.querySelector<HTMLInputElement>('#pageLoginId')?.focus();
+        this.container.querySelector<HTMLInputElement>('#pageLoginId')?.focus({ preventScroll: true });
       } else {
         loginSlide.style.display = 'none';
         loginSlide.classList.remove('active', 'slide-in-right', 'slide-in-left');
@@ -437,7 +437,7 @@ export class AuthView {
         regSlide.classList.remove('slide-in-right', 'slide-in-left');
         void regSlide.offsetWidth; // trigger reflow
         regSlide.classList.add('active', 'slide-in-right');
-        this.container.querySelector<HTMLInputElement>('#pageRegFullName')?.focus();
+        this.container.querySelector<HTMLInputElement>('#pageRegFullName')?.focus({ preventScroll: true });
       }
     }
 
