@@ -295,10 +295,10 @@ export class DictationInput {
             </div>
 
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-              <!-- Shadowing Mode Button -->
-              <button class="clean-btn shadowing-trigger-pill" id="dictationShadowingBtn" title="${t.shadowingBtn}">
+              <!-- Shadowing Mode Button (Temporarily hidden) -->
+              <!-- <button class="clean-btn shadowing-trigger-pill" id="dictationShadowingBtn" title="${t.shadowingBtn}">
                 <i class="ph ph-microphone"></i> ${t.shadowingBtn}
-              </button>
+              </button> -->
               <button class="clean-btn hint" id="dictationHintBtn" title="${t.hintBtn} (Alt+H)">
                 <i class="ph ph-lightbulb"></i> ${t.hintBtn}
               </button>
@@ -358,7 +358,6 @@ export class DictationInput {
             <span class="hotkey-pill" title="${t.hotkeyReplay}"><kbd>Tab</kbd> ${t.hotkeyReplay}</span>
             <span class="hotkey-pill" title="${t.hotkeySlow}"><kbd>Ctrl+Space</kbd> ${t.hotkeySlow}</span>
             <span class="hotkey-pill" title="${t.hotkeyHint}"><kbd>Alt+H</kbd> ${t.hotkeyHint}</span>
-            <span class="hotkey-pill" title="${t.hotkeyShadowing}"><kbd>Alt+S</kbd> ${t.hotkeyShadowing}</span>
             <span class="hotkey-pill" title="Subtitrni ko‘rsatish / almashtirish"><kbd>Alt+C</kbd> Subtitr</span>
           </div>
         </div>

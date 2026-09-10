@@ -816,11 +816,7 @@ class MovieListenApp {
   }
 
   public openShadowingMode(): void {
-    if (!this.currentScene) return;
-    const sentence = this.currentScene.dialogues[this.currentSentenceIndex];
-    if (sentence) {
-      this.shadowingModal.open(this.currentScene, sentence, this.currentSentenceIndex);
-    }
+    // Shadowing mode temporarily disabled as requested by user
   }
 
   private handleSentenceCompleted(accuracy: number, wpm: number, hintsUsed: number): void {
@@ -841,26 +837,10 @@ class MovieListenApp {
       storageService.recordSentenceCompleted(this.currentScene.id, wordsCount, accuracy, wpm);
     }
 
-    // Shadowing Mode: open AI Pronunciation modal after typing, then go to next
-    if (this.currentScene) {
-      const currentSent = this.currentScene.dialogues[this.currentSentenceIndex];
-      if (currentSent) {
-        this.shadowingModal.open(this.currentScene, currentSent, this.currentSentenceIndex);
-        this.shadowingModal.setCallbacks({
-          onClose: () => {
-            this.goToNextSentence();
-          },
-          onPassed: (score) => {
-            const bonusXp = Math.round(score / 5);
-            storageService.addXP(bonusXp);
-            this.statsHeader.update();
-          }
-        });
-        return;
-      }
-    }
-
-    this.goToNextSentence();
+    // Advance to next sentence smoothly
+    setTimeout(() => {
+      this.goToNextSentence();
+    }, 600);
   }
 
   private goToPrevSentence(): void {
