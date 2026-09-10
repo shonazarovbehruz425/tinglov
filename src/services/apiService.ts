@@ -20,6 +20,8 @@ export interface AuthResponse {
   token?: string;
   user?: AuthUser;
   error?: string;
+  requiresCaptcha?: boolean;
+  retryAfter?: number;
 }
 
 export interface MeResponse {
@@ -266,6 +268,8 @@ class ApiService {
     identifier: string;
     password: string;
     csrfToken?: string;
+    captchaToken?: string;
+    captchaAnswer?: string;
   }): Promise<AuthResponse> {
     try {
       // CSRF token validation
@@ -308,11 +312,19 @@ class ApiService {
       });
 
       if (error) {
-        if (error.message.includes('Invalid login credentials')) {
+        const lowerMsg = error.message.toLowerCase();
+        if (lowerMsg.includes('invalid login credentials')) {
           return { error: 'Email yoki parol noto‘g‘ri kiritildi.' };
         }
-        if (error.message.includes('Email not confirmed')) {
+        if (lowerMsg.includes('email not confirmed')) {
           return { error: 'Email tasdiqlanmagan. Iltimos, emailingizga yuborilgan havolani bosing.' };
+        }
+        if (lowerMsg.includes('too many requests') || lowerMsg.includes('rate limit') || lowerMsg.includes('over_email_send_rate_limit')) {
+          return {
+            error: 'Juda ko‘p noto‘g‘ri urinishlar qilindi. Xavfsizlik yuzasidan birozdan so‘ng qayta urinib ko‘ring.',
+            requiresCaptcha: true,
+            retryAfter: 60,
+          };
         }
         return { error: error.message };
       }

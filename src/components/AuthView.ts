@@ -4,11 +4,21 @@ import { storageService } from '../services/storageService';
 import { escapeHtml } from '../utils/sanitize';
 import { safeValidate, registerSchema, loginSchema } from '../utils/validation';
 import { getCsrfToken, validateCsrfToken } from '../utils/csrf';
+import {
+  getClientAuthStatus,
+  recordClientAuthFailure,
+  resetClientAuthFailures,
+  getCaptchaChallenge,
+  verifyCaptchaClient,
+  CaptchaData
+} from '../utils/rateLimiter';
 
 export class AuthView {
   private container: HTMLElement;
   private activeTab: 'login' | 'register' = 'login';
   private onAuthSuccessCallback: ((user: AuthUser) => void) | null = null;
+  private currentCaptcha: CaptchaData | null = null;
+  private cooldownInterval: number | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -190,6 +200,24 @@ export class AuthView {
           </div>
         </div>
 
+        <div class="auth-form-field" id="pageLoginCaptchaGroup" style="display: none;">
+          <label for="pageLoginCaptchaAnswer">Xavfsizlik tekshiruvi: <span id="pageLoginCaptchaQuestion" style="font-weight: 700; color: #38bdf8;"></span></label>
+          <div class="auth-field-input-box">
+            <i class="ph ph-shield-check field-icon"></i>
+            <input
+              type="text"
+              id="pageLoginCaptchaAnswer"
+              name="captcha"
+              class="auth-text-input"
+              placeholder="Natijani kiriting"
+              autocomplete="off"
+            />
+            <button type="button" class="pw-eye-btn" id="pageCaptchaRefreshBtn" title="Kodni yangilash">
+              <i class="ph ph-arrows-clockwise"></i>
+            </button>
+          </div>
+        </div>
+
         <button type="submit" class="auth-submit-btn" id="pageLoginSubmitBtn">
           <span class="btn-text">Kirish</span>
           <i class="ph ph-arrow-right"></i>
@@ -308,6 +336,46 @@ export class AuthView {
     }
   }
 
+  private async loadCaptcha(): Promise<void> {
+    const group = this.container.querySelector<HTMLElement>('#pageLoginCaptchaGroup');
+    const questionEl = this.container.querySelector<HTMLElement>('#pageLoginCaptchaQuestion');
+    const answerInput = this.container.querySelector<HTMLInputElement>('#pageLoginCaptchaAnswer');
+    if (!group || !questionEl) return;
+
+    this.currentCaptcha = await getCaptchaChallenge();
+    questionEl.textContent = this.currentCaptcha.question;
+    group.style.display = 'block';
+    if (answerInput) {
+      answerInput.value = '';
+    }
+  }
+
+  private startCooldown(btn: HTMLButtonElement | null, seconds: number, defaultText: string): void {
+    if (!btn || seconds <= 0) return;
+    if (this.cooldownInterval) {
+      window.clearInterval(this.cooldownInterval);
+      this.cooldownInterval = null;
+    }
+
+    let remaining = seconds;
+    btn.disabled = true;
+    btn.innerHTML = `<i class="ph ph-hourglass-simple"></i> <span>Kuting: ${remaining}s</span>`;
+
+    this.cooldownInterval = window.setInterval(() => {
+      remaining--;
+      if (remaining <= 0) {
+        if (this.cooldownInterval) {
+          window.clearInterval(this.cooldownInterval);
+          this.cooldownInterval = null;
+        }
+        btn.disabled = false;
+        btn.innerHTML = `<span class="btn-text">${defaultText}</span> <i class="ph ph-arrow-right"></i>`;
+      } else {
+        btn.innerHTML = `<i class="ph ph-hourglass-simple"></i> <span>Kuting: ${remaining}s</span>`;
+      }
+    }, 1000);
+  }
+
   public switchTab(tab: 'login' | 'register'): void {
     if (this.activeTab === tab) return;
 
@@ -416,17 +484,49 @@ export class AuthView {
     this.setupPasswordToggle('pageLoginPw', 'pageLoginPwToggle');
     this.setupPasswordToggle('pageRegPw', 'pageRegPwToggle');
 
+    // Captcha refresh button
+    this.container.querySelector('#pageCaptchaRefreshBtn')?.addEventListener('click', () => {
+      this.loadCaptcha();
+    });
+
+    // Check initial rate limit status
+    const submitBtn = this.container.querySelector<HTMLButtonElement>('#pageLoginSubmitBtn');
+    const initialStatus = getClientAuthStatus();
+    if (initialStatus.requiresCaptcha) {
+      this.loadCaptcha();
+    }
+    if (initialStatus.cooldownRemainingSec > 0) {
+      this.startCooldown(submitBtn, initialStatus.cooldownRemainingSec, 'Kirish');
+    }
+
     // Login submit
     const loginForm = this.container.querySelector<HTMLFormElement>('#pageLoginForm');
     loginForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
       this.clearAlert();
 
+      const status = getClientAuthStatus();
+      if (status.cooldownRemainingSec > 0) {
+        soundEffects.triggerErrorFeedback();
+        this.showAlert(`Iltimos, qayta urinishdan oldin ${status.cooldownRemainingSec} soniya kuting.`, 'error');
+        return;
+      }
+
       const idInput = this.container.querySelector<HTMLInputElement>('#pageLoginId');
       const pwInput = this.container.querySelector<HTMLInputElement>('#pageLoginPw');
-      const submitBtn = this.container.querySelector<HTMLButtonElement>('#pageLoginSubmitBtn');
 
       if (!idInput || !pwInput) return;
+
+      const captchaInput = this.container.querySelector<HTMLInputElement>('#pageLoginCaptchaAnswer');
+      if (status.requiresCaptcha || this.currentCaptcha) {
+        const captchaAnswer = captchaInput?.value?.trim() || '';
+        if (!this.currentCaptcha || !verifyCaptchaClient(this.currentCaptcha, captchaAnswer)) {
+          soundEffects.triggerErrorFeedback();
+          this.showAlert('Xavfsizlik kodi (CAPTCHA) noto‘g‘ri yoki kiritilmadi. Qaytadan yeching.', 'error');
+          await this.loadCaptcha();
+          return;
+        }
+      }
 
       const csrfInput = this.container.querySelector<HTMLInputElement>('#pageLoginCsrfToken');
       const csrfToken = csrfInput?.value || getCsrfToken();
@@ -452,13 +552,23 @@ export class AuthView {
         identifier: idInput.value,
         password: pwInput.value,
         csrfToken,
+        captchaToken: this.currentCaptcha?.token,
+        captchaAnswer: captchaInput?.value?.trim(),
       });
       this.setBtnLoading(submitBtn, false, 'Kirish');
 
       if (result.error) {
         soundEffects.triggerErrorFeedback();
+        const updatedStatus = recordClientAuthFailure(result.retryAfter);
+        if (updatedStatus.requiresCaptcha || result.requiresCaptcha) {
+          await this.loadCaptcha();
+        }
+        if (updatedStatus.cooldownRemainingSec > 0) {
+          this.startCooldown(submitBtn, updatedStatus.cooldownRemainingSec, 'Kirish');
+        }
         this.showAlert(result.error, 'error');
       } else if (result.user) {
+        resetClientAuthFailures();
         soundEffects.playLevelUp();
         this.showAlert('Muvaffaqiyatli kirdingiz! Darslar ochilmoqda...', 'success');
         this.syncUserOnAuth(result.user);

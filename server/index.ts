@@ -20,6 +20,16 @@ import {
 import crypto from 'node:crypto';
 import { hashPassword, comparePassword, generateToken, requireAuth, AuthenticatedRequest } from './auth';
 import { safeValidate, registerSchema, loginSchema } from '../src/utils/validation';
+import {
+  apiLimiter,
+  registerLimiter,
+  checkAuthRateLimit,
+  recordAuthFailure,
+  resetAuthFailure,
+  getClientIp,
+  generateCaptchaChallenge,
+  verifyCaptchaSolution
+} from './rateLimiter';
 
 dotenv.config();
 
@@ -66,6 +76,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Apply rate limiting to all /api endpoints (120 requests/minute per IP)
+app.use('/api', apiLimiter);
+
 // Endpoint to retrieve or refresh current CSRF token
 app.get('/api/csrf-token', (req, res) => {
   let token = req.cookies?.[CSRF_COOKIE_NAME];
@@ -79,6 +92,12 @@ app.get('/api/csrf-token', (req, res) => {
     });
   }
   res.json({ csrfToken: token });
+});
+
+// Endpoint to generate a new CAPTCHA security challenge
+app.get('/api/captcha/new', (_req, res) => {
+  const challenge = generateCaptchaChallenge();
+  res.json(challenge);
 });
 
 // CSRF Verification Middleware for state-changing HTTP requests
@@ -120,7 +139,7 @@ function sanitizeUser(user: any) {
 // --------------------------------------------------------------------------
 
 // 1. Register
-app.post('/api/auth/register', requireCsrf, async (req, res) => {
+app.post('/api/auth/register', registerLimiter, requireCsrf, async (req, res) => {
   try {
     const validation = safeValidate(registerSchema, req.body);
     if (!validation.success) {
@@ -169,8 +188,25 @@ app.post('/api/auth/register', requireCsrf, async (req, res) => {
 });
 
 // 2. Login
-app.post('/api/auth/login', requireCsrf, async (req, res) => {
+app.post('/api/auth/login', checkAuthRateLimit, requireCsrf, async (req, res) => {
+  const ip = getClientIp(req);
+  const identifier = (req.body?.identifier || '').toString().toLowerCase().trim();
+  const ipKey = `auth:ip:${ip}`;
+  const userKey = `auth:user:${identifier}`;
+
   try {
+    // If CAPTCHA challenge is required due to failed attempts
+    if ((req as any).requiresCaptcha) {
+      const { captchaToken, captchaAnswer } = req.body;
+      if (!captchaToken || captchaAnswer === undefined || !verifyCaptchaSolution(captchaToken, captchaAnswer)) {
+        res.status(400).json({
+          error: 'Xavfsizlik kodi (CAPTCHA) noto‘g‘ri yoki kiritilmadi. Iltimos, qaytadan yeching.',
+          requiresCaptcha: true,
+        });
+        return;
+      }
+    }
+
     const validation = safeValidate(loginSchema, req.body);
     if (!validation.success) {
       res.status(400).json({ error: validation.error });
@@ -181,15 +217,41 @@ app.post('/api/auth/login', requireCsrf, async (req, res) => {
     const user = cleanId.includes('@') ? findUserByEmail(cleanId) : findUserByUsername(cleanId);
 
     if (!user) {
-      res.status(401).json({ error: 'Bunday foydalanuvchi topilmadi yoki parol noto‘g‘ri' });
+      const ipFail = recordAuthFailure(ipKey);
+      const userFail = recordAuthFailure(userKey);
+      const maxFail = Math.max(ipFail.failures, userFail.failures);
+      const maxDelay = Math.max(ipFail.delayMs, userFail.delayMs);
+      if (maxDelay > 0 && maxDelay <= 8000) {
+        await new Promise(r => setTimeout(r, maxDelay));
+      }
+      res.status(401).json({
+        error: 'Bunday foydalanuvchi topilmadi yoki parol noto‘g‘ri',
+        requiresCaptcha: maxFail >= 3,
+        retryAfter: Math.max(ipFail.retryAfterSec, userFail.retryAfterSec),
+      });
       return;
     }
 
     const isMatch = await comparePassword(password, user.password_hash);
     if (!isMatch) {
-      res.status(401).json({ error: 'Bunday foydalanuvchi topilmadi yoki parol noto‘g‘ri' });
+      const ipFail = recordAuthFailure(ipKey);
+      const userFail = recordAuthFailure(userKey);
+      const maxFail = Math.max(ipFail.failures, userFail.failures);
+      const maxDelay = Math.max(ipFail.delayMs, userFail.delayMs);
+      if (maxDelay > 0 && maxDelay <= 8000) {
+        await new Promise(r => setTimeout(r, maxDelay));
+      }
+      res.status(401).json({
+        error: 'Bunday foydalanuvchi topilmadi yoki parol noto‘g‘ri',
+        requiresCaptcha: maxFail >= 3,
+        retryAfter: Math.max(ipFail.retryAfterSec, userFail.retryAfterSec),
+      });
       return;
     }
+
+    // Reset failure tracking on successful authentication
+    resetAuthFailure(ipKey);
+    resetAuthFailure(userKey);
 
     const token = generateToken(user);
 
