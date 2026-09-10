@@ -409,12 +409,13 @@ class MovieListenApp {
         }
       } else {
         this.statsHeader.update();
-        // Clean URL hash if it contains OAuth access_token
+        const hadOAuthToken = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
+        // Clean URL hash and search if it contains OAuth tokens
         if (window.location.hash.includes('access_token=') || window.location.hash.includes('error=')) {
-          window.history.replaceState(null, '', window.location.pathname || '/');
+          window.history.replaceState(null, '', window.location.pathname || '/dashboard');
         }
-        // If user was on auth view, redirect to main library
-        if (this.currentView === 'auth') {
+        // If user just signed in via Google/OAuth or was on auth view or landing, redirect to dashboard
+        if (this.currentView === 'auth' || (hadOAuthToken && this.currentView === 'landing')) {
           this.showLibrary(true);
         }
       }

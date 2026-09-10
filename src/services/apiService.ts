@@ -385,10 +385,11 @@ class ApiService {
 
   public async signInWithGoogle(): Promise<{ error?: string }> {
     try {
+      const redirectUrl = `${window.location.origin}/dashboard`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: redirectUrl,
         },
       });
       if (error) {
