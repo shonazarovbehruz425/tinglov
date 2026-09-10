@@ -757,6 +757,9 @@ if (fs.existsSync(distPath)) {
   app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     const indexHtmlPath = path.join(distPath, 'index.html');
     if (fs.existsSync(indexHtmlPath)) {
       try {

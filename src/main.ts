@@ -74,15 +74,20 @@ class MovieListenApp {
       }
     }, 450);
 
-    // Register PWA Service Worker for complete offline support
-    if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').then((registration) => {
-          registration.update().catch(() => {});
-        }).catch(() => {
-          // Service worker registration skipped/handled gracefully
-        });
-      });
+    // Unregister any stale PWA Service Workers and clear caches to guarantee instant fresh reloads
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+      }).catch(() => {});
+      if ('caches' in window) {
+        caches.keys().then((keys) => {
+          for (const key of keys) {
+            caches.delete(key);
+          }
+        }).catch(() => {});
+      }
     }
   }
 
