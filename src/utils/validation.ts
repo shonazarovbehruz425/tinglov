@@ -24,7 +24,10 @@ export const passwordSchema = z
   .string({ message: 'Parolni kiriting' })
   .min(8, 'Parol kamida 8 ta belgidan iborat bo‘lishi kerak')
   .max(100, 'Parol 100 ta belgidan oshmasligi kerak')
-  .regex(/^(?=.*[A-Z])(?=.*[0-9])/, 'Parolda kamida 1 ta katta harf (A-Z) va kamida 1 ta raqam (0-9) bo‘lishi shart');
+  .regex(/[a-z]/, 'Parolda kamida 1 ta kichik harf (a-z) bo‘lishi shart')
+  .regex(/[A-Z]/, 'Parolda kamida 1 ta katta harf (A-Z) bo‘lishi shart')
+  .regex(/[0-9]/, 'Parolda kamida 1 ta raqam (0-9) bo‘lishi shart')
+  .regex(/[^a-zA-Z0-9]/, 'Parolda kamida 1 ta maxsus belgi (!@#$%^&* va h.k.) bo‘lishi shart');
 
 export const fullNameSchema = z
   .string()

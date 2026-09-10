@@ -247,7 +247,7 @@ export class AuthModal {
               type="password"
               id="registerPassword"
               class="auth-input"
-              placeholder="Kamida 8 ta belgi, 1 ta katta harf va raqam"
+              placeholder="Kamida 8 ta belgi (A-Z, a-z, 0-9, !@#)"
               required
               minlength="8"
               autocomplete="new-password"
@@ -256,7 +256,7 @@ export class AuthModal {
               <i class="ph ph-eye"></i>
             </button>
           </div>
-          <span class="auth-field-hint">Kamida 8 ta belgi, 1 ta katta harf (A-Z) va 1 ta raqam (0-9)</span>
+          <span class="auth-field-hint">Kamida 8 ta belgi: katta (A-Z), kichik (a-z), raqam (0-9) va maxsus belgi (!@#$)</span>
         </div>
 
         <button type="submit" class="auth-submit-btn" id="registerSubmitBtn">
