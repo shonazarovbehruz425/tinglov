@@ -180,7 +180,29 @@ class ApiService {
       this.notifyAuthChange();
       return user;
     } catch {
-      return null;
+      try {
+        const isGoogle = supabaseUser.app_metadata?.provider === 'google'
+          || (Array.isArray(supabaseUser.identities) && supabaseUser.identities.some((i: any) => i.provider === 'google'));
+        const provider: 'google' | 'email' = isGoogle ? 'google' : 'email';
+        const fallbackUser: AuthUser = {
+          id: supabaseUser.id,
+          username: supabaseUser.user_metadata?.username || (supabaseUser.email ? supabaseUser.email.split('@')[0] : 'foydalanuvchi'),
+          email: supabaseUser.email || '',
+          full_name: supabaseUser.user_metadata?.full_name || '',
+          avatar_color: '#FF5722',
+          xp: 0,
+          streak: 1,
+          level: 1,
+          last_active_date: null,
+          created_at: supabaseUser.created_at || new Date().toISOString(),
+          auth_provider: provider,
+        };
+        this.currentUser = fallbackUser;
+        this.notifyAuthChange();
+        return fallbackUser;
+      } catch {
+        return null;
+      }
     }
   }
 
