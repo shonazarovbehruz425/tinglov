@@ -1,16 +1,9 @@
-// Tinglov PWA Offline Service Worker
-const CACHE_NAME = 'tinglov-offline-v1';
-const STATIC_ASSETS = [
-  '/',
-  '/index.html'
-];
+// Tinglov PWA Service Worker (Network-First for Freshness)
+const CACHE_NAME = 'tinglov-v2';
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    }).then(() => self.skipWaiting())
-  );
+  // Activate immediately without waiting for old tabs to close
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -30,38 +23,51 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
 
+  // Ignore non-GET or range requests (videos/audio streams)
   if (request.method !== 'GET' || request.headers.has('range')) {
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        fetch(request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, networkResponse));
-          }
-        }).catch(() => {});
-        return cachedResponse;
-      }
+  // API calls, Supabase calls, and OAuth callbacks must NEVER be cached by SW
+  const url = new URL(request.url);
+  if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase.co') || url.pathname.includes('/auth/')) {
+    return;
+  }
 
-      return fetch(request).then((networkResponse) => {
+  // Network-First Strategy:
+  // Try network first to always ensure latest updates, fallback to cache if offline
+  event.respondWith(
+    fetch(request)
+      .then((networkResponse) => {
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'opaque') {
           return networkResponse;
         }
 
+        // Cache static assets (fonts, icons, css, js) for offline support
         const responseClone = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(request, responseClone);
         });
 
         return networkResponse;
-      }).catch(() => {
-        if (request.mode === 'navigate') {
-          return caches.match('/index.html');
+      })
+      .catch(async () => {
+        // Fallback to cache when offline
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+          return cachedResponse;
         }
-        return new Response('Offline', { status: 503, statusText: 'Offline' });
-      });
-    })
+
+        if (request.mode === 'navigate') {
+          const fallback = await caches.match('/index.html') || await caches.match('/');
+          if (fallback) return fallback;
+        }
+
+        return new Response('Offline rejim — Internet aloqasini tekshiring', {
+          status: 503,
+          statusText: 'Offline',
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        });
+      })
   );
 });

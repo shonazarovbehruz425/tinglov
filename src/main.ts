@@ -77,7 +77,9 @@ class MovieListenApp {
     // Register PWA Service Worker for complete offline support
     if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(() => {
+        navigator.serviceWorker.register('/sw.js').then((registration) => {
+          registration.update().catch(() => {});
+        }).catch(() => {
           // Service worker registration skipped/handled gracefully
         });
       });
@@ -93,7 +95,7 @@ class MovieListenApp {
 
       <main class="app-main-content">
         <div id="landingViewContainer" class="view-section" style="display: none;"></div>
-        <div id="libraryViewContainer" class="view-section"></div>
+        <div id="libraryViewContainer" class="view-section" style="display: none;"></div>
 
         <div id="practiceViewContainer" class="view-section" style="display: none;">
           <div class="practice-main-grid">
@@ -516,7 +518,22 @@ class MovieListenApp {
     }
 
     // 2. Protected routes (/dashboard, /library, /practice, /profile, /settings):
-    // DO NOT prematurely kick to login! Wait for auth resolution first!
+    // If we already have persistent cached user credentials, render immediately (0ms latency!)
+    if (apiService.isAuthenticated()) {
+      this.isAuthReady = true;
+      this.routeCurrentUrl(false);
+
+      // Verify and sync in background
+      apiService.waitForAuth().then((data) => {
+        if (data) {
+          storageService.syncWithServer(data);
+        }
+        this.statsHeader.update();
+      }).catch(() => {});
+      return;
+    }
+
+    // Otherwise, wait for network auth verification before routing or redirecting to login
     try {
       const data = await apiService.waitForAuth();
       this.isAuthReady = true;
