@@ -305,7 +305,6 @@ export class AuthView {
   public switchTab(tab: 'login' | 'register'): void {
     if (this.activeTab === tab) return;
 
-    soundEffects.playKeyClick();
     this.activeTab = tab;
 
     // 1. Sliding pill animation
@@ -401,7 +400,6 @@ export class AuthView {
 
     // Google Sign-In button
     this.container.querySelector('#pageGoogleSignInBtn')?.addEventListener('click', async () => {
-      soundEffects.playKeyClick();
       const res = await apiService.signInWithGoogle();
       if (res?.error) {
         this.showAlert(res.error, 'error');

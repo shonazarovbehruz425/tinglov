@@ -249,31 +249,10 @@ class SoundEffectsService {
   }
 
   /**
-   * Subtle soft click sound for toggles and buttons
+   * Subtle soft click sound for toggles and buttons (disabled per user request)
    */
   public playKeyClick(): void {
-    const ctx = this.getContext();
-    if (!ctx) return;
-
-    try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(800, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.04);
-
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 0.06);
-    } catch {
-      // Ignore
-    }
+    // Completely silenced: button clicks no longer produce sound effects
   }
 
   public toggleSound(): boolean {
