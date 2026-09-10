@@ -169,15 +169,40 @@ export class AdminView {
         apiService.adminGetUsers(this.searchQuery).catch(() => []),
         apiService.adminGetScenes().catch(() => [])
       ]);
-      this.stats = statsRes;
-      this.users = usersRes;
-      this.scenes = scenesRes;
+      this.users = usersRes || [];
+      this.scenes = scenesRes || [];
 
-      if (this.stats && this.stats.stats) {
-        this.stats.stats.totalUsers = Math.max(this.stats.stats.totalUsers || 0, this.users.length);
-      }
-    } catch {
-      // Ignored
+      // Calculate today's users from user list as well
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const usersTodayFromList = this.users.filter((u) => {
+        const time = u.created_at || (u as any).updated_at;
+        if (!time) return false;
+        const d = new Date(time);
+        return !isNaN(d.getTime()) && d >= todayStart;
+      }).length;
+
+      const baseStats = statsRes?.stats || {
+        totalUsers: 0,
+        usersToday: 0,
+        totalSavedWords: 0,
+        totalCompletedScenes: 0,
+        totalCustomScenes: 0
+      };
+
+      this.stats = {
+        success: true,
+        stats: {
+          totalUsers: Math.max(baseStats.totalUsers || 0, this.users.length),
+          usersToday: Math.max(baseStats.usersToday || 0, usersTodayFromList),
+          totalSavedWords: baseStats.totalSavedWords || 0,
+          totalCompletedScenes: baseStats.totalCompletedScenes || 0,
+          totalCustomScenes: Math.max(baseStats.totalCustomScenes || 0, this.scenes.length)
+        },
+        system: statsRes?.system || {}
+      };
+    } catch (e) {
+      console.error('Failed to load admin data:', e);
     }
   }
 
@@ -281,46 +306,85 @@ export class AdminView {
             <h2 class="admin-pane-title">Tizim Ko‘rsatkichlari</h2>
             <p class="admin-pane-desc">Tinglov platformasining real vaqt rejimidagi faollik statistikasi</p>
           </div>
-          <button id="adminRefreshStatsBtn" class="admin-btn admin-btn-secondary">
-            <i class="ph ph-bold ph-arrows-clockwise"></i> Yangilash
+          <button id="adminRefreshStatsBtn" class="admin-btn admin-btn-secondary" title="Statistikani qayta yuklash">
+            <svg viewBox="0 0 256 256" width="16" height="16" fill="currentColor" aria-hidden="true" style="margin-right: 6px; vertical-align: -2px;">
+              <path d="M224,128a96,96,0,0,1-96,96A95.52,95.52,0,0,1,64,198.81V216a8,8,0,0,1-16,0V168a8,8,0,0,1,8-8H104a8,8,0,0,1,0,16H71.55A80,80,0,1,0,54.51,96.65a8,8,0,0,1-14.77-6.17A96,96,0,1,1,224,128Z"/>
+            </svg>
+            Yangilash
           </button>
         </div>
 
         <!-- 4 Stat Cards -->
         <div class="admin-stats-grid">
           <div class="admin-stat-card card-purple">
-            <div class="admin-stat-icon"><i class="ph ph-bold ph-users-three"></i></div>
+            <div class="admin-stat-icon">
+              <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
+                <path d="M117.25,157.92a60,60,0,1,0-66.5,0A95.83,95.83,0,0,0,3.53,195.63a8,8,0,1,0,13.4,8.74,80,80,0,0,1,134.14,0,8,8,0,0,0,13.4-8.74A95.83,95.83,0,0,0,117.25,157.92ZM40,108a44,44,0,1,1,44,44A44.05,44.05,0,0,1,40,108Zm210.14,98.37a8,8,0,0,1-11.07-2.33A79.83,79.83,0,0,0,172,168a8,8,0,0,1,0-16,44,44,0,1,0-16.34-84.87,8,8,0,1,1-5.94-14.85,60,60,0,0,1,55.53,105.64,95.83,95.83,0,0,1,47.22,37.71A8,8,0,0,1,250.14,206.37Z"/>
+              </svg>
+            </div>
             <div class="admin-stat-content">
               <span class="admin-stat-label">Jami Foydalanuvchilar</span>
               <strong class="admin-stat-val">${s.totalUsers}</strong>
-              <span class="admin-stat-sub"><i class="ph ph-bold ph-arrow-up-right"></i> Faol o'quvchilar</span>
+              <span class="admin-stat-sub">
+                <svg viewBox="0 0 256 256" width="13" height="13" fill="currentColor" style="vertical-align: -2px; margin-right: 3px;">
+                  <path d="M200,64V168a8,8,0,0,1-16,0V83.31L69.66,197.66a8,8,0,0,1-11.32-11.32L172.69,72H88a8,8,0,0,1,0-16H192A8,8,0,0,1,200,64Z"/>
+                </svg>
+                Faol o'quvchilar
+              </span>
             </div>
           </div>
 
           <div class="admin-stat-card card-green">
-            <div class="admin-stat-icon"><i class="ph ph-bold ph-user-plus"></i></div>
+            <div class="admin-stat-icon">
+              <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
+                <path d="M256,136a8,8,0,0,1-8,8H232v16a8,8,0,0,1-16,0V144H200a8,8,0,0,1,0-16h16V112a8,8,0,0,1,16,0v16h16A8,8,0,0,1,256,136ZM194.39,183.47a8,8,0,0,0-10.78,4.14,79.86,79.86,0,0,1-127.22,0,8,8,0,0,0-13.38,8.78A95.86,95.86,0,0,0,96,232a8,8,0,0,0,0-16,79.94,79.94,0,0,1-51.4-18.66,95.78,95.78,0,0,0,154.8-19.09A8,8,0,0,0,194.39,183.47ZM120,144a56,56,0,1,0-56-56A56.06,56.06,0,0,0,120,144Zm0-96a40,40,0,1,1-40,40A40,40,0,0,1,120,48Z"/>
+              </svg>
+            </div>
             <div class="admin-stat-content">
               <span class="admin-stat-label">Bugun Qo‘shilganlar</span>
               <strong class="admin-stat-val">${s.usersToday}</strong>
-              <span class="admin-stat-sub"><i class="ph ph-bold ph-sparkle"></i> Yangi ro'yxatdan o'tganlar</span>
+              <span class="admin-stat-sub">
+                <svg viewBox="0 0 256 256" width="13" height="13" fill="currentColor" style="vertical-align: -2px; margin-right: 3px;">
+                  <path d="M245.66,114.34a8,8,0,0,0-11.32,0L208,140.69l-26.34-26.35a8,8,0,0,0-11.32,11.32L196.69,152l-26.35,26.34a8,8,0,0,0,11.32,11.32L208,163.31l26.34,26.35a8,8,0,0,0,11.32-11.32L219.31,152l26.35-26.34A8,8,0,0,0,245.66,114.34ZM144,32a8,8,0,0,0-8-8,96.11,96.11,0,0,0-96,96,8,8,0,0,0,16,0,80.09,80.09,0,0,1,80-80A8,8,0,0,0,144,32ZM104,88a48,48,0,1,0,48,48A48.05,48.05,0,0,0,104,88Z"/>
+                </svg>
+                Yangi ro'yxatdan o'tganlar
+              </span>
             </div>
           </div>
 
           <div class="admin-stat-card card-blue">
-            <div class="admin-stat-icon"><i class="ph ph-bold ph-translate"></i></div>
+            <div class="admin-stat-icon">
+              <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
+                <path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a24,24,0,0,0,24-24V56A8,8,0,0,0,224,48ZM40,64H120V192H40ZM224,184a8,8,0,0,1-8,8H136V64h88ZM96,96a8,8,0,0,1-8,8H64a8,8,0,0,1,0-16H88A8,8,0,0,1,96,96Zm0,32a8,8,0,0,1-8,8H64a8,8,0,0,1,0-16H88A8,8,0,0,1,96,128Zm96-32a8,8,0,0,1-8,8H160a8,8,0,0,1,0-16h24A8,8,0,0,1,192,96Zm0,32a8,8,0,0,1-8,8H160a8,8,0,0,1,0-16h24A8,8,0,0,1,192,128Z"/>
+              </svg>
+            </div>
             <div class="admin-stat-content">
               <span class="admin-stat-label">O‘rganilgan Lug‘atlar</span>
               <strong class="admin-stat-val">${s.totalSavedWords}</strong>
-              <span class="admin-stat-sub"><i class="ph ph-bold ph-bookmark-simple"></i> Saqlangan so'zlar</span>
+              <span class="admin-stat-sub">
+                <svg viewBox="0 0 256 256" width="13" height="13" fill="currentColor" style="vertical-align: -2px; margin-right: 3px;">
+                  <path d="M184,32H72A16,16,0,0,0,56,48V224a8,8,0,0,0,12.24,6.78L128,193.43l59.77,37.35A8,8,0,0,0,200,224V48A16,16,0,0,0,184,32Zm0,173.78-52.24-32.65a8,8,0,0,0-8.48,0L72,205.78V48H184Z"/>
+                </svg>
+                Saqlangan so'zlar
+              </span>
             </div>
           </div>
 
           <div class="admin-stat-card card-orange">
-            <div class="admin-stat-icon"><i class="ph ph-bold ph-check-circle"></i></div>
+            <div class="admin-stat-icon">
+              <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
+                <path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"/>
+              </svg>
+            </div>
             <div class="admin-stat-content">
               <span class="admin-stat-label">Bajarilgan Mashg‘ulotlar</span>
               <strong class="admin-stat-val">${s.totalCompletedScenes}</strong>
-              <span class="admin-stat-sub"><i class="ph ph-bold ph-video"></i> Video darslar yakunlangan</span>
+              <span class="admin-stat-sub">
+                <svg viewBox="0 0 256 256" width="13" height="13" fill="currentColor" style="vertical-align: -2px; margin-right: 3px;">
+                  <path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40Zm0,160H40V56H216V200Zm-51.55-78.69-48-32A8,8,0,0,0,104,96v64a8,8,0,0,0,12.45,6.69l48-32a8,8,0,0,0,0-13.38ZM120,145.08V110.92L145.62,128Z"/>
+                </svg>
+                Video darslar yakunlangan
+              </span>
             </div>
           </div>
         </div>
@@ -758,11 +822,28 @@ export class AdminView {
     });
 
     // Overview: Refresh stats
-    const refreshStatsBtn = this.container.querySelector('#adminRefreshStatsBtn');
+    const refreshStatsBtn = this.container.querySelector('#adminRefreshStatsBtn') as HTMLButtonElement | null;
     if (refreshStatsBtn) {
       refreshStatsBtn.addEventListener('click', async () => {
-        await this.loadAllData();
-        this.renderDashboard();
+        const origContent = refreshStatsBtn.innerHTML;
+        refreshStatsBtn.disabled = true;
+        refreshStatsBtn.innerHTML = `
+          <div class="admin-spinner-sm" style="display:inline-block; margin-right: 6px; vertical-align: -2px;"></div>
+          Yangilanmoqda...
+        `;
+        try {
+          await this.loadAllData();
+          this.successMsg = 'Statistika muvaffaqiyatli yangilandi!';
+          this.renderDashboard();
+          setTimeout(() => {
+            const alertEl = this.container.querySelector('.admin-alert-success');
+            if (alertEl) alertEl.remove();
+            this.successMsg = null;
+          }, 3000);
+        } catch {
+          refreshStatsBtn.disabled = false;
+          refreshStatsBtn.innerHTML = origContent;
+        }
       });
     }
 

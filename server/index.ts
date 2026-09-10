@@ -34,6 +34,7 @@ import {
   AuthenticatedRequest,
   generateAdminToken,
   requireAdminAuth,
+  extractAdminToken,
   AdminRequest
 } from './auth';
 import { safeValidate, registerSchema, loginSchema } from '../src/utils/validation';
@@ -607,10 +608,12 @@ app.post('/api/admin/logout', (_req, res) => {
 
 // E. Check Admin Session
 app.get('/api/admin/check', requireAdminAuth, (req: AdminRequest, res) => {
+  const token = extractAdminToken(req);
   res.json({
     authenticated: true,
     admin: req.admin,
-    adminPath: ADMIN_PATH
+    adminPath: ADMIN_PATH,
+    token: token || undefined
   });
 });
 
