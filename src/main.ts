@@ -431,9 +431,18 @@ class MovieListenApp {
         if (window.location.hash.includes('access_token=') || window.location.hash.includes('error=')) {
           window.history.replaceState(null, '', window.location.pathname || '/dashboard');
         }
-        // If user just signed in via Google/OAuth or was on auth view or landing, redirect to dashboard
-        if (this.currentView === 'auth' || (hadOAuthToken && this.currentView === 'landing')) {
-          this.showLibrary(true);
+
+        const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
+        const isAuthOrLanding = rawPath === '/' || rawPath === '/login' || rawPath === '/register' || rawPath === '/auth';
+
+        // Only redirect to dashboard if user was truly on auth or landing page.
+        // If the user refreshed while on /practice, /profile, or /settings, keep them on that page!
+        if (this.currentView === 'auth' || (hadOAuthToken && (isAuthOrLanding || this.currentView === 'landing'))) {
+          if (!isAuthOrLanding && (rawPath === '/practice' || rawPath.startsWith('/practice/') || rawPath === '/profile' || rawPath === '/settings')) {
+            this.routeCurrentUrl(false);
+          } else {
+            this.showLibrary(true);
+          }
         }
       }
     });
@@ -512,8 +521,10 @@ class MovieListenApp {
       const data = await apiService.waitForAuth();
       this.isAuthReady = true;
 
-      if (data) {
-        storageService.syncWithServer(data);
+      if (data || apiService.isAuthenticated()) {
+        if (data) {
+          storageService.syncWithServer(data);
+        }
         this.statsHeader.update();
         this.routeCurrentUrl(false);
       } else {
@@ -522,7 +533,11 @@ class MovieListenApp {
       }
     } catch {
       this.isAuthReady = true;
-      this.checkAndEnforceAuth();
+      if (apiService.isAuthenticated()) {
+        this.routeCurrentUrl(false);
+      } else {
+        this.checkAndEnforceAuth();
+      }
     }
   }
 
