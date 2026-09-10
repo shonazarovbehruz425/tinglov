@@ -2,6 +2,7 @@ import { SavedWord } from '../types';
 import { storageService } from '../services/storageService';
 import { speechService } from '../services/speechService';
 import { soundEffects } from '../services/soundEffects';
+import { escapeHtml } from '../utils/sanitize';
 
 export class VocabularyModal {
   private container: HTMLElement;
@@ -84,18 +85,18 @@ export class VocabularyModal {
     return `
       <div class="clean-vocab-list">
         ${savedWords.map(w => `
-          <div class="clean-vocab-item" data-word-id="${w.id}">
+          <div class="clean-vocab-item" data-word-id="${escapeHtml(w.id)}">
             <div>
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
-                <span class="clean-vocab-word">${w.word}</span>
-                <button class="clean-btn" data-word="${w.word}" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">
+                <span class="clean-vocab-word">${escapeHtml(w.word)}</span>
+                <button class="clean-btn" data-word="${escapeHtml(w.word)}" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">
                   <i class="ph ph-speaker-high"></i>
                 </button>
               </div>
-              <span class="clean-vocab-trans">${w.translation}</span>
-              <span class="clean-vocab-context">"${w.contextSentence}" (${w.movieName})</span>
+              <span class="clean-vocab-trans">${escapeHtml(w.translation)}</span>
+              <span class="clean-vocab-context">"${escapeHtml(w.contextSentence)}" (${escapeHtml(w.movieName)})</span>
             </div>
-            <button class="clean-btn" data-delete-id="${w.id}" style="padding: 0.4rem; color: #EF4444;">
+            <button class="clean-btn" data-delete-id="${escapeHtml(w.id)}" style="padding: 0.4rem; color: #EF4444;">
               <i class="ph ph-trash"></i>
             </button>
           </div>
@@ -124,14 +125,14 @@ export class VocabularyModal {
 
         <div style="background: #F6F7F9; border: 2px solid #E6E8EC; border-radius: 20px; padding: 2.5rem 1.5rem; margin: 1.5rem 0; cursor: pointer;" id="flashcardElement">
           <h2 style="font-family: var(--font-heading); font-size: 2.2rem; font-weight: 800; color: #111315; margin-bottom: 0.5rem;">
-            ${currentWord.word}
+            ${escapeHtml(currentWord.word)}
           </h2>
           ${this.showQuizAnswer ? `
             <h3 style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; color: var(--accent-orange); margin-top: 1rem;">
-              ${currentWord.translation}
+              ${escapeHtml(currentWord.translation)}
             </h3>
             <p style="font-size: 0.85rem; color: #6F767E; font-style: italic; margin-top: 0.5rem;">
-              "${currentWord.contextSentence}"
+              "${escapeHtml(currentWord.contextSentence)}"
             </p>
           ` : `
             <span style="font-size: 0.85rem; color: #9A9FA5;">Tarjimasini ko'rish uchun bosing</span>

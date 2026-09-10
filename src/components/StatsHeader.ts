@@ -4,6 +4,7 @@ import { i18n, AppLanguage } from '../services/i18nService';
 import { searchByWord } from '../services/searchService';
 import { apiService } from '../services/apiService';
 import { Scene } from '../types';
+import { escapeHtml, sanitizeHtml } from '../utils/sanitize';
 
 export type AppTheme = 'light' | 'dark' | 'oled';
 
@@ -64,6 +65,13 @@ export class StatsHeader {
     const stats = storageService.getStats();
     const t = i18n.t();
     const curLang = i18n.getLanguage();
+
+    const currentUser = apiService.getCurrentUser();
+    const rawName = currentUser?.full_name || currentUser?.username || stats.userName || 'Mehmon';
+    const rawHandle = currentUser ? `@${currentUser.username}` : (stats.userHandle || '@mehmon');
+    const safeFullName = escapeHtml(rawName);
+    const safeHandle = escapeHtml(rawHandle);
+    const avatarLetter = escapeHtml(rawName.charAt(0).toUpperCase() || 'M');
 
     this.container.innerHTML = `
       <header class="app-header">
@@ -148,11 +156,11 @@ export class StatsHeader {
           <div class="user-profile-dropdown-wrapper" id="userProfileDropdownWrapper">
             <div class="user-profile-summary" id="userProfileSummary" title="${t.viewProfile}">
               <div class="user-avatar-circle" style="background: ${apiService.isAuthenticated() ? 'linear-gradient(135deg, #6366F1, #8B5CF6)' : 'linear-gradient(135deg, #A3E635, #BEF264)'}; border: 2px solid ${apiService.isAuthenticated() ? '#818CF8' : '#84CC16'}; color: ${apiService.isAuthenticated() ? '#FFFFFF' : '#1A2E05'};">
-                ${(apiService.getCurrentUser()?.full_name || apiService.getCurrentUser()?.username || stats.userName || 'Mehmon').charAt(0).toUpperCase()}
+                ${avatarLetter}
               </div>
               <div class="user-names">
-                <span class="user-fullname">${apiService.getCurrentUser()?.full_name || apiService.getCurrentUser()?.username || stats.userName || 'Mehmon'}</span>
-                <span class="user-handle">${apiService.getCurrentUser() ? `@${apiService.getCurrentUser()?.username}` : (stats.userHandle || '@mehmon')}</span>
+                <span class="user-fullname">${safeFullName}</span>
+                <span class="user-handle">${safeHandle}</span>
               </div>
               <i class="ph ph-caret-down user-dropdown-caret" id="userDropdownCaret"></i>
             </div>
@@ -163,12 +171,12 @@ export class StatsHeader {
               <div class="dropdown-user-header">
                 <div class="dropdown-avatar-circle">
                   <div class="dropdown-avatar-inner" style="background: ${apiService.isAuthenticated() ? 'linear-gradient(135deg, #6366F1, #8B5CF6)' : 'linear-gradient(135deg, #A3E635, #BEF264)'}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px;">
-                    ${(apiService.getCurrentUser()?.full_name || apiService.getCurrentUser()?.username || stats.userName || 'M').charAt(0).toUpperCase()}
+                    ${avatarLetter}
                   </div>
                 </div>
                 <div class="dropdown-user-meta">
-                  <span class="dropdown-user-name">${apiService.getCurrentUser()?.full_name || apiService.getCurrentUser()?.username || stats.userName || 'Mehmon'}</span>
-                  <span class="dropdown-user-plan">${apiService.getCurrentUser() ? `@${apiService.getCurrentUser()?.username}` : (stats.userHandle || '@mehmon')}</span>
+                  <span class="dropdown-user-name">${safeFullName}</span>
+                  <span class="dropdown-user-plan">${safeHandle}</span>
                 </div>
               </div>
 
@@ -270,7 +278,7 @@ export class StatsHeader {
       dropdown.innerHTML = `
         <div class="search-empty-state">
           <i class="ph ph-magnifying-glass"></i>
-          <span>"${query}" ${t.noDialoguesFound}</span>
+          <span>"${escapeHtml(query)}" ${t.noDialoguesFound}</span>
         </div>
       `;
       dropdown.classList.add('show-dropdown');
@@ -288,21 +296,21 @@ export class StatsHeader {
 
           <div class="search-dialogue-matches-list">
             ${results.dialogueMatches.slice(0, 8).map((match) => `
-              <div class="search-dialogue-item" data-scene-id="${match.scene.id}" data-dialogue-index="${match.dialogueIndex}">
+              <div class="search-dialogue-item" data-scene-id="${escapeHtml(match.scene.id)}" data-dialogue-index="${match.dialogueIndex}">
                 <div class="search-item-poster">
-                  <img src="${match.scene.coverImage || '/cartoons/snow_white_poster.jpg'}" alt="${match.scene.title}" />
+                  <img src="${match.scene.coverImage || '/cartoons/snow_white_poster.jpg'}" alt="${escapeHtml(match.scene.title)}" />
                 </div>
                 <div class="search-item-info">
                   <div class="search-item-header">
-                    <span class="search-item-movie">${match.scene.title}</span>
+                    <span class="search-item-movie">${escapeHtml(match.scene.title)}</span>
                     <span class="search-item-time">${match.dialogue.startTime}s</span>
                   </div>
                   <div class="search-item-replica">
-                    <strong class="search-item-char">${match.dialogue.character}:</strong>
-                    <span class="search-item-text">"${match.highlightedText}"</span>
+                    <strong class="search-item-char">${escapeHtml(match.dialogue.character)}:</strong>
+                    <span class="search-item-text">"${sanitizeHtml(match.highlightedText)}"</span>
                   </div>
                   ${match.dialogue.uzbekTranslation ? `
-                    <div class="search-item-translation">${match.highlightedTranslation}</div>
+                    <div class="search-item-translation">${sanitizeHtml(match.highlightedTranslation)}</div>
                   ` : ''}
                 </div>
                 <button class="search-item-play-btn" title="${t.jumpToDialogue}">
@@ -320,9 +328,9 @@ export class StatsHeader {
           </div>
           <div class="search-scenes-chips-row">
             ${results.sceneMatches.slice(0, 4).map((scene) => `
-              <button class="search-scene-chip-btn" data-scene-id="${scene.id}">
+              <button class="search-scene-chip-btn" data-scene-id="${escapeHtml(scene.id)}">
                 <i class="ph ph-play"></i>
-                <span>${scene.title}</span>
+                <span>${escapeHtml(scene.title)}</span>
               </button>
             `).join('')}
           </div>

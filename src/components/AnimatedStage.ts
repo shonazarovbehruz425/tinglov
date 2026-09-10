@@ -4,6 +4,7 @@ import { videoStreamService, VideoStreamStatus } from '../services/videoStreamSe
 import { soundEffects } from '../services/soundEffects';
 import { i18n } from '../services/i18nService';
 import { storageService } from '../services/storageService';
+import { escapeHtml } from '../utils/sanitize';
 
 export class AnimatedStage {
   private container: HTMLElement;
@@ -346,8 +347,8 @@ export class AnimatedStage {
       if (isRevealed && mode !== 'off') {
         inVideoOverlay.classList.add('visible');
         inVideoOverlay.innerHTML = `
-          ${(mode === 'both' || mode === 'en') ? `<div class="invideo-sub-en">${this.currentSentence.text}</div>` : ''}
-          ${(mode === 'both' || mode === 'uz') ? `<div class="invideo-sub-uz">${i18n.getSentenceTranslation(this.currentSentence)}</div>` : ''}
+          ${(mode === 'both' || mode === 'en') ? `<div class="invideo-sub-en">${escapeHtml(this.currentSentence.text)}</div>` : ''}
+          ${(mode === 'both' || mode === 'uz') ? `<div class="invideo-sub-uz">${escapeHtml(i18n.getSentenceTranslation(this.currentSentence))}</div>` : ''}
         `;
       } else {
         inVideoOverlay.classList.remove('visible');
@@ -390,7 +391,7 @@ export class AnimatedStage {
           <div class="breadcrumbs-trail">
             <span class="breadcrumb-link" id="bcLibraryLink">Kinolar</span>
             <span>/</span>
-            <span class="breadcrumb-link" id="bcCourseLink">${this.currentScene.title}</span>
+            <span class="breadcrumb-link" id="bcCourseLink">${escapeHtml(this.currentScene.title)}</span>
             <span>/</span>
             <span>Replika ${(this.sentenceIndex + 1).toString().padStart(2, '0')}</span>
           </div>
@@ -400,7 +401,7 @@ export class AnimatedStage {
               <button class="back-round-btn" id="backToLibraryBtn" title="Orqaga qaytish">
                 <i class="ph ph-caret-left"></i>
               </button>
-              <h2 class="practice-course-heading">${this.currentScene.title}</h2>
+              <h2 class="practice-course-heading">${escapeHtml(this.currentScene.title)}</h2>
             </div>
 
             <!-- Top Right Info Badges + Minimalist Focus Mode Toggle -->
@@ -411,7 +412,7 @@ export class AnimatedStage {
               </div>
               <div class="info-pill-yellow">
                 <i class="ph ph-clock"></i>
-                <span>${this.currentScene.duration}</span>
+                <span>${escapeHtml(this.currentScene.duration)}</span>
               </div>
               <button class="info-pill-yellow focus-mode-btn" id="stageFocusModeBtn" title="Minimalist Focus Mode: Faqat video va matnga diqqat qaratish">
                 <i class="ph ph-corners-out"></i>
@@ -425,11 +426,11 @@ export class AnimatedStage {
               <div class="challenge-banner-left">
                 <span class="challenge-banner-icon">⚔️</span>
                 <div class="challenge-banner-text">
-                  <strong>${this.challengePayload.creatorName} ${i18n.t().challengeBannerTitle}</strong>
-                  <p>${i18n.t().challengeBannerText
+                  <strong>${escapeHtml(this.challengePayload.creatorName)} ${i18n.t().challengeBannerTitle}</strong>
+                  <p>${escapeHtml(i18n.t().challengeBannerText
                     .replace('{userName}', this.challengePayload.creatorName)
                     .replace('{accuracy}', this.challengePayload.accuracy.toString())
-                    .replace('{wpm}', this.challengePayload.wpm.toString())}</p>
+                    .replace('{wpm}', this.challengePayload.wpm.toString()))}</p>
                 </div>
               </div>
               <div class="challenge-target-pill">
@@ -447,7 +448,7 @@ export class AnimatedStage {
               id="youtubeIframePlayer"
               class="youtube-embedded-player"
               src="https://www.youtube-nocookie.com/embed/${this.currentScene.youtubeVideoId}?enablejsapi=1&autoplay=0&controls=0&modestbranding=1&rel=0&playsinline=1&origin=${encodeURIComponent(window.location.origin)}"
-              title="${this.currentScene.title}"
+              title="${escapeHtml(this.currentScene.title)}"
               frameborder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowfullscreen
@@ -462,7 +463,7 @@ export class AnimatedStage {
           `}
 
           <div class="video-character-pill-overlay">
-            <span>${this.currentSentence.character}</span>
+            <span>${escapeHtml(this.currentSentence.character)}</span>
           </div>
 
           <!-- Top-Right Streaming Mode Badge -->
@@ -474,8 +475,8 @@ export class AnimatedStage {
           <!-- In-Video Floating Subtitle Overlay -->
           <div class="video-subtitles-overlay ${this.isSubtitleRevealed && this.subtitleMode !== 'off' ? 'visible' : ''}" id="videoSubtitleOverlay">
             ${this.isSubtitleRevealed && this.subtitleMode !== 'off' ? `
-              ${(this.subtitleMode === 'both' || this.subtitleMode === 'en') ? `<div class="invideo-sub-en">${this.currentSentence.text}</div>` : ''}
-              ${(this.subtitleMode === 'both' || this.subtitleMode === 'uz') ? `<div class="invideo-sub-uz">${i18n.getSentenceTranslation(this.currentSentence)}</div>` : ''}
+              ${(this.subtitleMode === 'both' || this.subtitleMode === 'en') ? `<div class="invideo-sub-en">${escapeHtml(this.currentSentence.text)}</div>` : ''}
+              ${(this.subtitleMode === 'both' || this.subtitleMode === 'uz') ? `<div class="invideo-sub-uz">${escapeHtml(i18n.getSentenceTranslation(this.currentSentence))}</div>` : ''}
             ` : ''}
           </div>
 
@@ -487,7 +488,7 @@ export class AnimatedStage {
               ${this.currentScene.dialogues.map((d, i) => `
                 <div class="timeline-dialogue-marker ${i === this.sentenceIndex ? 'active' : ''}"
                      style="left: ${(d.startTime / totalDuration) * 100}%"
-                     title="Replika ${i + 1}: ${d.text}"></div>
+                     title="Replika ${i + 1}: ${escapeHtml(d.text)}"></div>
               `).join('')}
             </div>
 
@@ -567,10 +568,10 @@ export class AnimatedStage {
           ${this.activeTab === 'description' ? `
             <div class="uzbek-translation-box">
               <span class="uzbek-trans-label">${i18n.t().translationLabel}</span>
-              <p class="uzbek-trans-quote">"${i18n.getSentenceTranslation(this.currentSentence)}"</p>
+              <p class="uzbek-trans-quote">"${escapeHtml(i18n.getSentenceTranslation(this.currentSentence))}"</p>
             </div>
             <p class="lesson-desc-text">
-              <strong>${this.currentSentence.character}</strong>: ${i18n.t().appTagline}
+              <strong>${escapeHtml(this.currentSentence.character)}</strong>: ${i18n.t().appTagline}
             </p>
           ` : this.activeTab === 'materials' ? `
             <div class="materials-words-list">
@@ -578,7 +579,7 @@ export class AnimatedStage {
               <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                 ${Object.keys(this.currentSentence.wordDictionary).map(k => {
                   const w = this.currentSentence!.wordDictionary[k];
-                  return `<span class="material-word-chip"><strong>${w.word}</strong> — ${w.translation}</span>`;
+                  return `<span class="material-word-chip"><strong>${escapeHtml(w.word)}</strong> — ${escapeHtml(w.translation)}</span>`;
                 }).join('') || '<span style="color: var(--text-secondary); font-size: 0.85rem;">Common dialogue phrase</span>'}
               </div>
             </div>
@@ -764,7 +765,7 @@ export class AnimatedStage {
             <i class="ph ph-trophy-fill" style="color: #F59E0B; font-size: 1.25rem;"></i>
             <h4 class="highscores-heading">${t.highScoresTitle}</h4>
           </div>
-          <span class="hs-scene-name">${this.currentScene.title}</span>
+          <span class="hs-scene-name">${escapeHtml(this.currentScene.title)}</span>
         </div>
 
         <div class="highscores-podium-list">
@@ -784,8 +785,8 @@ export class AnimatedStage {
                   </div>
                   <div class="hs-user-meta">
                     <div class="hs-user-name-row">
-                      <span class="hs-user-name">${record.userName}</span>
-                      <span class="hs-user-handle">${record.userHandle}</span>
+                      <span class="hs-user-name">${escapeHtml(record.userName)}</span>
+                      <span class="hs-user-handle">${escapeHtml(record.userHandle)}</span>
                     </div>
                     <span class="hs-date">${dateStr}</span>
                   </div>

@@ -1,6 +1,7 @@
 import { apiService, AuthUser } from '../services/apiService';
 import { soundEffects } from '../services/soundEffects';
 import { storageService } from '../services/storageService';
+import { escapeHtml } from '../utils/sanitize';
 
 export class AuthView {
   private container: HTMLElement;
@@ -279,7 +280,7 @@ export class AuthView {
     alertBox.className = `auth-page-alert ${type}`;
     alertBox.innerHTML = `
       <i class="ph ph-${type === 'error' ? 'warning-circle' : 'check-circle'}"></i>
-      <span>${msg}</span>
+      <span>${escapeHtml(msg)}</span>
     `;
     alertBox.style.display = 'flex';
   }

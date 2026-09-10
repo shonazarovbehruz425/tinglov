@@ -2,6 +2,7 @@ import { DialogueSentence, Scene } from '../types';
 import { speechService } from '../services/speechService';
 import { soundEffects } from '../services/soundEffects';
 import { evaluatePronunciation, PronunciationAssessment } from '../services/pronunciationService';
+import { escapeHtml } from '../utils/sanitize';
 
 // Browser Web Speech Recognition interface polyfill
 interface IWindow extends Window {
@@ -231,16 +232,16 @@ export class ShadowingModal {
             <div class="shadowing-target-card">
               <div class="shadowing-speaker-tag">
                 <span class="avatar">${this.currentSentence.characterAvatar || '🗣️'}</span>
-                <strong>${this.currentSentence.character}</strong>
-                <span class="accent-badge">${this.currentScene.accent} Accent</span>
+                <strong>${escapeHtml(this.currentSentence.character)}</strong>
+                <span class="accent-badge">${escapeHtml(this.currentScene.accent)} Accent</span>
               </div>
 
               <div class="shadowing-target-sentence-text" id="targetSentenceText">
-                ${this.currentSentence.text}
+                ${escapeHtml(this.currentSentence.text)}
               </div>
 
               <div class="shadowing-target-uz-trans">
-                <i class="ph ph-translate"></i> "${this.currentSentence.uzbekTranslation}"
+                <i class="ph ph-translate"></i> "${escapeHtml(this.currentSentence.uzbekTranslation)}"
               </div>
 
               <div class="shadowing-audio-action-row">
@@ -309,7 +310,7 @@ export class ShadowingModal {
         </button>
 
         <p class="shadowing-mic-instruction">
-          Tugmani bosing va <strong>"${this.currentSentence?.text}"</strong> jumlasini ovoz chiqarib ayting
+          Tugmani bosing va <strong>"${escapeHtml(this.currentSentence?.text || '')}"</strong> jumlasini ovoz chiqarib ayting
         </p>
       </div>
     `;
@@ -332,8 +333,8 @@ export class ShadowingModal {
           </div>
 
           <div class="shadowing-feedback-block">
-            <h4 class="shadowing-verdict ${scoreClass}">${assessment.verdict}</h4>
-            <p class="shadowing-feedback-msg">${assessment.feedbackUz}</p>
+            <h4 class="shadowing-verdict ${scoreClass}">${escapeHtml(assessment.verdict)}</h4>
+            <p class="shadowing-feedback-msg">${escapeHtml(assessment.feedbackUz)}</p>
           </div>
         </div>
 
@@ -358,9 +359,9 @@ export class ShadowingModal {
             }
 
             return `
-              <div class="shadowing-word-chip ${statusBadge}" title="${w.tip || `${w.similarity}% aniqlik`}">
+              <div class="shadowing-word-chip ${statusBadge}" title="${escapeHtml(w.tip || `${w.similarity}% aniqlik`)}">
                 <span class="chip-status-icon">${statusIcon}</span>
-                <span class="chip-word-text">${w.expectedWord}</span>
+                <span class="chip-word-text">${escapeHtml(w.expectedWord)}</span>
                 <span class="chip-score-pct">${w.similarity}%</span>
               </div>
             `;
@@ -370,7 +371,7 @@ export class ShadowingModal {
         <!-- User Said Transcript Comparison -->
         <div class="shadowing-transcript-comparison">
           <div class="comp-label">AI eshitgan matn:</div>
-          <div class="comp-text">"${assessment.transcript || '(hech narsa aytilmadi)'}"</div>
+          <div class="comp-text">"${escapeHtml(assessment.transcript || '(hech narsa aytilmadi)')}"</div>
         </div>
 
         <!-- Action Row -->
@@ -429,7 +430,7 @@ export class ShadowingModal {
   private updateLiveTranscription(text: string): void {
     const compText = this.container.querySelector('.shadowing-mic-instruction');
     if (compText && text) {
-      compText.innerHTML = `Eshitilmoqda: <span style="color: var(--accent-orange); font-weight: 700;">"${text}"</span>`;
+      compText.innerHTML = `Eshitilmoqda: <span style="color: var(--accent-orange); font-weight: 700;">"${escapeHtml(text)}"</span>`;
     }
   }
 

@@ -1,5 +1,6 @@
 import { UserStats, SavedWord, Scene, HighScoreRecord, ChallengePayload } from '../types';
 import { INITIAL_SCENES } from '../data/scenes';
+import { escapeHtml } from '../utils/sanitize';
 
 const STATS_KEY = 'lingua_movie_user_stats';
 const CUSTOM_SCENES_KEY = 'lingua_movie_custom_scenes';
@@ -224,9 +225,11 @@ export class StorageService {
   }
 
   public updateProfile(name: string, handle: string): void {
-    this.stats.userName = name.trim() || 'Foydalanuvchi';
+    const rawName = name.trim() || 'Foydalanuvchi';
+    this.stats.userName = escapeHtml(rawName);
     const trimmedHandle = handle.trim();
-    this.stats.userHandle = trimmedHandle ? (trimmedHandle.startsWith('@') ? trimmedHandle : `@${trimmedHandle}`) : '@til_organuvchi';
+    const rawHandle = trimmedHandle ? (trimmedHandle.startsWith('@') ? trimmedHandle : `@${trimmedHandle}`) : '@til_organuvchi';
+    this.stats.userHandle = escapeHtml(rawHandle);
     this.saveStats();
   }
 

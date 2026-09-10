@@ -1,5 +1,6 @@
 import { storageService } from '../services/storageService';
 import { i18n, AppLanguage } from '../services/i18nService';
+import { escapeHtml } from '../utils/sanitize';
 
 export class ProfileModal {
   private container: HTMLElement;
@@ -56,9 +57,11 @@ export class ProfileModal {
     const xpNeededForLevel = Math.max(1, nextLevelXP - currentLevelBaseXP);
     const progressPct = Math.min(100, Math.max(5, Math.round((xpIntoLevel / xpNeededForLevel) * 100)));
 
-    const userName = stats.userName || 'Foydalanuvchi';
-    const userHandle = stats.userHandle || '@til_organuvchi';
-    const avatarInitial = userName.charAt(0).toUpperCase() || 'U';
+    const rawUserName = stats.userName || 'Foydalanuvchi';
+    const rawUserHandle = stats.userHandle || '@til_organuvchi';
+    const userName = escapeHtml(rawUserName);
+    const userHandle = escapeHtml(rawUserHandle);
+    const avatarInitial = escapeHtml(rawUserName.charAt(0).toUpperCase() || 'U');
 
     this.container.innerHTML = `
       <div class="modal-backdrop" id="profileModalBackdrop">

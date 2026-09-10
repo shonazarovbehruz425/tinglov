@@ -2,6 +2,7 @@ import { DialogueSentence, DictationFeedback, Scene } from '../types';
 import { evaluateDictation, getNextHint, splitIntoWords } from '../utils/stringDiff';
 import { soundEffects } from '../services/soundEffects';
 import { i18n } from '../services/i18nService';
+import { escapeHtml } from '../utils/sanitize';
 
 export class DictationInput {
   private container: HTMLElement;
@@ -141,8 +142,8 @@ export class DictationInput {
           <div class="sub-parallel-row en-row">
             <span class="sub-lang-badge en">EN</span>
             <div class="sub-line-content">
-              <span class="sub-speaker-name">${this.currentSentence.character}:</span>
-              <span class="sub-text-en">${this.currentSentence.text}</span>
+              <span class="sub-speaker-name">${escapeHtml(this.currentSentence.character)}:</span>
+              <span class="sub-text-en">${escapeHtml(this.currentSentence.text)}</span>
             </div>
           </div>
         ` : ''}
@@ -151,7 +152,7 @@ export class DictationInput {
           <div class="sub-parallel-row uz-row">
             <span class="sub-lang-badge uz">UZ</span>
             <div class="sub-line-content">
-              <span class="sub-text-uz">${i18n.getSentenceTranslation(this.currentSentence)}</span>
+              <span class="sub-text-uz">${escapeHtml(i18n.getSentenceTranslation(this.currentSentence))}</span>
             </div>
           </div>
         ` : ''}
@@ -391,10 +392,10 @@ export class DictationInput {
         slot.innerHTML = `<span>${i + 1}.</span><span>___</span>`;
       } else if (token.status === 'correct') {
         slot.className = 'clean-word-slot correct';
-        slot.innerHTML = `<span>✓</span><span>${expectedWord}</span>`;
+        slot.innerHTML = `<span>✓</span><span>${escapeHtml(expectedWord)}</span>`;
       } else {
         slot.className = 'clean-word-slot incorrect';
-        slot.innerHTML = `<span>✗</span><span>${token.word}</span>`;
+        slot.innerHTML = `<span>✗</span><span>${escapeHtml(token.word)}</span>`;
       }
     });
   }

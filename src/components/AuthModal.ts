@@ -1,6 +1,7 @@
 import { apiService, AuthUser } from '../services/apiService';
 import { soundEffects } from '../services/soundEffects';
 import { storageService } from '../services/storageService';
+import { escapeHtml } from '../utils/sanitize';
 
 export class AuthModal {
   private container: HTMLElement;
@@ -242,7 +243,7 @@ export class AuthModal {
     alertBox.style.display = 'flex';
     alertBox.innerHTML = `
       <i class="ph ph-${type === 'error' ? 'warning-circle' : 'check-circle-fill'}"></i>
-      <span>${message}</span>
+      <span>${escapeHtml(message)}</span>
     `;
   }
 

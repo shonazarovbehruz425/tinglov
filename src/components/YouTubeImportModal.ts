@@ -3,6 +3,7 @@ import { youtubeService, YOUTUBE_PRESETS, YouTubeVideoMetadata } from '../servic
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
 import { i18n } from '../services/i18nService';
+import { escapeHtml, sanitizeUrl } from '../utils/sanitize';
 
 export class YouTubeImportModal {
   private container: HTMLElement;
@@ -243,14 +244,14 @@ export class YouTubeImportModal {
     previewContainer.innerHTML = `
       <div class="youtube-preview-card">
         <div class="youtube-preview-thumb-wrap">
-          <img src="${metadata.thumbnailUrl}" alt="${metadata.title}" class="youtube-preview-thumb" />
+          <img src="${sanitizeUrl(metadata.thumbnailUrl)}" alt="${escapeHtml(metadata.title)}" class="youtube-preview-thumb" />
           <div class="youtube-preview-play-icon">
             <i class="ph-fill ph-play"></i>
           </div>
         </div>
         <div class="youtube-preview-details">
-          <h4 class="youtube-preview-title">${metadata.title}</h4>
-          <span class="youtube-preview-author"><i class="ph ph-user"></i> ${metadata.authorName}</span>
+          <h4 class="youtube-preview-title">${escapeHtml(metadata.title)}</h4>
+          <span class="youtube-preview-author"><i class="ph ph-user"></i> ${escapeHtml(metadata.authorName)}</span>
           <span class="youtube-preview-badge"><i class="ph ph-check-circle"></i> Diktant darsiga tayyor</span>
         </div>
       </div>

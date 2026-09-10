@@ -1,6 +1,7 @@
 import { Scene, DialogueSentence, Difficulty } from '../types';
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
+import { escapeHtml, sanitizeUrl } from '../utils/sanitize';
 
 export class CustomSceneModal {
   private container: HTMLElement;
@@ -199,18 +200,22 @@ export class CustomSceneModal {
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
 
-      const movieName = (form.querySelector('#customMovieName') as HTMLInputElement).value;
+      const rawMovieName = (form.querySelector('#customMovieName') as HTMLInputElement).value;
+      const movieName = escapeHtml(rawMovieName.trim());
       const category = (form.querySelector('#customCategory') as HTMLSelectElement).value as 'Cartoon' | 'Cinema' | 'Daily Life';
       const manualUrl = urlInput?.value.trim() || '';
-      const resolvedVideoUrl = selectedVideoBlobUrl || manualUrl || undefined;
+      const resolvedVideoUrl = sanitizeUrl(selectedVideoBlobUrl || manualUrl) || undefined;
 
       const dialogueRows = form.querySelectorAll('.dialogue-row-item');
       const dialogues: DialogueSentence[] = [];
 
       dialogueRows.forEach((row, idx) => {
-        const charName = (row.querySelector('.char-name-input') as HTMLInputElement).value;
-        const textEn = (row.querySelector('.sentence-en-input') as HTMLTextAreaElement).value.trim();
-        const textUz = (row.querySelector('.sentence-uz-input') as HTMLInputElement).value.trim();
+        const rawCharName = (row.querySelector('.char-name-input') as HTMLInputElement).value;
+        const charName = escapeHtml(rawCharName.trim()) || `Character ${idx + 1}`;
+        const rawTextEn = (row.querySelector('.sentence-en-input') as HTMLTextAreaElement).value.trim();
+        const textEn = escapeHtml(rawTextEn);
+        const rawTextUz = (row.querySelector('.sentence-uz-input') as HTMLInputElement).value.trim();
+        const textUz = escapeHtml(rawTextUz);
 
         if (textEn) {
           dialogues.push({
@@ -234,7 +239,7 @@ export class CustomSceneModal {
         title: movieName,
         movieName,
         coverEmoji: '🎬',
-        difficulty: 'beginner' as Difficulty,
+        difficulty: 'Beginner' as Difficulty,
         category,
         duration: `${Math.ceil((dialogues.length * 4) / 60)} min`,
         accent: 'American',

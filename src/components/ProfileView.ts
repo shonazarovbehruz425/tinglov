@@ -1,5 +1,6 @@
 import { storageService } from '../services/storageService';
 import { i18n } from '../services/i18nService';
+import { escapeHtml } from '../utils/sanitize';
 
 export class ProfileView {
   private container: HTMLElement;
@@ -66,19 +67,19 @@ export class ProfileView {
         <div class="profile-page-hero-card">
           <div class="profile-page-avatar-wrap">
             <div class="profile-page-avatar-large">
-              ${avatarInitial}
+              ${escapeHtml(avatarInitial)}
             </div>
             <div class="profile-online-badge"></div>
           </div>
 
           <div class="profile-page-meta">
             <div class="profile-page-name-row">
-              <h1 class="profile-page-title">${userName}</h1>
+              <h1 class="profile-page-title">${escapeHtml(userName)}</h1>
               <span class="profile-page-level-chip">
                 <i class="ph ph-crown-simple"></i> ${t.userLevel} ${currentLevel}
               </span>
             </div>
-            <p class="profile-page-handle">${userHandle}</p>
+            <p class="profile-page-handle">${escapeHtml(userHandle)}</p>
             <p class="profile-page-bio">
               Tinglov orqali filmlar va multfilmlarni eshitib ingliz tilini o‘rganmoqda.
             </p>

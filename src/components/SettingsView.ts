@@ -1,6 +1,7 @@
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
 import { i18n, AppLanguage } from '../services/i18nService';
+import { escapeHtml } from '../utils/sanitize';
 
 export class SettingsView {
   private container: HTMLElement;
@@ -107,12 +108,12 @@ export class SettingsView {
               <form id="settingsProfileForm" class="settings-form-layout">
                 <div class="settings-form-field">
                   <label class="settings-field-label" id="settingsNameLabel">${t.yourName}</label>
-                  <input type="text" id="settingsNameInput" class="form-clean-input" value="${userName}" required />
+                  <input type="text" id="settingsNameInput" class="form-clean-input" value="${escapeHtml(userName)}" required />
                 </div>
 
                 <div class="settings-form-field">
                   <label class="settings-field-label" id="settingsHandleLabel">${t.userHandle}</label>
-                  <input type="text" id="settingsHandleInput" class="form-clean-input" value="${userHandle}" required />
+                  <input type="text" id="settingsHandleInput" class="form-clean-input" value="${escapeHtml(userHandle)}" required />
                 </div>
 
                 <div style="display: flex; justify-content: flex-end; margin-top: 0.5rem;">

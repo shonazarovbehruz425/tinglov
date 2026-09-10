@@ -2,6 +2,7 @@ import { Scene } from '../types';
 import { storageService } from '../services/storageService';
 import { i18n } from '../services/i18nService';
 import { searchByWord, DialogueMatch } from '../services/searchService';
+import { escapeHtml, sanitizeHtml } from '../utils/sanitize';
 
 export class LevelSelector {
   private container: HTMLElement;
@@ -170,12 +171,12 @@ export class LevelSelector {
       const isCompleted = stats.completedScenes.includes(scene.id);
       const poster = scene.coverImage || '/cartoons/snow_white_poster.jpg';
       return `
-        <div class="cinema-course-card" data-scene-id="${scene.id}">
+        <div class="cinema-course-card" data-scene-id="${escapeHtml(scene.id)}">
           <div class="cinema-card-poster-area">
-            <img src="${poster}" alt="${scene.title}" class="cinema-card-poster-img" />
+            <img src="${poster}" alt="${escapeHtml(scene.title)}" class="cinema-card-poster-img" />
             <div class="cinema-poster-badges">
-              <span class="badge-pill category">${scene.category}</span>
-              <span class="badge-pill duration">${scene.duration}</span>
+              <span class="badge-pill category">${escapeHtml(scene.category)}</span>
+              <span class="badge-pill duration">${escapeHtml(scene.duration)}</span>
             </div>
             <div class="cinema-poster-hover-overlay">
               <div class="cinema-hover-play"><i class="ph ph-play-fill"></i></div>
@@ -188,8 +189,8 @@ export class LevelSelector {
               <span class="cinema-replika-count">${scene.dialogues.length} ta replika</span>
             </div>
 
-            <h4 class="cinema-card-title">${scene.title}</h4>
-            <p class="cinema-card-sub">${scene.movieName}</p>
+            <h4 class="cinema-card-title">${escapeHtml(scene.title)}</h4>
+            <p class="cinema-card-sub">${escapeHtml(scene.movieName)}</p>
 
             <div class="cinema-card-progress-wrap">
               <div class="card-progress-bar">
@@ -201,7 +202,7 @@ export class LevelSelector {
             ${this.renderCardHighScoresSnippet(scene.id)}
 
             <div class="cinema-card-footer">
-              <span class="cinema-card-accent-tag">${scene.accent} Talaffuz</span>
+              <span class="cinema-card-accent-tag">${escapeHtml(scene.accent)} Talaffuz</span>
               <button class="cinema-card-btn glow-cta-btn">
                 <span class="glow-effect-track" aria-hidden="true"></span>
                 <span class="btn-text-content">
@@ -235,13 +236,13 @@ export class LevelSelector {
       <div class="card-highscores-snippet">
         <div class="card-hs-podium-avatars">
           ${top3.map((rec, i) => `
-            <span class="card-hs-avatar rank-${i + 1}" title="#${i + 1} ${rec.userName} (${rec.accuracy}%, ${rec.wpm} wpm)">
-              ${rec.userName.charAt(0).toUpperCase()}
+            <span class="card-hs-avatar rank-${i + 1}" title="#${i + 1} ${escapeHtml(rec.userName)} (${rec.accuracy}%, ${rec.wpm} wpm)">
+              ${escapeHtml(rec.userName.charAt(0).toUpperCase())}
             </span>
           `).join('')}
         </div>
         <div class="card-hs-text">
-          <span class="card-hs-badge">🥇 #${1} ${leader.userName}</span>
+          <span class="card-hs-badge">🥇 #${1} ${escapeHtml(leader.userName)}</span>
           <span class="card-hs-score">${leader.accuracy}% • ${leader.wpm} wpm</span>
         </div>
       </div>
@@ -284,7 +285,7 @@ export class LevelSelector {
         <div class="word-search-catalog-panel">
           <div class="word-search-empty-state">
             <i class="ph ph-magnifying-glass"></i>
-            <span>"${this.searchQuery}" ${t.noDialoguesFound}</span>
+            <span>"${escapeHtml(this.searchQuery)}" ${t.noDialoguesFound}</span>
           </div>
         </div>
       `;
@@ -296,7 +297,7 @@ export class LevelSelector {
           <div class="word-search-title-left">
             <div class="word-search-header-icon"><i class="ph ph-chats-circle"></i></div>
             <div>
-              <h3 class="word-search-title">"${this.searchQuery}" ${t.searchWordTitle}</h3>
+              <h3 class="word-search-title">"${escapeHtml(this.searchQuery)}" ${t.searchWordTitle}</h3>
               <p class="word-search-sub">Kino va multfilmlarda ushbu so‘z aytilgan aniq joyidan darsni boshlang</p>
             </div>
           </div>
@@ -305,20 +306,20 @@ export class LevelSelector {
 
         <div class="word-search-cards-grid">
           ${matches.slice(0, 8).map(m => `
-            <div class="word-search-quote-card" data-scene-id="${m.scene.id}" data-dialogue-idx="${m.dialogueIndex}">
+            <div class="word-search-quote-card" data-scene-id="${escapeHtml(m.scene.id)}" data-dialogue-idx="${m.dialogueIndex}">
               <div class="quote-card-meta">
                 <div class="quote-movie-badge">
                   <i class="ph ph-film-strip"></i>
-                  <span>${m.scene.title}</span>
+                  <span>${escapeHtml(m.scene.title)}</span>
                 </div>
                 <span class="quote-time-pill">${m.dialogue.startTime}s</span>
               </div>
               <p class="quote-dialogue-line">
-                <strong class="quote-char-name">${m.dialogue.character}:</strong>
-                <span class="quote-sentence">"${m.highlightedText}"</span>
+                <strong class="quote-char-name">${escapeHtml(m.dialogue.character)}:</strong>
+                <span class="quote-sentence">"${sanitizeHtml(m.highlightedText)}"</span>
               </p>
               ${m.dialogue.uzbekTranslation ? `
-                <p class="quote-translation-line">${m.highlightedTranslation}</p>
+                <p class="quote-translation-line">${sanitizeHtml(m.highlightedTranslation)}</p>
               ` : ''}
               <div class="quote-card-footer">
                 <button class="quote-listen-btn">

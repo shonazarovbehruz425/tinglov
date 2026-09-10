@@ -1,5 +1,6 @@
 import { DialogueSentence, Scene } from '../types';
 import { storageService } from './storageService';
+import { escapeHtml } from '../utils/sanitize';
 
 export interface DialogueMatch {
   scene: Scene;
@@ -18,10 +19,14 @@ export interface SearchResults {
 }
 
 export function highlightMatch(text: string, query: string): string {
-  if (!query || !text) return text || '';
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (!text) return '';
+  const safeText = escapeHtml(text);
+  if (!query) return safeText;
+  const safeQuery = escapeHtml(query.trim());
+  if (!safeQuery) return safeText;
+  const escaped = safeQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`(${escaped})`, 'gi');
-  return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+  return safeText.replace(regex, '<mark class="search-highlight">$1</mark>');
 }
 
 export function searchByWord(rawQuery: string): SearchResults {

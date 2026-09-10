@@ -2,6 +2,7 @@ import { Scene, ChallengePayload } from '../types';
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
 import { i18n } from '../services/i18nService';
+import { escapeHtml } from '../utils/sanitize';
 
 export class FriendChallengeModal {
   private container: HTMLElement;
@@ -57,7 +58,7 @@ export class FriendChallengeModal {
               </div>
               <div class="challenge-header-titles">
                 <h3 class="challenge-title-text">${t.challengeModalTitle}</h3>
-                <span class="challenge-subtitle-text">${this.currentScene.title}</span>
+                <span class="challenge-subtitle-text">${escapeHtml(this.currentScene.title)}</span>
               </div>
             </div>
             <button class="close-modal-round-btn" id="closeChallengeModalBtn" title="${t.cancel}">
@@ -80,7 +81,7 @@ export class FriendChallengeModal {
             <div class="challenge-meta-row">
               <span class="challenge-meta-pill"><i class="ph ph-lightning"></i> Tezlik: <strong>${this.currentPayload.wpm} WPM</strong></span>
               <span class="challenge-meta-sep">•</span>
-              <span class="challenge-meta-pill"><i class="ph ph-user"></i> Ism: <strong>${this.currentPayload.creatorName}</strong></span>
+              <span class="challenge-meta-pill"><i class="ph ph-user"></i> Ism: <strong>${escapeHtml(this.currentPayload.creatorName)}</strong></span>
             </div>
           </div>
 
@@ -94,7 +95,7 @@ export class FriendChallengeModal {
                   type="text" 
                   id="challengeLinkInput" 
                   readonly 
-                  value="${challengeLink}" 
+                  value="${escapeHtml(challengeLink)}" 
                   class="challenge-link-input"
                   spellcheck="false"
                 />
@@ -107,7 +108,7 @@ export class FriendChallengeModal {
 
           <!-- Share Actions Row -->
           <div class="challenge-footer-actions">
-            <a href="${tgShareUrl}" target="_blank" rel="noopener noreferrer" class="clean-btn challenge-telegram-btn">
+            <a href="${escapeHtml(tgShareUrl)}" target="_blank" rel="noopener noreferrer" class="clean-btn challenge-telegram-btn">
               <i class="ph ph-paper-plane-tilt"></i> Telegramda Ulashish
             </a>
             <button class="clean-btn challenge-dismiss-btn" id="challengeDoneBtn">

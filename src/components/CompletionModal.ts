@@ -1,5 +1,6 @@
 import { Scene } from '../types';
 import { soundEffects } from '../services/soundEffects';
+import { escapeHtml } from '../utils/sanitize';
 
 export interface CompletionStats {
   accuracy: number;
@@ -50,7 +51,7 @@ export class CompletionModal {
             Ajoyib Natija!
           </h2>
           <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;">
-            "<strong>${scene.title}</strong>" darsini muvaffaqiyatli yakunladingiz!
+            "<strong>${escapeHtml(scene.title)}</strong>" darsini muvaffaqiyatli yakunladingiz!
           </p>
 
           ${stats.leveledUp ? `
