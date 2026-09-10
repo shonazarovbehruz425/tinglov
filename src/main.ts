@@ -19,15 +19,16 @@ import { AuthView } from './components/AuthView';
 import { apiService } from './services/apiService';
 import { ProfileView } from './components/ProfileView';
 import { SettingsView } from './components/SettingsView';
+import { LandingView } from './components/LandingView';
 import { onboardingStepper } from './components/OnboardingStepper';
 import { initCursorGlow } from './utils/cursorGlow';
 
-type AppViewMode = 'library' | 'practice' | 'profile' | 'settings' | 'auth';
+type AppViewMode = 'landing' | 'library' | 'practice' | 'profile' | 'settings' | 'auth';
 
 class MovieListenApp {
   private currentScene: Scene | null = null;
   private currentSentenceIndex: number = 0;
-  private currentView: AppViewMode = 'library';
+  private currentView: AppViewMode = 'landing';
   private sessionAccuracies: number[] = [];
   private sessionWpms: number[] = [];
   private sceneStartTime: number = Date.now();
@@ -40,6 +41,7 @@ class MovieListenApp {
   private profileView!: ProfileView;
   private settingsView!: SettingsView;
   private authView!: AuthView;
+  private landingView!: LandingView;
   private vocabModal!: VocabularyModal;
   private customSceneModal!: CustomSceneModal;
   private youtubeImportModal!: YouTubeImportModal;
@@ -57,9 +59,6 @@ class MovieListenApp {
 
     // Initialize cursor-position tracking glow for CTA buttons
     initCursorGlow();
-
-    // Check and enforce mandatory authentication on startup
-    this.checkAndEnforceAuth();
 
     // Automatically introduce key buttons to first-time visitors once logged in
     setTimeout(() => {
@@ -86,6 +85,7 @@ class MovieListenApp {
       <div id="statsHeaderContainer"></div>
 
       <main class="app-main-content">
+        <div id="landingViewContainer" class="view-section" style="display: none;"></div>
         <div id="libraryViewContainer" class="view-section"></div>
 
         <div id="practiceViewContainer" class="view-section" style="display: none;">
@@ -116,6 +116,7 @@ class MovieListenApp {
   }
 
   private initComponents(): void {
+    const landingContainer = document.getElementById('landingViewContainer')!;
     const headerContainer = document.getElementById('statsHeaderContainer')!;
     const libraryContainer = document.getElementById('libraryViewContainer')!;
     const stageContainer = document.getElementById('animatedStageContainer')!;
@@ -130,6 +131,33 @@ class MovieListenApp {
     const profileContainer = document.getElementById('profileModalContainer')!;
     const shadowingContainer = document.getElementById('shadowingModalContainer')!;
     const authModalContainer = document.getElementById('authModalContainer')!;
+
+    // 0. Landing View (Root tinglov.me)
+    this.landingView = new LandingView(landingContainer);
+    this.landingView.setCallbacks({
+      onOpenDashboard: () => {
+        if (this.checkAndEnforceAuth()) {
+          this.showLibrary(true);
+        }
+      },
+      onOpenLogin: () => {
+        this.showAuthPage('login', true);
+      },
+      onOpenRegister: () => {
+        this.showAuthPage('register', true);
+      },
+      onOpenPractice: (sceneId) => {
+        if (this.checkAndEnforceAuth()) {
+          const allScenes = storageService.getAllScenes();
+          const targetScene = allScenes.find(s => s.id === sceneId);
+          if (targetScene) {
+            this.startScene(targetScene, 0, true);
+          } else {
+            this.showLibrary(true);
+          }
+        }
+      }
+    });
 
     // 1. Stats Header
     this.statsHeader = new StatsHeader(headerContainer);
@@ -429,26 +457,29 @@ class MovieListenApp {
       return;
     }
 
-    // 2. If not authenticated, always enforce dedicated auth page (/login)
-    if (!apiService.isAuthenticated()) {
-      this.showAuthPage('login', false);
+    // 2. Landing Page at Root (/)
+    if (rawPath === '/' && (!rawHash || rawHash === 'landing')) {
+      this.showLandingPage(pushHistory);
       return;
     }
 
     // 3. Settings View (/settings)
     if (rawPath === '/settings' || rawHash === 'settings') {
+      if (!this.checkAndEnforceAuth()) return;
       this.showSettingsPage(pushHistory);
       return;
     }
 
     // 4. Profile View (/profile)
     if (rawPath === '/profile' || rawHash === 'profile') {
+      if (!this.checkAndEnforceAuth()) return;
       this.showProfilePage(pushHistory);
       return;
     }
 
     // 5. Practice View (/practice?scene=... or /practice/...)
     if (rawPath === '/practice' || rawPath.startsWith('/practice/') || rawHash.startsWith('practice')) {
+      if (!this.checkAndEnforceAuth()) return;
       let sceneId = searchParams.get('scene');
       if (!sceneId && rawPath.startsWith('/practice/')) {
         sceneId = decodeURIComponent(rawPath.replace(/^\/practice\//, '').split('/')[0]);
@@ -462,8 +493,19 @@ class MovieListenApp {
       }
     }
 
-    // 6. Library View (/ or /library)
-    this.showLibrary(pushHistory);
+    // 6. Dashboard / Library View (/dashboard or /library)
+    if (rawPath === '/dashboard' || rawPath === '/library' || rawHash === 'dashboard' || rawHash === 'library') {
+      if (!this.checkAndEnforceAuth()) return;
+      this.showLibrary(pushHistory);
+      return;
+    }
+
+    // 7. Fallback:
+    if (apiService.isAuthenticated()) {
+      this.showLibrary(pushHistory);
+    } else {
+      this.showLandingPage(pushHistory);
+    }
   }
 
   private updateUrl(url: string, title?: string): void {
@@ -487,7 +529,9 @@ class MovieListenApp {
 
   public render(): void {
     this.statsHeader.update();
-    if (this.currentView === 'library') {
+    if (this.currentView === 'landing') {
+      this.showLandingPage(false);
+    } else if (this.currentView === 'library') {
       this.showLibrary(false);
     } else if (this.currentView === 'profile') {
       this.showProfilePage(false);
@@ -507,6 +551,7 @@ class MovieListenApp {
       this.animatedStage?.stopPlayback();
     }
 
+    const landingContainer = document.getElementById('landingViewContainer');
     const libContainer = document.getElementById('libraryViewContainer');
     const practiceContainer = document.getElementById('practiceViewContainer');
     const profileContainer = document.getElementById('profileViewContainer');
@@ -514,20 +559,32 @@ class MovieListenApp {
     const authContainer = document.getElementById('authViewContainer');
     const headerContainer = document.getElementById('statsHeaderContainer');
 
+    if (landingContainer) landingContainer.style.display = view === 'landing' ? 'block' : 'none';
     if (libContainer) libContainer.style.display = view === 'library' ? 'block' : 'none';
     if (practiceContainer) practiceContainer.style.display = view === 'practice' ? 'block' : 'none';
     if (profileContainer) profileContainer.style.display = view === 'profile' ? 'block' : 'none';
     if (settingsContainer) settingsContainer.style.display = view === 'settings' ? 'block' : 'none';
     if (authContainer) authContainer.style.display = view === 'auth' ? 'block' : 'none';
-    if (headerContainer) headerContainer.style.display = (view === 'practice' || view === 'auth') ? 'none' : 'block';
+    if (headerContainer) headerContainer.style.display = (view === 'practice' || view === 'auth' || view === 'landing') ? 'none' : 'block';
 
+    document.body.classList.toggle('in-landing-mode', view === 'landing');
     document.body.classList.toggle('in-practice-mode', view === 'practice');
     document.body.classList.toggle('in-auth-mode', view === 'auth');
 
-    if (view !== 'auth') {
+    if (view !== 'auth' && view !== 'landing') {
       this.statsHeader.update();
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  public showLandingPage(pushHistory: boolean = true): void {
+    this.switchView('landing');
+    this.landingView.render();
+    if (pushHistory) {
+      this.updateUrl('/', 'Tinglov — Kino va Multfilm orqali Listening');
+    } else {
+      document.title = 'Tinglov — Kino va Multfilm orqali Listening';
+    }
   }
 
   public showAuthPage(tab: 'login' | 'register' = 'login', pushHistory: boolean = true): void {
@@ -544,11 +601,11 @@ class MovieListenApp {
     if (!this.checkAndEnforceAuth()) return;
     this.switchView('library');
     this.levelSelector.render();
-    const targetUrl = window.location.pathname === '/library' ? '/library' : '/';
+    const targetUrl = '/dashboard';
     if (pushHistory) {
-      this.updateUrl(targetUrl, 'Tinglov — Kino va Multfilm orqali Listening');
+      this.updateUrl(targetUrl, 'Dashboard — Tinglov');
     } else {
-      document.title = 'Tinglov — Kino va Multfilm orqali Listening';
+      document.title = 'Dashboard — Tinglov';
     }
   }
 
