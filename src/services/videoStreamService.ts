@@ -1,4 +1,5 @@
 import { Scene } from '../types';
+import { logger } from '../utils/logger';
 
 export interface VideoStreamStatus {
   activeSource: string;
@@ -119,6 +120,7 @@ class VideoStreamService {
 
     // Error listener for auto failover to next mirror
     videoEl.onerror = () => {
+      logger.warn(`[VideoStreamService] Source failed: ${candidateSources[currentSourceIdx] || 'unknown'}`);
       currentSourceIdx++;
       tryApplySource(currentSourceIdx);
     };

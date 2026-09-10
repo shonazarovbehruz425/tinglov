@@ -5,6 +5,7 @@ import { soundEffects } from '../services/soundEffects';
 import { i18n } from '../services/i18nService';
 import { escapeHtml, sanitizeUrl } from '../utils/sanitize';
 import { safeValidate, youtubeUrlSchema } from '../utils/validation';
+import { logger } from '../utils/logger';
 
 export class YouTubeImportModal {
   private container: HTMLElement;
@@ -314,7 +315,7 @@ export class YouTubeImportModal {
       this.close();
       this.onLessonCreatedCallback?.(scene);
     } catch (err) {
-      console.error('YouTube generation error:', err);
+      logger.error('YouTube generation error:', err);
       alert('Darsni generatsiya qilishda xatolik yuz berdi. Qayta urinib ko\'ring.');
     } finally {
       this.isLoading = false;

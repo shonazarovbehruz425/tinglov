@@ -1,3 +1,5 @@
+import { logger } from '../utils/logger';
+
 export type AppLanguage = 'uz' | 'en' | 'ru';
 
 export interface TranslationDictionary {
@@ -638,7 +640,7 @@ class I18nService {
       try {
         cb(this.currentLang);
       } catch (err) {
-        console.error('Error in i18n listener:', err);
+        logger.error('Error in i18n listener:', err);
       }
     });
   }
