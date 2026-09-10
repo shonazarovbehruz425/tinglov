@@ -618,10 +618,6 @@ class MovieListenApp {
 
     // 2. Landing Page at Root (/)
     if (rawPath === '/' && (!rawHash || rawHash === 'landing')) {
-      if (apiService.isAuthenticated() && rawHash !== 'landing') {
-        this.showLibrary(pushHistory);
-        return;
-      }
       this.showLandingPage(pushHistory);
       return;
     }
