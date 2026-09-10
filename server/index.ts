@@ -43,12 +43,14 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json());
 
-// Security Headers (Anti-Clickjacking, XSS Protection & Content Security Policy)
+// Security Headers (HSTS, Anti-Clickjacking, XSS Protection & Content Security Policy)
 app.use((_req, res, next) => {
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(), payment=()');
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
