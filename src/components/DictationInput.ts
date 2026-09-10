@@ -24,6 +24,7 @@ export class DictationInput {
   private onReplayRequestCallback: (() => void) | null = null;
   private onSlowDownRequestCallback: (() => void) | null = null;
   private onSubtitleModeChangeCallback: ((mode: 'both' | 'en' | 'uz' | 'off') => void) | null = null;
+  private previousInput: string = '';
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -191,8 +192,6 @@ export class DictationInput {
     this.updateSubtitleDisplay();
     this.onRevealCallback?.();
   }
-
-  private previousInput: string = '';
 
   private handleInput(value: string): void {
     const isAddingChar = value.length > this.previousInput.length;

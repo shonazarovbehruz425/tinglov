@@ -44,8 +44,11 @@ class ApiService {
   private authReadyPromise: Promise<MeResponse | null> | null = null;
 
   constructor() {
-    // 1. Purge legacy custom tokens from older versions
-    this.purgeStorageTokens();
+    // 1. Restore persistent user session synchronously from localStorage
+    this.restoreCachedUser();
+
+    // 2. Purge legacy custom tokens from older versions
+    this.purgeLegacyTokens();
 
     // Listen to real-time auth state changes in Supabase
     supabase.auth.onAuthStateChange(async (event, session) => {
@@ -70,8 +73,43 @@ class ApiService {
     return this.authReadyPromise;
   }
 
+  private static readonly USER_SESSION_KEY = 'tinglov_user_session';
+
+  // Restore session from localStorage synchronously on startup
+  private restoreCachedUser(): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = localStorage.getItem(ApiService.USER_SESSION_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.id) {
+            this.currentUser = parsed;
+            this.token = 'local_session';
+          }
+        }
+      }
+    } catch {
+      // Ignore parse error
+    }
+  }
+
+  // Save session to localStorage
+  private saveUserToStorage(user: AuthUser | null): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        if (user) {
+          localStorage.setItem(ApiService.USER_SESSION_KEY, JSON.stringify(user));
+        } else {
+          localStorage.removeItem(ApiService.USER_SESSION_KEY);
+        }
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
   // Purge legacy custom tokens stored in client-side storage from older versions
-  private purgeStorageTokens(): void {
+  private purgeLegacyTokens(): void {
     try {
       if (typeof window !== 'undefined') {
         if (window.sessionStorage) {
@@ -124,7 +162,8 @@ class ApiService {
   private clearSession(): void {
     this.token = null;
     this.currentUser = null;
-    this.purgeStorageTokens();
+    this.saveUserToStorage(null);
+    this.purgeLegacyTokens();
   }
 
   public getToken(): string | null {
@@ -177,6 +216,7 @@ class ApiService {
       };
 
       this.currentUser = user;
+      this.saveUserToStorage(user);
       this.notifyAuthChange();
       return user;
     } catch {
@@ -198,6 +238,7 @@ class ApiService {
           auth_provider: provider,
         };
         this.currentUser = fallbackUser;
+        this.saveUserToStorage(fallbackUser);
         this.notifyAuthChange();
         return fallbackUser;
       } catch {
@@ -347,6 +388,7 @@ class ApiService {
           const resData = await backendRes.json();
           if (resData.user) {
             this.currentUser = resData.user;
+            this.saveUserToStorage(resData.user);
             this.setToken('httponly_session');
             this.authReadyPromise = Promise.resolve({
               user: resData.user,
@@ -762,7 +804,6 @@ class ApiService {
 
     this.authReadyPromise = null;
     this.clearSession();
-    this.purgeStorageTokens();
     this.notifyAuthChange();
   }
 
