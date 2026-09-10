@@ -475,9 +475,9 @@ export class AnimatedStage {
           </div>
 
           <!-- Top-Right Streaming Mode Badge -->
-          <div class="video-stream-cdn-badge" id="videoStreamCdnBadge" title="${isYouTube ? 'YouTube Streaming Player' : 'Global Edge CDN & Cloud Streaming'}">
-            <span class="stream-status-dot" style="${isYouTube ? 'background: #EF4444; box-shadow: 0 0 8px #EF4444;' : ''}"></span>
-            <span class="stream-status-label">${isYouTube ? 'YouTube HD' : (this.streamStatus?.sourceType === 'cdn' ? 'CDN Stream' : (this.streamStatus?.sourceType === 'streaming' ? 'Live Stream' : 'Smart Stream'))}</span>
+          <div class="video-stream-cdn-badge" id="videoStreamCdnBadge" title="${isYouTube ? 'YouTube Streaming Player' : (this.streamStatus?.isR2 ? 'Cloudflare R2 Edge Streaming (Zero Egress)' : 'Global Edge CDN & Cloud Streaming')}">
+            <span class="stream-status-dot" style="${isYouTube ? 'background: #EF4444; box-shadow: 0 0 8px #EF4444;' : (this.streamStatus?.isR2 ? 'background: #F48120; box-shadow: 0 0 8px #F48120;' : '')}"></span>
+            <span class="stream-status-label">${isYouTube ? 'YouTube HD' : (this.streamStatus?.isR2 ? 'Cloudflare R2' : (this.streamStatus?.sourceType === 'cdn' ? 'CDN Stream' : (this.streamStatus?.sourceType === 'streaming' ? 'Live Stream' : 'Smart Stream')))}</span>
           </div>
 
           <!-- In-Video Floating Subtitle Overlay -->
@@ -611,13 +611,22 @@ export class AnimatedStage {
         const badgeLabel = this.container.querySelector('#videoStreamCdnBadge .stream-status-label');
         const badgeDot = this.container.querySelector('#videoStreamCdnBadge .stream-status-dot') as HTMLElement;
         if (badgeLabel) {
-          badgeLabel.textContent = status.sourceType === 'cdn' 
-            ? 'CDN Stream' 
-            : (status.sourceType === 'streaming' ? 'Live Stream' : (status.sourceType === 'synthesized' ? 'Audio Sintez' : 'Local Fallback'));
+          if (status.isR2) {
+            badgeLabel.textContent = 'Cloudflare R2';
+          } else {
+            badgeLabel.textContent = status.sourceType === 'cdn' 
+              ? 'CDN Stream' 
+              : (status.sourceType === 'streaming' ? 'Live Stream' : (status.sourceType === 'synthesized' ? 'Audio Sintez' : 'Local Fallback'));
+          }
         }
         if (badgeDot) {
-          badgeDot.style.background = status.sourceType === 'local' ? '#F59E0B' : (status.sourceType === 'synthesized' ? '#A855F7' : '#10B981');
-          badgeDot.style.boxShadow = status.sourceType === 'local' ? '0 0 8px #F59E0B' : (status.sourceType === 'synthesized' ? '0 0 8px #A855F7' : '0 0 8px #10B981');
+          if (status.isR2) {
+            badgeDot.style.background = '#F48120';
+            badgeDot.style.boxShadow = '0 0 8px #F48120';
+          } else {
+            badgeDot.style.background = status.sourceType === 'local' ? '#F59E0B' : (status.sourceType === 'synthesized' ? '#A855F7' : '#10B981');
+            badgeDot.style.boxShadow = status.sourceType === 'local' ? '0 0 8px #F59E0B' : (status.sourceType === 'synthesized' ? '0 0 8px #A855F7' : '0 0 8px #10B981');
+          }
         }
       });
       this.videoElement.currentTime = this.currentSentence.startTime;

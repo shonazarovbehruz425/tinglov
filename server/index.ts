@@ -74,9 +74,9 @@ app.use((_req, res, next) => {
     "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; " +
     "font-src 'self' data: https://fonts.gstatic.com https://unpkg.com; " +
-    "img-src 'self' data: https: blob:; " +
-    "media-src 'self' blob: data: https://cdn.jsdelivr.net https://storage.googleapis.com https:; " +
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://storage.googleapis.com https://unpkg.com https://fonts.googleapis.com; " +
+    "img-src 'self' data: https: blob: https://*.r2.dev https://*.r2.cloudflarestorage.com; " +
+    "media-src 'self' blob: data: https://cdn.jsdelivr.net https://storage.googleapis.com https://*.r2.dev https://*.r2.cloudflarestorage.com https:; " +
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://storage.googleapis.com https://*.r2.dev https://*.r2.cloudflarestorage.com https://unpkg.com https://fonts.googleapis.com https:; " +
     "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; " +
     "frame-ancestors 'none'; " +
     "object-src 'none'; " +
@@ -455,10 +455,14 @@ function normalizeRoutePath(rawPath: string | undefined): string {
 const ADMIN_PATH = normalizeRoutePath(process.env.ADMIN_PATH || process.env.VITE_ADMIN_PATH || '/admin');
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'tinglov_admin_2026';
+const CLOUDFLARE_R2_URL = (process.env.CLOUDFLARE_R2_URL || process.env.VITE_CLOUDFLARE_R2_URL || '').trim().replace(/\/+$/, '');
 
-// A. Public endpoint to check active admin path
+// A. Public endpoint to check active admin path and R2 streaming config
 app.get('/api/admin/config', (_req, res) => {
-  res.json({ adminPath: ADMIN_PATH });
+  res.json({
+    adminPath: ADMIN_PATH,
+    cloudflareR2Url: CLOUDFLARE_R2_URL
+  });
 });
 
 // B. Public endpoint to get all admin-created lessons for players
@@ -666,7 +670,7 @@ if (fs.existsSync(distPath)) {
     if (fs.existsSync(indexHtmlPath)) {
       try {
         let html = fs.readFileSync(indexHtmlPath, 'utf8');
-        const scriptInjection = `<script>window.__ADMIN_PATH__ = ${JSON.stringify(ADMIN_PATH)};</script>`;
+        const scriptInjection = `<script>window.__ADMIN_PATH__ = ${JSON.stringify(ADMIN_PATH)}; window.__CLOUDFLARE_R2_URL__ = ${JSON.stringify(CLOUDFLARE_R2_URL)};</script>`;
         if (html.includes('</head>')) {
           html = html.replace('</head>', `${scriptInjection}</head>`);
         } else {

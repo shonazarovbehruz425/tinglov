@@ -527,8 +527,11 @@ export class AdminView {
               </div>
 
               <div class="admin-form-group">
-                <label>Video URL yoki YouTube Havolasi / ID *</label>
-                <input type="text" id="newSceneVideoUrl" class="admin-input" placeholder="https://www.youtube.com/watch?v=... yoki video mp4 havolasi" required />
+                <label>Video URL yoki YouTube / Cloudflare R2 Havolasi *</label>
+                <input type="text" id="newSceneVideoUrl" class="admin-input" placeholder="https://pub-xxx.r2.dev/video.mp4 yoki r2:fayl.mp4 yoki YouTube URL" required />
+                <small class="admin-field-hint" style="display:block; margin-top: 4px; font-size: 0.8rem; color: #94A3B8;">
+                  <i class="ph-bold ph-cloud"></i> Cloudflare R2 dan streaming uchun to‘liq R2 URL (<code>https://pub-xxx.r2.dev/video.mp4</code>) yoki <code>r2:video.mp4</code> kiriting.
+                </small>
               </div>
 
               <div class="admin-form-group">
@@ -632,6 +635,39 @@ export class AdminView {
                 </div>
               </div>
             </div>
+          </div>
+
+          <!-- Guide 4: Cloudflare R2 Video Streaming Setup -->
+          <div class="admin-card-section">
+            <h3 class="admin-section-subtitle"><i class="ph-bold ph-cloud-arrow-up" style="color: #F48120;"></i> Cloudflare R2 Video Streaming & CORS Sozlamalari</h3>
+            <p class="admin-text-muted">
+              Videolarni Cloudflare R2 orqali xarajatlarsiz (Zero Egress fees) tezkor va sifatli stream qilish uchun quyidagi 4 ta qadamni bajaring:
+            </p>
+            <ol class="admin-guide-steps">
+              <li><strong>1. Cloudflare R2 da Bucket yarating</strong> (masalan, <code>tinglov-videos</code>) va videolarni (.mp4 formatda) yuklang.</li>
+              <li><strong>2. R2 Settings &gt; Public Access</strong> bo‘limiga kiring:
+                <p style="margin: 4px 0;"><strong>Custom Domain</strong> (masalan, <code>media.tinglov.me</code>) yoki <strong>R2.dev subdomain</strong> (masalan, <code>https://pub-xxxx.r2.dev</code>) ni yoqing (Allow Access).</p>
+              </li>
+              <li><strong>3. CORS Policy qo‘shing</strong> (R2 Settings &gt; CORS Policy &gt; Add CORS policy):
+                <pre class="admin-code-snippet" style="font-size: 0.75rem; overflow-x: auto; white-space: pre-wrap;">[
+  {
+    "AllowedOrigins": ["*"],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedHeaders": ["Range", "Content-Type", "Origin", "Accept"],
+    "ExposeHeaders": ["Content-Range", "Content-Length", "Accept-Ranges", "ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]</pre>
+              </li>
+              <li><strong>4. Render.com Environment ga qo‘shing</strong>:
+                <div class="admin-code-snippet">
+                  <strong>CLOUDFLARE_R2_URL</strong> = <code>https://pub-xxxxxxxx.r2.dev</code> yoki <code>https://media.tinglov.me</code>
+                </div>
+              </li>
+            </ol>
+            <p class="admin-text-muted" style="margin-top: 8px;">
+              <i class="ph-bold ph-info"></i> Sozlangandan so'ng, dars yaratishda to‘liq URL yoki shunchaki <code>r2:kino_nomi.mp4</code> kiritishingiz kifoya! Player avtomatik Cloudflare R2 Edge Streaming bilan ulanadi.
+            </p>
           </div>
         </div>
       </div>

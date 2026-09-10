@@ -7,49 +7,134 @@ export interface VideoStreamStatus {
   isOnline: boolean;
   buffering: boolean;
   resolutionStatus: 'optimal' | 'fallback' | 'offline_cached';
+  isR2?: boolean;
 }
 
 /**
  * Global Edge CDN and Streaming Video Provider
- * Resolves optimal streaming sources with automatic fallback mechanisms.
+ * Resolves optimal streaming sources with Cloudflare R2 support and automatic fallback mechanisms.
  */
 class VideoStreamService {
   // Global CDN base endpoints (e.g. Cloudflare Stream / Fastly / AWS CloudFront / Supabase Storage CDN)
   private cdnBaseUrl: string = 'https://cdn.jsdelivr.net/gh/movielisten/assets@main';
   private secondaryCdnUrl: string = 'https://storage.googleapis.com/movielisten-cdn';
   private cacheName: string = 'movielisten-video-cache-v1';
+  private cloudflareR2Url: string = '';
+
+  constructor() {
+    // Detect Cloudflare R2 URL from window injection or Vite env
+    const injectedR2 = typeof window !== 'undefined' ? (window as any).__CLOUDFLARE_R2_URL__ : '';
+    const envR2 = (import.meta as any).env?.VITE_CLOUDFLARE_R2_URL || '';
+    const initialUrl = (injectedR2 || envR2 || '').trim().replace(/\/+$/, '');
+    if (initialUrl) {
+      this.cloudflareR2Url = initialUrl;
+    }
+  }
+
+  /**
+   * Get active Cloudflare R2 base URL
+   */
+  public getCloudflareR2BaseUrl(): string {
+    return this.cloudflareR2Url;
+  }
+
+  /**
+   * Set or update Cloudflare R2 base URL dynamically
+   */
+  public setCloudflareR2BaseUrl(url: string): void {
+    this.cloudflareR2Url = (url || '').trim().replace(/\/+$/, '');
+  }
+
+  /**
+   * Checks whether a given URL is served from Cloudflare R2
+   */
+  public isCloudflareR2Url(url: string): boolean {
+    if (!url) return false;
+    if (url.includes('.r2.dev') || url.includes('.r2.cloudflarestorage.com')) {
+      return true;
+    }
+    if (this.cloudflareR2Url && url.startsWith(this.cloudflareR2Url)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Formats a video URL or Cloudflare R2 object key into a full streaming URL
+   * Supports `r2:filename.mp4`, `r2:/path/video.mp4`, or direct filenames when R2 base URL is configured.
+   */
+  public formatR2UrlIfNeeded(urlOrKey: string): string {
+    if (!urlOrKey) return '';
+    const trimmed = urlOrKey.trim();
+
+    // 1. Explicit r2: prefix (e.g. "r2:interstellar.mp4" or "r2:/movies/scene1.mp4")
+    if (trimmed.startsWith('r2:')) {
+      const cleanKey = trimmed.replace(/^r2:[\/\\]*/, '');
+      if (this.cloudflareR2Url) {
+        return `${this.cloudflareR2Url}/${cleanKey}`;
+      }
+      return `https://${cleanKey}`;
+    }
+
+    // 2. Direct full URL (HTTP or HTTPS)
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+
+    // 3. Relative root path (e.g. "/videos/sample.mp4")
+    if (trimmed.startsWith('/')) {
+      return trimmed;
+    }
+
+    // 4. Standalone video filename (e.g. "for_bigger_blazes.mp4") when Cloudflare R2 URL is configured
+    if (this.cloudflareR2Url && /\.(mp4|webm|m4v|mkv|mov|ts)$/i.test(trimmed)) {
+      return `${this.cloudflareR2Url}/${trimmed}`;
+    }
+
+    return trimmed;
+  }
 
   /**
    * Resolves the prioritized list of streaming and CDN URLs for a scene
    */
   public resolveVideoSources(scene: Scene): string[] {
-    const sources: string[] = [];
+    const rawSources: string[] = [];
 
-    // 1. High-Performance Adaptive Streaming or CDN URL if configured
+    // 1. High-Performance Cloudflare R2 or Adaptive Streaming URL if configured
     if (scene.streamingUrl) {
-      sources.push(scene.streamingUrl);
+      rawSources.push(this.formatR2UrlIfNeeded(scene.streamingUrl));
     }
 
     // 2. Scene-defined CDN mirror
     if (scene.cdnVideoUrl) {
-      sources.push(scene.cdnVideoUrl);
+      rawSources.push(this.formatR2UrlIfNeeded(scene.cdnVideoUrl));
     }
 
-    // 3. Automated Global Edge CDN mirror for standard content
-    if (scene.id === 'oppogoy-yetti-gnom') {
-      // Cloudflare / jsDelivr / Supabase CDN endpoints
-      sources.push('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4');
-      sources.push(`${this.cdnBaseUrl}/cartoons/snow_white.mp4`);
-      sources.push(`${this.secondaryCdnUrl}/cartoons/snow_white.mp4`);
-    }
-
-    // 4. Primary or Local Fallback
+    // 3. Primary scene video URL (can be R2 key, full URL, or local path)
     if (scene.videoUrl) {
-      // If primary is local path, keep it as reliable fallback
-      sources.push(scene.videoUrl);
+      rawSources.push(this.formatR2UrlIfNeeded(scene.videoUrl));
     }
 
-    return Array.from(new Set(sources));
+    // 4. Automated Global Edge CDN mirror for standard content
+    if (scene.id === 'oppogoy-yetti-gnom') {
+      if (this.cloudflareR2Url) {
+        rawSources.push(`${this.cloudflareR2Url}/oppogoy-yetti-gnom.mp4`);
+      }
+      rawSources.push('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4');
+      rawSources.push(`${this.cdnBaseUrl}/cartoons/snow_white.mp4`);
+      rawSources.push(`${this.secondaryCdnUrl}/cartoons/snow_white.mp4`);
+    }
+
+    const uniqueSources = Array.from(new Set(rawSources.filter(Boolean)));
+
+    // Sort: Cloudflare R2 and high-speed CDN URLs first, local fallbacks last
+    return uniqueSources.sort((a, b) => {
+      const aIsR2 = this.isCloudflareR2Url(a);
+      const bIsR2 = this.isCloudflareR2Url(b);
+      if (aIsR2 && !bIsR2) return -1;
+      if (!aIsR2 && bIsR2) return 1;
+      return 0;
+    });
   }
 
   /**
@@ -79,7 +164,7 @@ class VideoStreamService {
   }
 
   /**
-   * Automatically sets up video element with intelligent failover fallback
+   * Automatically sets up video element with intelligent failover fallback and Cloudflare R2 streaming
    */
   public attachSmartVideoStream(
     videoEl: HTMLVideoElement,
@@ -88,6 +173,10 @@ class VideoStreamService {
   ): void {
     const candidateSources = this.resolveVideoSources(scene);
     if (candidateSources.length === 0) return;
+
+    // Configure video element for cross-origin byte-range streaming
+    videoEl.crossOrigin = 'anonymous';
+    videoEl.preload = 'auto';
 
     let currentSourceIdx = 0;
 
@@ -98,23 +187,26 @@ class VideoStreamService {
           sourceType: 'synthesized',
           isOnline: navigator.onLine,
           buffering: false,
-          resolutionStatus: 'fallback'
+          resolutionStatus: 'fallback',
+          isR2: false
         });
         return;
       }
 
       const activeUrl = candidateSources[index];
-      const isCdn = activeUrl.startsWith('http') || activeUrl.includes('cdn');
+      const isR2 = this.isCloudflareR2Url(activeUrl);
+      const isCdn = activeUrl.startsWith('http') || activeUrl.includes('cdn') || isR2;
 
       videoEl.src = activeUrl;
       videoEl.load();
 
       onSourceResolved?.({
         activeSource: activeUrl,
-        sourceType: isCdn ? 'cdn' : 'local',
+        sourceType: isR2 ? 'streaming' : (isCdn ? 'cdn' : 'local'),
         isOnline: navigator.onLine,
         buffering: true,
-        resolutionStatus: index === 0 ? 'optimal' : 'fallback'
+        resolutionStatus: index === 0 ? 'optimal' : 'fallback',
+        isR2
       });
     };
 
@@ -128,12 +220,14 @@ class VideoStreamService {
     // Listen for successful metadata loaded
     videoEl.onloadedmetadata = () => {
       const activeUrl = candidateSources[currentSourceIdx] || '';
+      const isR2 = this.isCloudflareR2Url(activeUrl);
       onSourceResolved?.({
         activeSource: activeUrl,
-        sourceType: activeUrl.startsWith('http') ? 'cdn' : 'local',
+        sourceType: isR2 ? 'streaming' : (activeUrl.startsWith('http') ? 'cdn' : 'local'),
         isOnline: navigator.onLine,
         buffering: false,
-        resolutionStatus: currentSourceIdx === 0 ? 'optimal' : 'fallback'
+        resolutionStatus: currentSourceIdx === 0 ? 'optimal' : 'fallback',
+        isR2
       });
     };
 

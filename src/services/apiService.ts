@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 import { safeValidate, registerSchema, loginSchema } from '../utils/validation';
 import { getCsrfHeaders, syncCsrfWithBackend, validateCsrfToken } from '../utils/csrf';
+import { videoStreamService } from './videoStreamService';
 
 export interface AuthUser {
   id: string | number;
@@ -583,6 +584,9 @@ class ApiService {
       const res = await fetch('/api/admin/config');
       if (res.ok) {
         const data = await res.json();
+        if (data.cloudflareR2Url) {
+          videoStreamService.setCloudflareR2BaseUrl(data.cloudflareR2Url);
+        }
         if (data.adminPath) {
           let p = data.adminPath.trim();
           if (!p.startsWith('/')) p = '/' + p;
