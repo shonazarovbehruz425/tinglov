@@ -183,6 +183,11 @@ const requireCsrf = (req: express.Request, res: express.Response, next: express.
     return next();
   }
 
+  // Authorization Bearer header is immune to browser CSRF attacks
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    return next();
+  }
+
   const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];
   const headerToken = req.headers[CSRF_HEADER_NAME] || req.headers['x-xsrf-token'] || req.body?._csrf;
 
@@ -463,11 +468,13 @@ app.get('/api/auth/me', requireAuth, (req: AuthenticatedRequest, res) => {
   const user = req.user!;
   const savedWords = getUserSavedWords(user.id);
   const completedScenes = getUserCompletedScenes(user.id);
+  const completedSceneIds = Array.from(new Set(completedScenes.map(s => s.scene_id)));
 
   res.json({
     user: sanitizeUser(user),
     savedWords,
-    completedScenes
+    completedScenes,
+    completedSceneIds
   });
 });
 
@@ -475,7 +482,7 @@ app.get('/api/auth/me', requireAuth, (req: AuthenticatedRequest, res) => {
 app.post('/api/user/sync', requireAuth, requireCsrf, (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const { xp, streak, level, lastActiveDate, savedWords, completedScene } = req.body;
+    const { xp, streak, level, lastActiveDate, savedWords, completedScene, completedScenes } = req.body;
 
     const newXp = Math.max(user.xp, Number(xp) || 0);
     const newStreak = Math.max(user.streak, Number(streak) || 1);
@@ -491,7 +498,7 @@ app.post('/api/user/sync', requireAuth, requireCsrf, (req: AuthenticatedRequest,
     // Save words if passed
     if (Array.isArray(savedWords)) {
       savedWords.forEach((item: any) => {
-        if (item.word) {
+        if (item && item.word) {
           saveUserWord(user.id, item.word, item.translation, item.sceneTitle);
         }
       });
@@ -507,12 +514,28 @@ app.post('/api/user/sync', requireAuth, requireCsrf, (req: AuthenticatedRequest,
       );
     }
 
+    // Record bulk completed scene IDs if passed (e.g. on client merge)
+    if (Array.isArray(completedScenes) && completedScenes.length > 0) {
+      const existingScenes = new Set(getUserCompletedScenes(user.id).map(s => s.scene_id));
+      completedScenes.forEach((sceneId: any) => {
+        const cleanId = String(sceneId || '').trim();
+        if (cleanId && !existingScenes.has(cleanId)) {
+          recordUserCompletedScene(user.id, cleanId, 100, 0);
+          existingScenes.add(cleanId);
+        }
+      });
+    }
+
     const updatedUser = findUserById(user.id)!;
+    const allCompleted = getUserCompletedScenes(user.id);
+    const completedSceneIds = Array.from(new Set(allCompleted.map(s => s.scene_id)));
+
     res.json({
       success: true,
       user: sanitizeUser(updatedUser),
       savedWords: getUserSavedWords(user.id),
-      completedScenes: getUserCompletedScenes(user.id)
+      completedScenes: allCompleted,
+      completedSceneIds
     });
   } catch (err: any) {
     console.error('Sync error:', err);

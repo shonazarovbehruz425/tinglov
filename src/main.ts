@@ -411,7 +411,20 @@ class MovieListenApp {
           this.showLandingPage(true);
         }
       } else {
-        this.statsHeader.update();
+        apiService.getMe().then((data) => {
+          if (data) {
+            storageService.syncWithServer(data);
+          }
+          this.statsHeader.update();
+          if (this.currentView === 'profile') {
+            this.profileView.render();
+          } else if (this.currentView === 'library') {
+            this.levelSelector.render();
+          }
+        }).catch(() => {
+          this.statsHeader.update();
+        });
+
         const hadOAuthToken = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
         // Clean URL hash and search if it contains OAuth tokens
         if (window.location.hash.includes('access_token=') || window.location.hash.includes('error=')) {
@@ -427,11 +440,14 @@ class MovieListenApp {
     // Auto-restore session from backend HttpOnly cookie or Supabase session
     apiService.getMe().then((data) => {
       if (data) {
+        storageService.syncWithServer(data);
         this.statsHeader.update();
         if (this.currentView === 'profile') {
           this.profileView.render();
         } else if (this.currentView === 'auth') {
           this.showLibrary(true);
+        } else if (this.currentView === 'library') {
+          this.levelSelector.render();
         }
       } else {
         // Only enforce auth if current route is protected (never kick visitors off the landing page or admin page)

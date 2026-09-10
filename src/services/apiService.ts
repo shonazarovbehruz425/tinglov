@@ -30,6 +30,7 @@ export interface MeResponse {
   user: AuthUser;
   savedWords: Array<{ id: string | number; word: string; translation: string | null; scene_title: string | null }>;
   completedScenes: Array<{ id: string | number; scene_id: string; accuracy: number; wpm: number }>;
+  completedSceneIds?: string[];
 }
 
 const TOKEN_KEY = 'tinglov_auth_token';
@@ -402,35 +403,12 @@ class ApiService {
   }
 
   public async getMe(): Promise<MeResponse | null> {
-    // 1. Check Supabase in-memory session first
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        this.setToken(session.access_token);
-        const user = await this.loadUserProfile(session.user);
-        if (user) {
-          const { data: words } = await supabase
-            .from('saved_words')
-            .select('*')
-            .eq('user_id', user.id);
+    let currentUser: AuthUser | null = null;
+    let savedWords: Array<{ id: string | number; word: string; translation: string | null; scene_title: string | null }> = [];
+    let completedScenes: Array<{ id: string | number; scene_id: string; accuracy: number; wpm: number }> = [];
+    let completedSceneIds: string[] = [];
 
-          const { data: scenes } = await supabase
-            .from('completed_scenes')
-            .select('*')
-            .eq('user_id', user.id);
-
-          return {
-            user,
-            savedWords: (words as any) || [],
-            completedScenes: (scenes as any) || [],
-          };
-        }
-      }
-    } catch {
-      // Supabase session check failed or offline
-    }
-
-    // 2. Check backend HttpOnly cookie session (cross-tab & persistent across tab closes)
+    // 1. Check backend HttpOnly cookie session (cross-tab & persistent across tab closes)
     try {
       const res = await fetch('/api/auth/me', {
         method: 'GET',
@@ -439,18 +417,78 @@ class ApiService {
       if (res.ok) {
         const data = await res.json();
         if (data && data.user) {
+          currentUser = data.user;
           this.currentUser = data.user;
           this.setToken('httponly_session');
-          this.notifyAuthChange();
-          return {
-            user: data.user,
-            savedWords: data.savedWords || [],
-            completedScenes: data.completedScenes || [],
-          };
+          savedWords = data.savedWords || [];
+          completedScenes = data.completedScenes || [];
+          completedSceneIds = data.completedSceneIds || completedScenes.map((s: any) => s.scene_id);
         }
       }
     } catch {
       // Backend offline or user not logged in via cookie
+    }
+
+    // 2. Check Supabase in-memory session
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        this.setToken(session.access_token);
+        const sbUser = await this.loadUserProfile(session.user);
+        if (sbUser) {
+          if (!currentUser) {
+            currentUser = sbUser;
+            this.currentUser = sbUser;
+          } else {
+            currentUser.xp = Math.max(currentUser.xp, sbUser.xp);
+            currentUser.streak = Math.max(currentUser.streak, sbUser.streak);
+            currentUser.level = Math.max(currentUser.level, sbUser.level);
+          }
+
+          const { data: words } = await supabase
+            .from('saved_words')
+            .select('*')
+            .eq('user_id', sbUser.id);
+
+          const { data: scenes } = await supabase
+            .from('completed_scenes')
+            .select('*')
+            .eq('user_id', sbUser.id);
+
+          if (Array.isArray(words) && words.length > 0) {
+            const existingWordSet = new Set(savedWords.map(w => w.word.toLowerCase()));
+            words.forEach((w: any) => {
+              if (w.word && !existingWordSet.has(w.word.toLowerCase())) {
+                savedWords.push(w);
+                existingWordSet.add(w.word.toLowerCase());
+              }
+            });
+          }
+
+          if (Array.isArray(scenes) && scenes.length > 0) {
+            const existingSceneSet = new Set(completedSceneIds);
+            scenes.forEach((s: any) => {
+              if (s.scene_id && !existingSceneSet.has(s.scene_id)) {
+                completedScenes.push(s);
+                completedSceneIds.push(s.scene_id);
+                existingSceneSet.add(s.scene_id);
+              }
+            });
+          }
+        }
+      }
+    } catch {
+      // Supabase session check failed or offline
+    }
+
+    if (currentUser) {
+      this.notifyAuthChange();
+      return {
+        user: currentUser,
+        savedWords,
+        completedScenes,
+        completedSceneIds,
+      };
     }
 
     return null;
@@ -468,6 +506,37 @@ class ApiService {
   }): Promise<any> {
     if (!this.currentUser) return null;
 
+    if (typeof payload.xp === 'number') this.currentUser.xp = Math.max(this.currentUser.xp, payload.xp);
+    if (typeof payload.streak === 'number') this.currentUser.streak = Math.max(this.currentUser.streak, payload.streak);
+    if (typeof payload.level === 'number') this.currentUser.level = Math.max(this.currentUser.level, payload.level);
+
+    let backendResult: any = null;
+
+    // 1. Send to Backend SQLite API (/api/user/sync)
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...getCsrfHeaders(),
+      };
+      if (this.token && this.token !== 'session_authenticated' && this.token !== 'httponly_session') {
+        headers['Authorization'] = `Bearer ${this.token}`;
+      }
+
+      const res = await fetch('/api/user/sync', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        backendResult = await res.json();
+      }
+    } catch {
+      // Backend offline or unreachable
+    }
+
+    // 2. Also sync to Supabase if connected
     try {
       const updates: any = {
         updated_at: new Date().toISOString(),
@@ -495,37 +564,95 @@ class ApiService {
           await this.saveWord(sw.word, sw.translation, sw.sceneTitle);
         }
       }
-
-      return { success: true };
     } catch {
-      return null;
+      // Ignore background Supabase errors
     }
+
+    return backendResult || { success: true };
   }
 
   public async saveWord(word: string, translation?: string, sceneTitle?: string): Promise<void> {
-    if (!this.currentUser) return;
+    const cleanWord = word.trim();
+    if (!cleanWord) return;
+
+    // 1. Send to backend SQLite (/api/user/words)
     try {
-      await supabase.from('saved_words').insert({
-        user_id: this.currentUser.id,
-        word: word.trim(),
-        translation: translation || null,
-        scene_title: sceneTitle || null,
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...getCsrfHeaders(),
+      };
+      if (this.token && this.token !== 'session_authenticated' && this.token !== 'httponly_session') {
+        headers['Authorization'] = `Bearer ${this.token}`;
+      }
+
+      await fetch('/api/user/words', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({
+          action: 'save',
+          word: cleanWord,
+          translation: translation || null,
+          sceneTitle: sceneTitle || null,
+        }),
       });
     } catch {
-      // Ignore background error
+      // Ignore background fetch error
+    }
+
+    // 2. Also send to Supabase if authenticated
+    if (this.currentUser) {
+      try {
+        await supabase.from('saved_words').insert({
+          user_id: this.currentUser.id,
+          word: cleanWord,
+          translation: translation || null,
+          scene_title: sceneTitle || null,
+        });
+      } catch {
+        // Ignore background Supabase error
+      }
     }
   }
 
   public async deleteWord(word: string): Promise<void> {
-    if (!this.currentUser) return;
+    const cleanWord = word.trim();
+    if (!cleanWord) return;
+
+    // 1. Send to backend SQLite (/api/user/words)
     try {
-      await supabase
-        .from('saved_words')
-        .delete()
-        .eq('user_id', this.currentUser.id)
-        .eq('word', word.trim());
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...getCsrfHeaders(),
+      };
+      if (this.token && this.token !== 'session_authenticated' && this.token !== 'httponly_session') {
+        headers['Authorization'] = `Bearer ${this.token}`;
+      }
+
+      await fetch('/api/user/words', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({
+          action: 'delete',
+          word: cleanWord,
+        }),
+      });
     } catch {
       // Ignore
+    }
+
+    // 2. Also delete from Supabase if authenticated
+    if (this.currentUser) {
+      try {
+        await supabase
+          .from('saved_words')
+          .delete()
+          .eq('user_id', this.currentUser.id)
+          .eq('word', cleanWord);
+      } catch {
+        // Ignore
+      }
     }
   }
 

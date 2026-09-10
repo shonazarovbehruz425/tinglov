@@ -1,21 +1,32 @@
 import { UserStats, SavedWord, Scene, HighScoreRecord, ChallengePayload } from '../types';
 import { INITIAL_SCENES } from '../data/scenes';
 import { escapeHtml } from '../utils/sanitize';
+import { apiService, MeResponse } from './apiService';
 
 const STATS_KEY = 'lingua_movie_user_stats';
 const CUSTOM_SCENES_KEY = 'lingua_movie_custom_scenes';
 const HIGH_SCORES_KEY = 'lingua_movie_scene_highscores';
+const PENDING_SYNC_KEY = 'lingua_movie_pending_sync';
 
 export class StorageService {
   private stats: UserStats;
   private customScenes: Scene[];
   private highScores: Record<string, HighScoreRecord[]>; // sceneId -> HighScoreRecord[]
+  private syncDebounceTimer: any = null;
+  private isSyncing = false;
 
   constructor() {
     this.stats = this.loadStats();
     this.customScenes = this.loadCustomScenes();
     this.highScores = this.loadHighScores();
     this.checkAndUpdateStreak();
+
+    // Listen to network reconnection to flush offline progress
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => {
+        this.flushPendingSync().catch(() => {});
+      });
+    }
   }
 
   private loadStats(): UserStats {
@@ -171,6 +182,15 @@ export class StorageService {
     const rank = rankIndex >= 0 ? rankIndex + 1 : 999;
     const top3 = this.getSceneHighScores(sceneId);
 
+    // Push scene completion to cloud
+    apiService.syncProgress({
+      completedScene: {
+        sceneId,
+        accuracy,
+        wpm
+      }
+    }).catch(() => {});
+
     return {
       isNewTopScore: rank <= 3,
       rank,
@@ -303,6 +323,9 @@ export class StorageService {
     this.stats.level = newLevel;
     this.saveStats();
 
+    // Trigger debounced cloud synchronization
+    this.scheduleCloudSync();
+
     return {
       leveledUp: newLevel > oldLevel,
       newLevel
@@ -323,6 +346,9 @@ export class StorageService {
       this.stats.completedScenes.push(sceneId);
     }
     this.saveStats();
+
+    // Trigger debounced cloud synchronization
+    this.scheduleCloudSync();
   }
 
   public saveWord(word: SavedWord): boolean {
@@ -330,18 +356,171 @@ export class StorageService {
     if (!exists) {
       this.stats.savedWords.unshift(word);
       this.saveStats();
+
+      // Send to server in background
+      apiService.saveWord(word.word, word.translation, word.movieName).catch(() => {});
       return true;
     }
     return false;
   }
 
   public removeSavedWord(wordId: string): void {
+    const target = this.stats.savedWords.find(w => w.id === wordId);
     this.stats.savedWords = this.stats.savedWords.filter(w => w.id !== wordId);
     this.saveStats();
+
+    // Delete from server in background
+    if (target) {
+      apiService.deleteWord(target.word).catch(() => {});
+    }
   }
 
   public isWordSaved(wordText: string): boolean {
     return this.stats.savedWords.some(w => w.word.toLowerCase() === wordText.toLowerCase());
+  }
+
+  /**
+   * Merges server-side progress and dictionary into local state.
+   * Resolves conflicts by preserving highest level/XP and union of completed scenes/words.
+   */
+  public syncWithServer(serverData: MeResponse): void {
+    if (!serverData || !serverData.user) return;
+
+    const sUser = serverData.user;
+    const localXP = this.stats.xp;
+    const localStreak = this.stats.streak;
+    const localLevel = this.stats.level;
+
+    // 1. Keep highest progress metrics
+    this.stats.xp = Math.max(localXP, sUser.xp || 0);
+    this.stats.streak = Math.max(localStreak, sUser.streak || 1);
+    this.stats.level = Math.max(localLevel, sUser.level || 1);
+
+    if (sUser.full_name) {
+      this.stats.userName = escapeHtml(sUser.full_name);
+    }
+    if (sUser.username) {
+      this.stats.userHandle = `@${sUser.username}`;
+    }
+
+    // 2. Merge completed scenes
+    const serverSceneIds: string[] = serverData.completedSceneIds ||
+      (Array.isArray(serverData.completedScenes) ? serverData.completedScenes.map((s: any) => s.scene_id) : []);
+
+    const mergedScenes = Array.from(new Set([...this.stats.completedScenes, ...serverSceneIds]));
+    this.stats.completedScenes = mergedScenes;
+    const hasNewLocalScenes = mergedScenes.length > serverSceneIds.length;
+
+    // 3. Merge saved words
+    const localWordsMap = new Map<string, SavedWord>();
+    this.stats.savedWords.forEach(w => localWordsMap.set(w.word.toLowerCase().trim(), w));
+
+    if (Array.isArray(serverData.savedWords)) {
+      serverData.savedWords.forEach(sw => {
+        const key = sw.word.toLowerCase().trim();
+        if (!localWordsMap.has(key)) {
+          localWordsMap.set(key, {
+            id: `sw_${sw.id || Date.now()}_${sw.word}`,
+            word: sw.word,
+            translation: sw.translation || '',
+            contextSentence: '',
+            movieName: sw.scene_title || '',
+            addedAt: Date.now(),
+          });
+        }
+      });
+    }
+    this.stats.savedWords = Array.from(localWordsMap.values());
+    const hasNewLocalWords = this.stats.savedWords.length > (serverData.savedWords?.length || 0);
+
+    this.saveStats();
+
+    // 4. If local state had newer XP, scenes, or words that server didn't have, push them to server
+    const needsPushToServer = (localXP > (sUser.xp || 0)) ||
+      hasNewLocalScenes ||
+      hasNewLocalWords;
+
+    if (needsPushToServer) {
+      this.scheduleCloudSync();
+    }
+  }
+
+  /**
+   * Debounced background sync to cloud
+   */
+  public scheduleCloudSync(): void {
+    if (typeof window === 'undefined') return;
+    if (this.syncDebounceTimer) {
+      clearTimeout(this.syncDebounceTimer);
+    }
+    this.syncDebounceTimer = setTimeout(() => {
+      this.syncToCloud().catch(() => {});
+    }, 1200);
+  }
+
+  /**
+   * Sends current user progress and vocabulary to backend & cloud
+   */
+  public async syncToCloud(): Promise<void> {
+    if (this.isSyncing) return;
+    this.isSyncing = true;
+    try {
+      const payload = {
+        xp: this.stats.xp,
+        streak: this.stats.streak,
+        level: this.stats.level,
+        lastActiveDate: this.stats.lastActiveDate,
+        completedScenes: this.stats.completedScenes,
+        savedWords: this.stats.savedWords.map(sw => ({
+          word: sw.word,
+          translation: sw.translation,
+          sceneTitle: sw.movieName
+        }))
+      };
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        this.savePendingSync(payload);
+        return;
+      }
+
+      await apiService.syncProgress(payload);
+      this.clearPendingSync();
+    } catch {
+      // If network fails, queue into pending sync
+      this.savePendingSync({
+        xp: this.stats.xp,
+        streak: this.stats.streak,
+        level: this.stats.level,
+        lastActiveDate: this.stats.lastActiveDate,
+        completedScenes: this.stats.completedScenes
+      });
+    } finally {
+      this.isSyncing = false;
+    }
+  }
+
+  private savePendingSync(payload: any): void {
+    try {
+      localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(payload));
+    } catch {}
+  }
+
+  private clearPendingSync(): void {
+    try {
+      localStorage.removeItem(PENDING_SYNC_KEY);
+    } catch {}
+  }
+
+  private async flushPendingSync(): Promise<void> {
+    try {
+      const raw = localStorage.getItem(PENDING_SYNC_KEY);
+      if (!raw) return;
+      const payload = JSON.parse(raw);
+      if (payload) {
+        await apiService.syncProgress(payload);
+        this.clearPendingSync();
+      }
+    } catch {}
   }
 
   private checkAndUpdateStreak(): void {

@@ -559,27 +559,22 @@ export class AuthModal {
   }
 
   private syncUserOnAuth(user: AuthUser): void {
-    // Update local storage representation with user profile
-    const localStats = storageService.getStats();
-    localStats.userName = user.full_name || user.username;
-    localStats.userHandle = `@${user.username}`;
-    localStats.xp = Math.max(localStats.xp, user.xp);
-    localStats.streak = Math.max(localStats.streak, user.streak);
-    localStats.level = Math.max(localStats.level, user.level);
-    storageService.saveStats();
-
-    // Also push any local words to server in background
-    if (localStats.savedWords.length > 0) {
-      apiService.syncProgress({
-        xp: localStats.xp,
-        streak: localStats.streak,
-        level: localStats.level,
-        savedWords: localStats.savedWords.map(sw => ({
-          word: sw.word,
-          translation: sw.translation,
-          sceneTitle: sw.movieName,
-        })),
+    apiService.getMe().then((data) => {
+      if (data) {
+        storageService.syncWithServer(data);
+      } else {
+        storageService.syncWithServer({
+          user,
+          savedWords: [],
+          completedScenes: [],
+        });
+      }
+    }).catch(() => {
+      storageService.syncWithServer({
+        user,
+        savedWords: [],
+        completedScenes: [],
       });
-    }
+    });
   }
 }
