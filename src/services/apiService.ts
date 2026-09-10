@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { safeValidate, registerSchema, loginSchema } from '../utils/validation';
+import { getCsrfHeaders, syncCsrfWithBackend, validateCsrfToken } from '../utils/csrf';
 
 export interface AuthUser {
   id: string | number;
@@ -59,6 +60,9 @@ class ApiService {
         await this.loadUserProfile(session.user);
       }
     }).catch(() => {});
+
+    // Sync or warm up CSRF token with backend
+    syncCsrfWithBackend().catch(() => {});
   }
 
   private getStoredToken(): string | null {
@@ -168,8 +172,14 @@ class ApiService {
     email: string;
     password: string;
     fullName?: string;
+    csrfToken?: string;
   }): Promise<AuthResponse> {
     try {
+      // CSRF token validation
+      if (params.csrfToken && !validateCsrfToken(params.csrfToken)) {
+        return { error: 'Xavfsizlik (CSRF) tokeni yaroqsiz. Sahifani yangilab qayta urinib ko‘ring.' };
+      }
+
       // Validate input data using Zod schema
       const validation = safeValidate(registerSchema, params);
       if (!validation.success) {
@@ -255,8 +265,14 @@ class ApiService {
   public async login(params: {
     identifier: string;
     password: string;
+    csrfToken?: string;
   }): Promise<AuthResponse> {
     try {
+      // CSRF token validation
+      if (params.csrfToken && !validateCsrfToken(params.csrfToken)) {
+        return { error: 'Xavfsizlik (CSRF) tokeni yaroqsiz. Sahifani yangilab qayta urinib ko‘ring.' };
+      }
+
       // Validate input data using Zod schema
       const validation = safeValidate(loginSchema, params);
       if (!validation.success) {
@@ -471,10 +487,13 @@ class ApiService {
     }
 
     try {
-      // Clear backend HttpOnly cookie if using backend service
+      // Clear backend HttpOnly cookie if using backend service with CSRF protection
       await fetch('/api/auth/logout', {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          ...getCsrfHeaders(),
+        },
       });
     } catch {
       // Ignore network errors on logout

@@ -3,6 +3,7 @@ import { soundEffects } from '../services/soundEffects';
 import { storageService } from '../services/storageService';
 import { escapeHtml } from '../utils/sanitize';
 import { safeValidate, registerSchema, loginSchema } from '../utils/validation';
+import { getCsrfToken, validateCsrfToken } from '../utils/csrf';
 
 export class AuthModal {
   private container: HTMLElement;
@@ -107,6 +108,7 @@ export class AuthModal {
   private renderLoginFormHtml(): string {
     return `
       <form class="auth-form" id="loginForm" autocomplete="on">
+        <input type="hidden" name="_csrf" id="loginCsrfToken" value="${getCsrfToken()}" />
         <div class="auth-field-group">
           <label for="loginIdentifier">Email yoki Login</label>
           <div class="auth-input-wrapper">
@@ -158,6 +160,7 @@ export class AuthModal {
   private renderRegisterFormHtml(): string {
     return `
       <form class="auth-form" id="registerForm" autocomplete="on">
+        <input type="hidden" name="_csrf" id="registerCsrfToken" value="${getCsrfToken()}" />
         <div class="auth-field-group">
           <label for="registerFullName">Ismingiz (To‘liq ism)</label>
           <div class="auth-input-wrapper">
@@ -328,10 +331,18 @@ export class AuthModal {
         return;
       }
 
+      const csrfInput = this.container.querySelector<HTMLInputElement>('#loginCsrfToken');
+      if (!validateCsrfToken(csrfInput?.value)) {
+        soundEffects.triggerErrorFeedback();
+        this.showAlert('CSRF xavfsizlik tokeni tasdiqlanmadi. Iltimos, sahifani yangilang.', 'error');
+        return;
+      }
+
       this.setBtnLoading(submitBtn, true, 'Kirish');
       const result = await apiService.login({
         identifier: idInput.value,
         password: pwInput.value,
+        csrfToken: csrfInput?.value,
       });
       this.setBtnLoading(submitBtn, false, 'Kirish');
 
@@ -379,12 +390,20 @@ export class AuthModal {
         return;
       }
 
+      const csrfInput = this.container.querySelector<HTMLInputElement>('#registerCsrfToken');
+      if (!validateCsrfToken(csrfInput?.value)) {
+        soundEffects.triggerErrorFeedback();
+        this.showAlert('CSRF xavfsizlik tokeni tasdiqlanmadi. Iltimos, sahifani yangilang.', 'error');
+        return;
+      }
+
       this.setBtnLoading(submitBtn, true, 'Akkaunt yaratish');
       const result = await apiService.register({
         fullName: nameInput?.value,
         username: userInput.value,
         email: emailInput.value,
         password: pwInput.value,
+        csrfToken: csrfInput?.value,
       });
       this.setBtnLoading(submitBtn, false, 'Akkaunt yaratish');
 

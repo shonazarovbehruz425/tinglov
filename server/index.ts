@@ -17,6 +17,7 @@ import {
   getUserCompletedScenes,
   getGlobalLeaderboard
 } from './db';
+import crypto from 'node:crypto';
 import { hashPassword, comparePassword, generateToken, requireAuth, AuthenticatedRequest } from './auth';
 import { safeValidate, registerSchema, loginSchema } from '../src/utils/validation';
 
@@ -42,10 +43,68 @@ app.use((_req, res, next) => {
   next();
 });
 
+// CSRF Configuration & SameSite Cookies
+const CSRF_COOKIE_NAME = 'XSRF-TOKEN';
+const CSRF_HEADER_NAME = 'x-csrf-token';
+
+function generateCsrfToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+// Issue CSRF cookie automatically on requests if missing
+app.use((req, res, next) => {
+  let csrfToken = req.cookies?.[CSRF_COOKIE_NAME];
+  if (!csrfToken) {
+    csrfToken = generateCsrfToken();
+    res.cookie(CSRF_COOKIE_NAME, csrfToken, {
+      httpOnly: false, // Accessible by client JS to include in X-CSRF-Token header
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+  }
+  next();
+});
+
+// Endpoint to retrieve or refresh current CSRF token
+app.get('/api/csrf-token', (req, res) => {
+  let token = req.cookies?.[CSRF_COOKIE_NAME];
+  if (!token) {
+    token = generateCsrfToken();
+    res.cookie(CSRF_COOKIE_NAME, token, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+  }
+  res.json({ csrfToken: token });
+});
+
+// CSRF Verification Middleware for state-changing HTTP requests
+const requireCsrf = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const safeMethods = ['GET', 'HEAD', 'OPTIONS'];
+  if (safeMethods.includes(req.method)) {
+    return next();
+  }
+
+  const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];
+  const headerToken = req.headers[CSRF_HEADER_NAME] || req.headers['x-xsrf-token'] || req.body?._csrf;
+
+  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+    res.status(403).json({
+      error: 'CSRF token xatosi yoki yaroqsiz. Sahifani yangilab qayta urinib ko‘ring.'
+    });
+    return;
+  }
+
+  next();
+};
+
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: (process.env.NODE_ENV === 'production' ? 'strict' : 'lax') as const,
+  sameSite: 'strict' as const,
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
 
@@ -61,7 +120,7 @@ function sanitizeUser(user: any) {
 // --------------------------------------------------------------------------
 
 // 1. Register
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', requireCsrf, async (req, res) => {
   try {
     const validation = safeValidate(registerSchema, req.body);
     if (!validation.success) {
@@ -110,7 +169,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // 2. Login
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', requireCsrf, async (req, res) => {
   try {
     const validation = safeValidate(loginSchema, req.body);
     if (!validation.success) {
@@ -148,12 +207,12 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 2.5. Logout (Clear HttpOnly cookie)
-app.post('/api/auth/logout', (_req, res) => {
+// 2.5. Logout (Clear HttpOnly cookie with SameSite: strict)
+app.post('/api/auth/logout', requireCsrf, (_req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: (process.env.NODE_ENV === 'production' ? 'strict' : 'lax') as const,
+    sameSite: 'strict',
   });
   res.json({ success: true, message: 'Muvaffaqiyatli tizimdan chiqildi' });
 });
@@ -172,7 +231,7 @@ app.get('/api/auth/me', requireAuth, (req: AuthenticatedRequest, res) => {
 });
 
 // 4. Sync Progress
-app.post('/api/user/sync', requireAuth, (req: AuthenticatedRequest, res) => {
+app.post('/api/user/sync', requireAuth, requireCsrf, (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
     const { xp, streak, level, lastActiveDate, savedWords, completedScene } = req.body;

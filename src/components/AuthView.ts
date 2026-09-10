@@ -3,6 +3,7 @@ import { soundEffects } from '../services/soundEffects';
 import { storageService } from '../services/storageService';
 import { escapeHtml } from '../utils/sanitize';
 import { safeValidate, registerSchema, loginSchema } from '../utils/validation';
+import { getCsrfToken, validateCsrfToken } from '../utils/csrf';
 
 export class AuthView {
   private container: HTMLElement;
@@ -153,6 +154,7 @@ export class AuthView {
   private renderLoginFormHtml(): string {
     return `
       <form class="auth-page-form" id="pageLoginForm" autocomplete="on">
+        <input type="hidden" name="_csrf" id="pageLoginCsrfToken" value="${getCsrfToken()}" />
         <div class="auth-form-field">
           <label for="pageLoginId">Foydalanuvchi nomi yoki Email</label>
           <div class="auth-field-input-box">
@@ -199,6 +201,7 @@ export class AuthView {
   private renderRegisterFormHtml(): string {
     return `
       <form class="auth-page-form" id="pageRegisterForm" autocomplete="on">
+        <input type="hidden" name="_csrf" id="pageRegisterCsrfToken" value="${getCsrfToken()}" />
         <div class="auth-form-field">
           <label for="pageRegFullName">Ism va familiya (ixtiyoriy)</label>
           <div class="auth-field-input-box">
@@ -425,6 +428,14 @@ export class AuthView {
 
       if (!idInput || !pwInput) return;
 
+      const csrfInput = this.container.querySelector<HTMLInputElement>('#pageLoginCsrfToken');
+      const csrfToken = csrfInput?.value || getCsrfToken();
+      if (!validateCsrfToken(csrfToken)) {
+        soundEffects.triggerErrorFeedback();
+        this.showAlert("Xavfsizlik tekshiruvidan o'tilmadi (CSRF token yaroqsiz). Iltimos, sahifani yangilang.", 'error');
+        return;
+      }
+
       const validation = safeValidate(loginSchema, {
         identifier: idInput.value,
         password: pwInput.value,
@@ -440,6 +451,7 @@ export class AuthView {
       const result = await apiService.login({
         identifier: idInput.value,
         password: pwInput.value,
+        csrfToken,
       });
       this.setBtnLoading(submitBtn, false, 'Kirish');
 
@@ -471,6 +483,14 @@ export class AuthView {
 
       if (!userInput || !emailInput || !pwInput) return;
 
+      const csrfInput = this.container.querySelector<HTMLInputElement>('#pageRegisterCsrfToken');
+      const csrfToken = csrfInput?.value || getCsrfToken();
+      if (!validateCsrfToken(csrfToken)) {
+        soundEffects.triggerErrorFeedback();
+        this.showAlert("Xavfsizlik tekshiruvidan o'tilmadi (CSRF token yaroqsiz). Iltimos, sahifani yangilang.", 'error');
+        return;
+      }
+
       const validation = safeValidate(registerSchema, {
         fullName: nameInput?.value,
         username: userInput.value,
@@ -490,6 +510,7 @@ export class AuthView {
         username: userInput.value,
         email: emailInput.value,
         password: pwInput.value,
+        csrfToken,
       });
       this.setBtnLoading(submitBtn, false, 'Ro‘yxatdan o‘tish');
 
