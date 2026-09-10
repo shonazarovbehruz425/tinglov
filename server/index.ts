@@ -43,13 +43,26 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json());
 
-// Security Headers (Anti-Clickjacking & XSS Protection)
+// Security Headers (Anti-Clickjacking, XSS Protection & Content Security Policy)
 app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Content-Security-Policy', "frame-ancestors 'none'; frame-src 'self' https://www.youtube-nocookie.com;");
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; " +
+    "font-src 'self' data: https://fonts.gstatic.com https://unpkg.com; " +
+    "img-src 'self' data: https: blob:; " +
+    "media-src 'self' blob: data: https://cdn.jsdelivr.net https://storage.googleapis.com https:; " +
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://storage.googleapis.com https://unpkg.com https://fonts.googleapis.com; " +
+    "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; " +
+    "frame-ancestors 'none'; " +
+    "object-src 'none'; " +
+    "base-uri 'self';"
+  );
   next();
 });
 
