@@ -15,9 +15,6 @@ export interface VideoStreamStatus {
  * Resolves optimal streaming sources with Cloudflare R2 support and automatic fallback mechanisms.
  */
 class VideoStreamService {
-  // Global CDN base endpoints (e.g. Cloudflare Stream / Fastly / AWS CloudFront / Supabase Storage CDN)
-  private cdnBaseUrl: string = 'https://cdn.jsdelivr.net/gh/movielisten/assets@main';
-  private secondaryCdnUrl: string = 'https://storage.googleapis.com/movielisten-cdn';
   private cacheName: string = 'movielisten-video-cache-v1';
   private cloudflareR2Url: string = '';
 
@@ -115,15 +112,6 @@ class VideoStreamService {
       rawSources.push(this.formatR2UrlIfNeeded(scene.videoUrl));
     }
 
-    // 4. Automated Global Edge CDN mirror for standard content
-    if (scene.id === 'oppogoy-yetti-gnom') {
-      if (this.cloudflareR2Url) {
-        rawSources.push(`${this.cloudflareR2Url}/oppogoy-yetti-gnom.mp4`);
-      }
-      rawSources.push('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4');
-      rawSources.push(`${this.cdnBaseUrl}/cartoons/snow_white.mp4`);
-      rawSources.push(`${this.secondaryCdnUrl}/cartoons/snow_white.mp4`);
-    }
 
     const uniqueSources = Array.from(new Set(rawSources.filter(Boolean)));
 
