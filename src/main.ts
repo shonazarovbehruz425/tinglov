@@ -347,7 +347,10 @@ class MovieListenApp {
     // React to auth state changes (e.g. sign out or Google OAuth sign in)
     apiService.onAuthChange((user) => {
       if (!user) {
-        this.showAuthPage('login');
+        // If user signed out while in protected app views, return to landing page
+        if (this.currentView !== 'landing' && this.currentView !== 'auth') {
+          this.showLandingPage(true);
+        }
       } else {
         this.statsHeader.update();
         // Clean URL hash if it contains OAuth access_token
@@ -367,13 +370,23 @@ class MovieListenApp {
         this.statsHeader.update();
         if (this.currentView === 'profile') {
           this.profileView.render();
+        } else if (this.currentView === 'auth') {
+          this.showLibrary(true);
         }
       } else {
-        // No active session or cookie expired
-        this.checkAndEnforceAuth();
+        // Only enforce auth if current route is protected (never kick visitors off the landing page)
+        const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
+        const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+        const isPublic = rawPath === '/' || rawPath === '/login' || rawPath === '/register' || rawHash === 'landing' || rawHash === 'login' || rawHash === 'register';
+        if (!isPublic && this.currentView !== 'landing') {
+          this.checkAndEnforceAuth();
+        }
       }
     }).catch(() => {
-      if (!apiService.isAuthenticated()) {
+      const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
+      const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+      const isPublic = rawPath === '/' || rawPath === '/login' || rawPath === '/register' || rawHash === 'landing' || rawHash === 'login' || rawHash === 'register';
+      if (!isPublic && this.currentView !== 'landing' && !apiService.isAuthenticated()) {
         this.checkAndEnforceAuth();
       }
     });
