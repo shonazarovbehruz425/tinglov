@@ -361,26 +361,22 @@ class MovieListenApp {
       }
     });
 
-    // Auto-restore session from backend JWT if user previously logged in
-    if (apiService.getToken()) {
-      apiService.getMe().then((user) => {
-        if (user) {
-          this.statsHeader.update();
-          if (this.currentView === 'profile') {
-            this.profileView.render();
-          }
-        } else {
-          // Token expired or invalid
-          this.checkAndEnforceAuth();
+    // Auto-restore session from backend HttpOnly cookie or Supabase session
+    apiService.getMe().then((data) => {
+      if (data) {
+        this.statsHeader.update();
+        if (this.currentView === 'profile') {
+          this.profileView.render();
         }
-      }).catch(() => {
-        if (!apiService.isAuthenticated()) {
-          this.checkAndEnforceAuth();
-        }
-      });
-    } else {
-      this.checkAndEnforceAuth();
-    }
+      } else {
+        // No active session or cookie expired
+        this.checkAndEnforceAuth();
+      }
+    }).catch(() => {
+      if (!apiService.isAuthenticated()) {
+        this.checkAndEnforceAuth();
+      }
+    });
   }
 
   private checkAndEnforceAuth(): boolean {

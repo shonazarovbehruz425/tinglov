@@ -284,6 +284,48 @@ app.post('/api/auth/login', checkAuthRateLimit, requireCsrf, async (req, res) =>
   }
 });
 
+// 2.3. Establish / Sync session from authenticated client (issues HttpOnly cookie)
+app.post('/api/auth/session', requireCsrf, async (req, res) => {
+  try {
+    const { email, username, fullName, avatarColor } = req.body;
+    if (!email && !username) {
+      res.status(400).json({ error: 'Foydalanuvchi ma’lumotlari yetarli emas' });
+      return;
+    }
+
+    const cleanEmail = (email || '').toLowerCase().trim();
+    const cleanUsername = (username || (cleanEmail ? cleanEmail.split('@')[0] : 'foydalanuvchi')).trim();
+
+    let user = cleanEmail ? findUserByEmail(cleanEmail) : null;
+    if (!user && cleanUsername) {
+      user = findUserByUsername(cleanUsername);
+    }
+
+    if (!user) {
+      const dummyPasswordHash = await hashPassword(crypto.randomBytes(16).toString('hex'));
+      user = createUser({
+        username: cleanUsername,
+        email: cleanEmail || `${cleanUsername}@tinglov.uz`,
+        password_hash: dummyPasswordHash,
+        full_name: fullName || cleanUsername,
+        avatar_color: avatarColor || AVATAR_COLORS[0],
+      });
+    }
+
+    const token = generateToken(user);
+    res.cookie('token', token, COOKIE_OPTIONS);
+
+    res.json({
+      success: true,
+      message: 'Sessiya muvaffaqiyatli saqlandi (HttpOnly cookie)',
+      user: sanitizeUser(user),
+    });
+  } catch (err: any) {
+    console.error('Session sync error:', err);
+    res.status(500).json({ error: 'Sessiyani saqlashda xatolik yuz berdi' });
+  }
+});
+
 // 2.5. Logout (Clear HttpOnly cookie with SameSite: strict)
 app.post('/api/auth/logout', requireCsrf, (_req, res) => {
   res.clearCookie('token', {

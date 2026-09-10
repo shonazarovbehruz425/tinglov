@@ -38,17 +38,15 @@ class ApiService {
   private onAuthChangeCallbacks: Array<(user: AuthUser | null) => void> = [];
 
   constructor() {
-    // 1. Initialize from sessionStorage (preventing persistent disk token exposure)
-    this.token = this.getStoredToken();
-
-    // 2. Clean up any legacy localStorage token left behind by previous versions
-    this.purgeLegacyLocalStorage();
+    // 1. Purge any tokens accidentally stored in sessionStorage or localStorage by previous versions
+    this.purgeStorageTokens();
 
     // Listen to real-time auth state changes in Supabase
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         this.setToken(session.access_token);
         await this.loadUserProfile(session.user);
+        this.syncBackendSession(session.user).catch(() => {});
       } else {
         this.clearSession();
         this.notifyAuthChange();
@@ -60,6 +58,7 @@ class ApiService {
       if (session?.user) {
         this.setToken(session.access_token);
         await this.loadUserProfile(session.user);
+        this.syncBackendSession(session.user).catch(() => {});
       }
     }).catch(() => {});
 
@@ -67,54 +66,70 @@ class ApiService {
     syncCsrfWithBackend().catch(() => {});
   }
 
-  private getStoredToken(): string | null {
+  // Purge any tokens stored in client-side storage to enforce in-memory / HttpOnly cookie security
+  private purgeStorageTokens(): void {
     try {
-      if (typeof window !== 'undefined' && window.sessionStorage) {
-        return sessionStorage.getItem(TOKEN_KEY);
-      }
-    } catch {
-      // Ignore
-    }
-    return null;
-  }
-
-  private setToken(token: string | null): void {
-    this.token = token;
-    try {
-      if (typeof window !== 'undefined' && window.sessionStorage) {
-        if (token) {
-          sessionStorage.setItem(TOKEN_KEY, token);
-        } else {
+      if (typeof window !== 'undefined') {
+        if (window.sessionStorage) {
           sessionStorage.removeItem(TOKEN_KEY);
+          sessionStorage.removeItem('tinglov_token');
+          for (let i = sessionStorage.length - 1; i >= 0; i--) {
+            const key = sessionStorage.key(i);
+            if (key && (key.startsWith('sb-') || key.includes('auth-token') || key.includes('token'))) {
+              if (key !== 'tin_csrf_token' && key !== 'tinglov_auth_failures' && key !== 'tinglov_auth_cooldown') {
+                sessionStorage.removeItem(key);
+              }
+            }
+          }
         }
-      }
-      this.purgeLegacyLocalStorage();
-    } catch {
-      // Ignore
-    }
-  }
-
-  private purgeLegacyLocalStorage(): void {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.removeItem(TOKEN_KEY);
-        // Clean any legacy supabase tokens from localStorage
-        for (let i = localStorage.length - 1; i >= 0; i--) {
-          const key = localStorage.key(i);
-          if (key && (key.startsWith('sb-') || key.includes('auth-token'))) {
-            localStorage.removeItem(key);
+        if (window.localStorage) {
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem('tinglov_token');
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('sb-') || key.includes('auth-token') || key.includes('token'))) {
+              localStorage.removeItem(key);
+            }
           }
         }
       }
     } catch {
-      // Ignore
+      // Ignore storage errors
+    }
+  }
+
+  // Tokens are strictly maintained in-memory for the current runtime session
+  private setToken(token: string | null): void {
+    this.token = token;
+    this.purgeStorageTokens();
+  }
+
+  // Synchronize authenticated session to backend to set secure HttpOnly cookie
+  private async syncBackendSession(user: any): Promise<void> {
+    try {
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getCsrfHeaders(),
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: user.email,
+          username: user.user_metadata?.username || (user.email ? user.email.split('@')[0] : 'foydalanuvchi'),
+          fullName: user.user_metadata?.full_name || '',
+          avatarColor: user.user_metadata?.avatar_color,
+        }),
+      });
+    } catch {
+      // Ignore if backend is not running or offline
     }
   }
 
   private clearSession(): void {
     this.token = null;
     this.currentUser = null;
-    this.setToken(null);
+    this.purgeStorageTokens();
   }
 
   public getToken(): string | null {
@@ -122,7 +137,7 @@ class ApiService {
   }
 
   public isAuthenticated(): boolean {
-    return !!this.token;
+    return !!this.token || !!this.currentUser;
   }
 
   public getCurrentUser(): AuthUser | null {
@@ -239,6 +254,8 @@ class ApiService {
 
         if (data.session) {
           this.setToken(data.session.access_token);
+        } else {
+          this.setToken('session_authenticated');
         }
 
         const authUser: AuthUser = {
@@ -249,6 +266,10 @@ class ApiService {
         };
 
         this.currentUser = authUser;
+        await this.syncBackendSession({
+          email: cleanEmail,
+          user_metadata: { username: cleanUsername, full_name: cleanFullName, avatar_color: '#FF5722' }
+        });
         this.notifyAuthChange();
 
         return {
@@ -332,6 +353,7 @@ class ApiService {
       if (data.user && data.session) {
         this.setToken(data.session.access_token);
         const user = await this.loadUserProfile(data.user);
+        await this.syncBackendSession(data.user);
 
         return {
           message: 'Xush kelibsiz!',
@@ -364,35 +386,58 @@ class ApiService {
   }
 
   public async getMe(): Promise<MeResponse | null> {
+    // 1. Check Supabase in-memory session first
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        return null;
+      if (session?.user) {
+        this.setToken(session.access_token);
+        const user = await this.loadUserProfile(session.user);
+        if (user) {
+          const { data: words } = await supabase
+            .from('saved_words')
+            .select('*')
+            .eq('user_id', user.id);
+
+          const { data: scenes } = await supabase
+            .from('completed_scenes')
+            .select('*')
+            .eq('user_id', user.id);
+
+          return {
+            user,
+            savedWords: (words as any) || [],
+            completedScenes: (scenes as any) || [],
+          };
+        }
       }
-
-      const user = await this.loadUserProfile(session.user);
-      if (!user) return null;
-
-      // Fetch saved words from Supabase
-      const { data: words } = await supabase
-        .from('saved_words')
-        .select('*')
-        .eq('user_id', user.id);
-
-      // Fetch completed scenes from Supabase
-      const { data: scenes } = await supabase
-        .from('completed_scenes')
-        .select('*')
-        .eq('user_id', user.id);
-
-      return {
-        user,
-        savedWords: (words as any) || [],
-        completedScenes: (scenes as any) || [],
-      };
     } catch {
-      return null;
+      // Supabase session check failed or offline
     }
+
+    // 2. Check backend HttpOnly cookie session (cross-tab & persistent across tab closes)
+    try {
+      const res = await fetch('/api/auth/me', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.user) {
+          this.currentUser = data.user;
+          this.setToken('httponly_session');
+          this.notifyAuthChange();
+          return {
+            user: data.user,
+            savedWords: data.savedWords || [],
+            completedScenes: data.completedScenes || [],
+          };
+        }
+      }
+    } catch {
+      // Backend offline or user not logged in via cookie
+    }
+
+    return null;
   }
 
   public async syncProgress(payload: {
@@ -512,14 +557,7 @@ class ApiService {
     }
 
     this.clearSession();
-    this.purgeLegacyLocalStorage();
-    try {
-      if (typeof window !== 'undefined' && window.sessionStorage) {
-        sessionStorage.clear();
-      }
-    } catch {
-      // Ignore
-    }
+    this.purgeStorageTokens();
     this.notifyAuthChange();
   }
 }
