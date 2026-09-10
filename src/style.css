@@ -177,6 +177,69 @@
   border-color: var(--accent-orange);
 }
 
+[data-theme="dark"] .header-icon-round,
+[data-theme="oled"] .header-icon-round {
+  background: var(--bg-surface-subtle);
+  border-color: var(--border-subtle);
+  color: var(--text-main);
+}
+
+[data-theme="dark"] .header-icon-round:hover,
+[data-theme="oled"] .header-icon-round:hover {
+  background: var(--bg-surface-elevated);
+  border-color: var(--accent-orange);
+  color: var(--accent-orange);
+}
+
+[data-theme="dark"] .clean-btn,
+[data-theme="oled"] .clean-btn {
+  background: var(--bg-surface-subtle);
+  border-color: var(--border-subtle);
+  color: var(--text-main);
+}
+
+[data-theme="dark"] .clean-btn:hover:not(:disabled),
+[data-theme="oled"] .clean-btn:hover:not(:disabled) {
+  background: var(--bg-surface-elevated);
+  border-color: var(--text-main);
+  color: var(--text-heading);
+}
+
+[data-theme="dark"] .clean-btn.primary-orange,
+[data-theme="oled"] .clean-btn.primary-orange {
+  background: var(--accent-orange);
+  border-color: var(--accent-orange);
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .clean-btn.hint,
+[data-theme="oled"] .clean-btn.hint {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #FBBF24 !important;
+}
+
+[data-theme="dark"] .player-tab-pill,
+[data-theme="oled"] .player-tab-pill {
+  background: var(--bg-surface-subtle);
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .player-tab-pill:hover,
+[data-theme="oled"] .player-tab-pill:hover {
+  border-color: var(--accent-orange);
+  color: var(--text-heading);
+}
+
+[data-theme="dark"] .player-tab-pill.active,
+[data-theme="oled"] .player-tab-pill.active {
+  background: var(--accent-orange);
+  border-color: var(--accent-orange);
+  color: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(255, 91, 55, 0.35);
+}
+
 [data-theme="dark"] .modal-card,
 [data-theme="oled"] .modal-card {
   background: var(--bg-canvas);
@@ -3305,9 +3368,10 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .player-tab-pill.active {
-  background: #FFFFFF;
-  color: #111315;
-  border-color: #FFFFFF;
+  background: #FF5B37;
+  color: #FFFFFF;
+  border-color: #FF5B37;
+  box-shadow: 0 4px 14px rgba(255, 91, 55, 0.35);
 }
 
 [data-theme="dark"] .lesson-description-content {

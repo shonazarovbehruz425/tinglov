@@ -46,8 +46,9 @@ export class CompletionModal {
 
     this.container.innerHTML = `
       <div class="modal-backdrop">
-        <div class="modal-card" style="text-align: center; padding: 2.5rem 2rem;">
-          <h2 style="font-family: var(--font-heading); font-size: 2rem; font-weight: 800; color: var(--text-heading); margin-bottom: 0.5rem;">
+        <div class="modal-card completion-modal-card" style="text-align: center; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
+          <div class="modal-body completion-modal-body" style="padding: 2rem 2rem 2.25rem; overflow-y: auto; flex: 1;">
+            <h2 style="font-family: var(--font-heading); font-size: 2rem; font-weight: 800; color: var(--text-heading); margin-bottom: 0.5rem;">
             Ajoyib Natija!
           </h2>
           <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;">
@@ -99,10 +100,11 @@ export class CompletionModal {
             </button>
           </div>
 
-          <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
-            <button class="clean-btn" id="restartCurrentSceneBtn">Qayta takrorlash</button>
-            <button class="clean-btn primary-orange" id="modalNextSceneBtn">Keyingi darsga o'tish</button>
-            <button class="card-continue-btn" id="backToLibraryBtn">Darslar ro'yxati</button>
+            <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
+              <button class="clean-btn" id="restartCurrentSceneBtn">Qayta takrorlash</button>
+              <button class="clean-btn primary-orange" id="modalNextSceneBtn">Keyingi darsga o'tish</button>
+              <button class="card-continue-btn" id="backToLibraryBtn">Darslar ro'yxati</button>
+            </div>
           </div>
         </div>
       </div>

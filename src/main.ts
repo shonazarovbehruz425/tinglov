@@ -1,4 +1,7 @@
 import './style.css';
+import '@phosphor-icons/web/regular';
+import '@phosphor-icons/web/bold';
+import '@phosphor-icons/web/fill';
 import { Scene, DialogueSentence, ChallengePayload } from './types';
 import { storageService } from './services/storageService';
 import { speechService } from './services/speechService';
