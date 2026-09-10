@@ -456,6 +456,26 @@ export class AdminView {
           </td>
           <td>${escapeHtml(u.email || '—')}</td>
           <td>
+            ${u.auth_provider === 'google' ? `
+              <span class="admin-badge-provider badge-google" title="Google hisobi orqali kirgan">
+                <svg class="google-icon" viewBox="0 0 24 24" width="14" height="14" style="margin-right: 5px; vertical-align: -2px;">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/>
+                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                </svg>
+                Google
+              </span>
+            ` : `
+              <span class="admin-badge-provider badge-email" title="Email va parol orqali ro‘yxatdan o‘tgan">
+                <svg viewBox="0 0 256 256" width="14" height="14" fill="currentColor" style="margin-right: 5px; vertical-align: -2px;">
+                  <path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a24,24,0,0,0,24-24V56A8,8,0,0,0,224,48ZM208,64l-80,53.33L48,64ZM40,192V73.33l75.56,50.37a8,8,0,0,0,8.88,0L200,73.33V192Z"/>
+                </svg>
+                Email / Parol
+              </span>
+            `}
+          </td>
+          <td>
             <span class="admin-badge admin-badge-xp">${u.xp || 0} XP</span>
             <small class="admin-level-sub">Daraja: ${u.level || 1}</small>
           </td>
@@ -504,6 +524,7 @@ export class AdminView {
               <tr>
                 <th>Foydalanuvchi</th>
                 <th>Email</th>
+                <th>Kirish Usuli</th>
                 <th>Tajriba (XP)</th>
                 <th>Streak</th>
                 <th>Ro‘yxatdan O‘tgan</th>
@@ -511,7 +532,7 @@ export class AdminView {
               </tr>
             </thead>
             <tbody>
-              ${userRows.length > 0 ? userRows : `<tr><td colspan="6" class="admin-table-empty">Hech qanday foydalanuvchi topilmadi</td></tr>`}
+              ${userRows.length > 0 ? userRows : `<tr><td colspan="7" class="admin-table-empty">Hech qanday foydalanuvchi topilmadi</td></tr>`}
             </tbody>
           </table>
         </div>

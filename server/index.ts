@@ -244,7 +244,8 @@ app.post('/api/auth/register', registerLimiter, requireCsrf, async (req, res) =>
       email: cleanEmail,
       password_hash,
       full_name: cleanName,
-      avatar_color: randomColor
+      avatar_color: randomColor,
+      auth_provider: 'email'
     });
 
     const token = generateToken(user);
@@ -393,7 +394,7 @@ app.post('/api/auth/login', checkAuthRateLimit, requireCsrf, async (req, res) =>
 // 2.3. Establish / Sync session from authenticated client (issues HttpOnly cookie)
 app.post('/api/auth/session', requireCsrf, async (req, res) => {
   try {
-    const { email, username, fullName, avatarColor } = req.body;
+    const { email, username, fullName, avatarColor, authProvider, uuid } = req.body;
     if (!email && !username) {
       res.status(400).json({ error: 'Foydalanuvchi ma’lumotlari yetarli emas' });
       return;
@@ -401,6 +402,7 @@ app.post('/api/auth/session', requireCsrf, async (req, res) => {
 
     const cleanEmail = (email || '').toLowerCase().trim();
     const cleanUsername = (username || (cleanEmail ? cleanEmail.split('@')[0] : 'foydalanuvchi')).trim();
+    const provider: 'google' | 'email' = authProvider === 'google' ? 'google' : 'email';
 
     let user = cleanEmail ? findUserByEmail(cleanEmail) : null;
     if (!user && cleanUsername) {
@@ -415,7 +417,21 @@ app.post('/api/auth/session', requireCsrf, async (req, res) => {
         password_hash: dummyPasswordHash,
         full_name: fullName || cleanUsername,
         avatar_color: avatarColor || AVATAR_COLORS[0],
+        auth_provider: provider,
+        uuid: uuid || null,
       });
+    } else {
+      // Update existing user with latest auth_provider and uuid
+      try {
+        db.prepare(`
+          UPDATE users 
+          SET auth_provider = ?, 
+              uuid = COALESCE(?, uuid),
+              email = CASE WHEN email LIKE '%@user.tinglov' OR email LIKE '%@tinglov.uz' THEN COALESCE(NULLIF(?, ''), email) ELSE email END
+          WHERE id = ?
+        `).run(provider, uuid || null, cleanEmail, user.id);
+        user = findUserById(user.id) || user;
+      } catch {}
     }
 
     const token = generateToken(user);

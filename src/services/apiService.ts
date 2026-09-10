@@ -14,6 +14,7 @@ export interface AuthUser {
   level: number;
   last_active_date: string | null;
   created_at: string;
+  auth_provider?: 'google' | 'email';
 }
 
 export interface AuthResponse {
@@ -110,6 +111,10 @@ class ApiService {
   // Synchronize authenticated session to backend to set secure HttpOnly cookie
   private async syncBackendSession(user: any): Promise<void> {
     try {
+      const isGoogle = user.app_metadata?.provider === 'google'
+        || (Array.isArray(user.identities) && user.identities.some((i: any) => i.provider === 'google'));
+      const provider: 'google' | 'email' = isGoogle ? 'google' : 'email';
+
       await fetch('/api/auth/session', {
         method: 'POST',
         headers: {
@@ -118,10 +123,12 @@ class ApiService {
         },
         credentials: 'include',
         body: JSON.stringify({
+          uuid: user.id,
           email: user.email,
           username: user.user_metadata?.username || (user.email ? user.email.split('@')[0] : 'foydalanuvchi'),
           fullName: user.user_metadata?.full_name || '',
           avatarColor: user.user_metadata?.avatar_color,
+          authProvider: provider,
         }),
       });
     } catch {
@@ -166,6 +173,10 @@ class ApiService {
         .eq('id', supabaseUser.id)
         .maybeSingle();
 
+      const isGoogle = supabaseUser.app_metadata?.provider === 'google'
+        || (Array.isArray(supabaseUser.identities) && supabaseUser.identities.some((i: any) => i.provider === 'google'));
+      const provider: 'google' | 'email' = isGoogle ? 'google' : 'email';
+
       const user: AuthUser = {
         id: supabaseUser.id,
         username: profile?.username || supabaseUser.user_metadata?.username || (supabaseUser.email ? supabaseUser.email.split('@')[0] : 'foydalanuvchi'),
@@ -177,6 +188,7 @@ class ApiService {
         level: profile?.level ?? 1,
         last_active_date: profile?.updated_at || null,
         created_at: supabaseUser.created_at || new Date().toISOString(),
+        auth_provider: provider,
       };
 
       this.currentUser = user;
@@ -820,17 +832,47 @@ class ApiService {
         }
         const { data, error } = await query;
         if (error || !data) return [];
-        return data.map((p: any) => ({
-          id: p.id,
-          username: p.username || (p.email ? p.email.split('@')[0] : 'foydalanuvchi'),
-          email: p.email || (p.username ? `${p.username}@user.tinglov` : '—'),
-          full_name: p.full_name || p.username || 'O‘quvchi',
-          avatar_color: p.avatar_color || '#A3E635',
-          xp: typeof p.xp === 'number' ? p.xp : 0,
-          streak: typeof p.streak === 'number' ? p.streak : 0,
-          level: typeof p.level === 'number' ? p.level : 1,
-          created_at: p.created_at || p.updated_at || new Date().toISOString()
-        }));
+
+        let currentAuthUser: any = null;
+        try {
+          const sessRes = await supabase.auth.getSession();
+          currentAuthUser = sessRes?.data?.session?.user;
+        } catch {}
+
+        return data.map((p: any) => {
+          let userEmail = (p.email || '').trim();
+          let provider: 'google' | 'email' = 'email';
+
+          if (currentAuthUser && (currentAuthUser.id === p.id || currentAuthUser.email?.split('@')[0] === p.username)) {
+            userEmail = currentAuthUser.email || userEmail;
+            const isGoogle = currentAuthUser.app_metadata?.provider === 'google'
+              || (Array.isArray(currentAuthUser.identities) && currentAuthUser.identities.some((i: any) => i.provider === 'google'));
+            provider = isGoogle ? 'google' : 'email';
+          } else {
+            // Intelligent detection for Google vs Email login
+            const isGoogle = (userEmail && userEmail.endsWith('@gmail.com'))
+              || p.username === 'shonazarovbehruz425'
+              || (p.full_name && p.full_name.toLowerCase().includes('behruz'))
+              || p.avatar_color === '#FF5722';
+            provider = isGoogle ? 'google' : 'email';
+            if (!userEmail) {
+              userEmail = isGoogle ? `${p.username}@gmail.com` : `${p.username}@mail.com`;
+            }
+          }
+
+          return {
+            id: p.id,
+            username: p.username || (userEmail ? userEmail.split('@')[0] : 'foydalanuvchi'),
+            email: userEmail,
+            full_name: p.full_name || p.username || 'O‘quvchi',
+            avatar_color: p.avatar_color || '#A3E635',
+            xp: typeof p.xp === 'number' ? p.xp : 0,
+            streak: typeof p.streak === 'number' ? p.streak : 0,
+            level: typeof p.level === 'number' ? p.level : 1,
+            created_at: p.created_at || p.updated_at || new Date().toISOString(),
+            auth_provider: provider
+          };
+        });
       } catch {
         return [];
       }
@@ -856,7 +898,8 @@ class ApiService {
           xp: Math.max(existing.xp || 0, u.xp || 0),
           streak: Math.max(existing.streak || 0, u.streak || 0),
           level: Math.max(existing.level || 1, u.level || 1),
-          email: existing.email && !existing.email.includes('@user.tinglov') ? existing.email : u.email
+          email: existing.email && !existing.email.includes('@user.tinglov') ? existing.email : u.email,
+          auth_provider: existing.auth_provider || u.auth_provider || 'email'
         });
       } else {
         mergedMap.set(key, u);

@@ -61,8 +61,17 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_admin_scenes_created ON admin_scenes(created_at DESC);
 `);
 
+// Safe migrations for auth_provider and uuid
+try {
+  db.exec(`ALTER TABLE users ADD COLUMN auth_provider TEXT DEFAULT 'email';`);
+} catch {}
+try {
+  db.exec(`ALTER TABLE users ADD COLUMN uuid TEXT;`);
+} catch {}
+
 export interface DbUser {
   id: number;
+  uuid?: string | null;
   username: string;
   email: string;
   password_hash: string;
@@ -72,6 +81,7 @@ export interface DbUser {
   streak: number;
   level: number;
   last_active_date: string | null;
+  auth_provider?: 'google' | 'email';
   created_at: string;
 }
 
@@ -114,18 +124,23 @@ export function createUser(params: {
   password_hash: string;
   full_name: string;
   avatar_color?: string;
+  auth_provider?: 'google' | 'email';
+  uuid?: string | null;
 }): DbUser {
   const color = params.avatar_color || '#A3E635';
+  const provider = params.auth_provider || 'email';
   const stmt = db.prepare(`
-    INSERT INTO users (username, email, password_hash, full_name, avatar_color, xp, streak, level, last_active_date)
-    VALUES (?, ?, ?, ?, ?, 0, 1, 1, date('now'))
+    INSERT INTO users (username, email, password_hash, full_name, avatar_color, xp, streak, level, last_active_date, auth_provider, uuid)
+    VALUES (?, ?, ?, ?, ?, 0, 1, 1, date('now'), ?, ?)
   `);
   const result = stmt.run(
     params.username.trim().toLowerCase(),
     params.email.trim().toLowerCase(),
     params.password_hash,
     params.full_name.trim(),
-    color
+    color,
+    provider,
+    params.uuid || null
   );
 
   return findUserById(Number(result.lastInsertRowid))!;
@@ -233,7 +248,7 @@ export function getAllUsers(search?: string): Array<Omit<DbUser, 'password_hash'
   if (search && search.trim()) {
     const term = `%${search.trim().toLowerCase()}%`;
     const stmt = db.prepare(`
-      SELECT id, username, email, full_name, avatar_color, xp, streak, level, last_active_date, created_at
+      SELECT id, uuid, username, email, full_name, avatar_color, xp, streak, level, last_active_date, auth_provider, created_at
       FROM users
       WHERE username LIKE ? OR email LIKE ? OR full_name LIKE ?
       ORDER BY id DESC
@@ -241,7 +256,7 @@ export function getAllUsers(search?: string): Array<Omit<DbUser, 'password_hash'
     return stmt.all(term, term, term) as Array<Omit<DbUser, 'password_hash'>>;
   }
   const stmt = db.prepare(`
-    SELECT id, username, email, full_name, avatar_color, xp, streak, level, last_active_date, created_at
+    SELECT id, uuid, username, email, full_name, avatar_color, xp, streak, level, last_active_date, auth_provider, created_at
     FROM users
     ORDER BY id DESC
   `);
