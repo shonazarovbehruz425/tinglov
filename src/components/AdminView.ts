@@ -60,7 +60,7 @@ export class AdminView {
       <div class="admin-login-layout">
         <div class="admin-login-card">
           <div class="admin-login-badge">
-            <i class="ph-bold ph-shield-check"></i> XAVFSIZ TIZIM
+            <i class="ph ph-bold ph-shield-check"></i> XAVFSIZ TIZIM
           </div>
 
           <h1 class="admin-login-title">
@@ -70,13 +70,13 @@ export class AdminView {
             Ushbu panelga faqat tizim ma'muri kirishi mumkin. Faol marshrut: <code>${escapeHtml(this.adminPath)}</code>
           </p>
 
-          ${this.errorMsg ? `<div class="admin-alert admin-alert-error"><i class="ph-bold ph-warning-circle"></i> ${escapeHtml(this.errorMsg)}</div>` : ''}
+          ${this.errorMsg ? `<div class="admin-alert admin-alert-error"><i class="ph ph-bold ph-warning-circle"></i> ${escapeHtml(this.errorMsg)}</div>` : ''}
 
           <form id="adminLoginForm" class="admin-login-form">
             <div class="admin-form-group">
               <label for="adminUsernameInput">Ma'mur Logini</label>
               <div class="admin-input-icon-wrap">
-                <i class="ph-bold ph-user"></i>
+                <i class="ph ph-bold ph-user"></i>
                 <input
                   type="text"
                   id="adminUsernameInput"
@@ -91,7 +91,7 @@ export class AdminView {
             <div class="admin-form-group">
               <label for="adminPasswordInput">Ma'mur Maxfiy Paroli</label>
               <div class="admin-input-icon-wrap">
-                <i class="ph-bold ph-lock-key"></i>
+                <i class="ph ph-bold ph-lock-key"></i>
                 <input
                   type="password"
                   id="adminPasswordInput"
@@ -104,17 +104,17 @@ export class AdminView {
             </div>
 
             <button type="submit" id="adminLoginBtn" class="admin-btn admin-btn-primary">
-              <i class="ph-bold ph-sign-in"></i> Boshqaruv Paneliga Kirish
+              <i class="ph ph-bold ph-sign-in"></i> Boshqaruv Paneliga Kirish
             </button>
           </form>
 
           <div class="admin-login-footer">
             <p>
-              <i class="ph-bold ph-info"></i>
+              <i class="ph ph-bold ph-info"></i>
               Ushbu sahifa URL manzilini Render.com <code>ADMIN_PATH</code> orqali istalgan manzilga o'zgartirishingiz mumkin.
             </p>
             <button id="adminBackHomeBtn" class="admin-link-btn">
-              <i class="ph-bold ph-arrow-left"></i> Tinglov Bosh Sahifasiga Qaytish
+              <i class="ph ph-bold ph-arrow-left"></i> Tinglov Bosh Sahifasiga Qaytish
             </button>
           </div>
         </div>
@@ -193,21 +193,21 @@ export class AdminView {
             </div>
             <span class="admin-badge admin-badge-neon">ADMIN CONSOLE</span>
             <div class="admin-route-indicator" title="Ushbu marshrut Render.com env orqali o'zgartirilishi mumkin">
-              <i class="ph-bold ph-link"></i>
+              <i class="ph ph-bold ph-link"></i>
               <span>Marshrut: <strong>${escapeHtml(this.adminPath)}</strong></span>
             </div>
           </div>
 
           <div class="admin-user-nav">
             <button id="adminTopHomeBtn" class="admin-nav-action-btn" title="Saytga o'tish">
-              <i class="ph-bold ph-globe"></i> Saytga Qaytish
+              <i class="ph ph-bold ph-globe"></i> Saytga Qaytish
             </button>
             <div class="admin-user-pill">
               <div class="admin-avatar">${this.adminUsername.slice(0, 1).toUpperCase()}</div>
               <span>${escapeHtml(this.adminUsername)}</span>
             </div>
             <button id="adminLogoutBtn" class="admin-nav-action-btn admin-btn-danger" title="Tizimdan chiqish">
-              <i class="ph-bold ph-sign-out"></i> Chiqish
+              <i class="ph ph-bold ph-sign-out"></i> Chiqish
             </button>
           </div>
         </header>
@@ -218,24 +218,24 @@ export class AdminView {
           <aside class="admin-sidebar">
             <nav class="admin-nav-tabs">
               <button class="admin-tab-btn ${this.activeTab === 'overview' ? 'active' : ''}" data-tab="overview">
-                <i class="ph-bold ph-chart-polar"></i> Umumiy Statistika
+                <i class="ph ph-bold ph-chart-polar"></i> Umumiy Statistika
               </button>
               <button class="admin-tab-btn ${this.activeTab === 'users' ? 'active' : ''}" data-tab="users">
-                <i class="ph-bold ph-users"></i> Foydalanuvchilar (${this.users.length})
+                <i class="ph ph-bold ph-users"></i> Foydalanuvchilar (${this.users.length})
               </button>
               <button class="admin-tab-btn ${this.activeTab === 'scenes' ? 'active' : ''}" data-tab="scenes">
-                <i class="ph-bold ph-film-strip"></i> Darslar & Filmlar (${this.scenes.length})
+                <i class="ph ph-bold ph-film-strip"></i> Darslar & Filmlar (${this.scenes.length})
               </button>
               <button class="admin-tab-btn ${this.activeTab === 'security' ? 'active' : ''}" data-tab="security">
-                <i class="ph-bold ph-shield-check"></i> Xavfsizlik & Render.com
+                <i class="ph ph-bold ph-shield-check"></i> Xavfsizlik & Render.com
               </button>
             </nav>
           </aside>
 
           <!-- Content Panel -->
           <main class="admin-main-panel">
-            ${this.successMsg ? `<div class="admin-alert admin-alert-success"><i class="ph-bold ph-check-circle"></i> ${escapeHtml(this.successMsg)}</div>` : ''}
-            ${this.errorMsg ? `<div class="admin-alert admin-alert-error"><i class="ph-bold ph-warning-circle"></i> ${escapeHtml(this.errorMsg)}</div>` : ''}
+            ${this.successMsg ? `<div class="admin-alert admin-alert-success"><i class="ph ph-bold ph-check-circle"></i> ${escapeHtml(this.successMsg)}</div>` : ''}
+            ${this.errorMsg ? `<div class="admin-alert admin-alert-error"><i class="ph ph-bold ph-warning-circle"></i> ${escapeHtml(this.errorMsg)}</div>` : ''}
 
             ${this.renderActiveTabContent()}
           </main>
@@ -282,52 +282,52 @@ export class AdminView {
             <p class="admin-pane-desc">Tinglov platformasining real vaqt rejimidagi faollik statistikasi</p>
           </div>
           <button id="adminRefreshStatsBtn" class="admin-btn admin-btn-secondary">
-            <i class="ph-bold ph-arrows-clockwise"></i> Yangilash
+            <i class="ph ph-bold ph-arrows-clockwise"></i> Yangilash
           </button>
         </div>
 
         <!-- 4 Stat Cards -->
         <div class="admin-stats-grid">
           <div class="admin-stat-card card-purple">
-            <div class="admin-stat-icon"><i class="ph-bold ph-users-three"></i></div>
+            <div class="admin-stat-icon"><i class="ph ph-bold ph-users-three"></i></div>
             <div class="admin-stat-content">
               <span class="admin-stat-label">Jami Foydalanuvchilar</span>
               <strong class="admin-stat-val">${s.totalUsers}</strong>
-              <span class="admin-stat-sub"><i class="ph-bold ph-arrow-up-right"></i> Faol o'quvchilar</span>
+              <span class="admin-stat-sub"><i class="ph ph-bold ph-arrow-up-right"></i> Faol o'quvchilar</span>
             </div>
           </div>
 
           <div class="admin-stat-card card-green">
-            <div class="admin-stat-icon"><i class="ph-bold ph-user-plus"></i></div>
+            <div class="admin-stat-icon"><i class="ph ph-bold ph-user-plus"></i></div>
             <div class="admin-stat-content">
               <span class="admin-stat-label">Bugun Qo‘shilganlar</span>
               <strong class="admin-stat-val">${s.usersToday}</strong>
-              <span class="admin-stat-sub"><i class="ph-bold ph-sparkle"></i> Yangi ro'yxatdan o'tganlar</span>
+              <span class="admin-stat-sub"><i class="ph ph-bold ph-sparkle"></i> Yangi ro'yxatdan o'tganlar</span>
             </div>
           </div>
 
           <div class="admin-stat-card card-blue">
-            <div class="admin-stat-icon"><i class="ph-bold ph-translate"></i></div>
+            <div class="admin-stat-icon"><i class="ph ph-bold ph-translate"></i></div>
             <div class="admin-stat-content">
               <span class="admin-stat-label">O‘rganilgan Lug‘atlar</span>
               <strong class="admin-stat-val">${s.totalSavedWords}</strong>
-              <span class="admin-stat-sub"><i class="ph-bold ph-bookmark-simple"></i> Saqlangan so'zlar</span>
+              <span class="admin-stat-sub"><i class="ph ph-bold ph-bookmark-simple"></i> Saqlangan so'zlar</span>
             </div>
           </div>
 
           <div class="admin-stat-card card-orange">
-            <div class="admin-stat-icon"><i class="ph-bold ph-check-circle"></i></div>
+            <div class="admin-stat-icon"><i class="ph ph-bold ph-check-circle"></i></div>
             <div class="admin-stat-content">
               <span class="admin-stat-label">Bajarilgan Mashg‘ulotlar</span>
               <strong class="admin-stat-val">${s.totalCompletedScenes}</strong>
-              <span class="admin-stat-sub"><i class="ph-bold ph-video"></i> Video darslar yakunlangan</span>
+              <span class="admin-stat-sub"><i class="ph ph-bold ph-video"></i> Video darslar yakunlangan</span>
             </div>
           </div>
         </div>
 
         <!-- System Details Table -->
         <div class="admin-card-section">
-          <h3 class="admin-section-subtitle"><i class="ph-bold ph-cpu"></i> Server va Infratuzilma Holati</h3>
+          <h3 class="admin-section-subtitle"><i class="ph ph-bold ph-cpu"></i> Server va Infratuzilma Holati</h3>
           <div class="admin-info-table-wrap">
             <table class="admin-info-table">
               <tbody>
@@ -362,9 +362,9 @@ export class AdminView {
                 <tr>
                   <td><strong>Keep-Alive & Monitoring:</strong></td>
                   <td>
-                    <span class="admin-badge admin-badge-green"><i class="ph-bold ph-heartbeat"></i> /health Faol</span>
-                    <span class="admin-badge admin-badge-blue"><i class="ph-bold ph-bell-ringing"></i> UptimeRobot Tayyor</span>
-                    <a href="/health" target="_blank" class="admin-link-btn" style="margin-left: 8px; font-size: 0.75rem;"><i class="ph-bold ph-arrow-square-out"></i> Tekshirish</a>
+                    <span class="admin-badge admin-badge-green"><i class="ph ph-bold ph-heartbeat"></i> /health Faol</span>
+                    <span class="admin-badge admin-badge-blue"><i class="ph ph-bold ph-bell-ringing"></i> UptimeRobot Tayyor</span>
+                    <a href="/health" target="_blank" class="admin-link-btn" style="margin-left: 8px; font-size: 0.75rem;"><i class="ph ph-bold ph-arrow-square-out"></i> Tekshirish</a>
                   </td>
                 </tr>
               </tbody>
@@ -401,10 +401,14 @@ export class AdminView {
           <td>${regDate}</td>
           <td class="admin-actions-cell">
             <button class="admin-action-btn admin-btn-edit-user" data-user-id="${u.id}" data-user-xp="${u.xp}" data-user-level="${u.level}" data-user-streak="${u.streak}" title="XP / Darajani tahrirlash">
-              <i class="ph-bold ph-pencil-simple"></i>
+              <svg viewBox="0 0 256 256" width="18" height="18" fill="currentColor" aria-hidden="true">
+                <path d="M227.32,73.37,182.63,28.69a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.32,96A16,16,0,0,0,227.32,73.37ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.69,147.32,64l24-24L216,84.69Z"/>
+              </svg>
             </button>
             <button class="admin-action-btn admin-btn-del-user admin-btn-danger" data-user-id="${u.id}" data-user-name="${escapeHtml(u.username)}" title="Foydalanuvchini o‘chirish">
-              <i class="ph-bold ph-trash"></i>
+              <svg viewBox="0 0 256 256" width="18" height="18" fill="currentColor" aria-hidden="true">
+                <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/>
+              </svg>
             </button>
           </td>
         </tr>
@@ -419,7 +423,7 @@ export class AdminView {
             <p class="admin-pane-desc">Platformada ro‘yxatdan o‘tgan barcha o‘quvchilar ro‘yxati (${this.users.length} ta)</p>
           </div>
           <div class="admin-search-wrap">
-            <i class="ph-bold ph-magnifying-glass"></i>
+            <i class="ph ph-bold ph-magnifying-glass"></i>
             <input
               type="text"
               id="adminUserSearchInput"
@@ -469,13 +473,15 @@ export class AdminView {
               <span class="admin-badge admin-badge-xp">${escapeHtml(scene.difficulty || 'Intermediate')}</span>
             </div>
             <button class="admin-btn-del-scene admin-btn-danger" data-scene-id="${escapeHtml(scene.id)}" title="Darsni o‘chirish">
-              <i class="ph-bold ph-trash"></i>
+              <svg viewBox="0 0 256 256" width="18" height="18" fill="currentColor" aria-hidden="true">
+                <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/>
+              </svg>
             </button>
           </div>
           <h4 class="admin-scene-title">${escapeHtml(scene.title)}</h4>
           <div class="admin-scene-meta">
-            <span><i class="ph-bold ph-chat-centered-text"></i> ${dialoguesCount} ta dialog qatori</span>
-            <span><i class="ph-bold ph-video-camera"></i> ${escapeHtml(scene.video_url.slice(0, 30))}...</span>
+            <span><i class="ph ph-bold ph-chat-centered-text"></i> ${dialoguesCount} ta dialog qatori</span>
+            <span><i class="ph ph-bold ph-video-camera"></i> ${escapeHtml(scene.video_url.slice(0, 30))}...</span>
           </div>
         </div>
       `;
@@ -489,14 +495,14 @@ export class AdminView {
             <p class="admin-pane-desc">Platformadagi barcha foydalanuvchilar uchun yangi darslar qo‘shish va boshqarish</p>
           </div>
           <button id="adminOpenNewSceneModalBtn" class="admin-btn admin-btn-primary">
-            <i class="ph-bold ph-plus-circle"></i> Yangi Dars Qo‘shish
+            <i class="ph ph-bold ph-plus-circle"></i> Yangi Dars Qo‘shish
           </button>
         </div>
 
         <div class="admin-scenes-grid">
           ${sceneCards.length > 0 ? sceneCards : `
             <div class="admin-empty-box">
-              <i class="ph-bold ph-film-slate"></i>
+              <i class="ph ph-bold ph-film-slate"></i>
               <h3>Hozircha maxsus admin darslari mavjud emas</h3>
               <p>Yangi dars qo'shish tugmasini bosing va o'quvchilar uchun yangi film yoki video yuklang.</p>
             </div>
@@ -508,7 +514,7 @@ export class AdminView {
           <div class="admin-modal-backdrop"></div>
           <div class="admin-modal-content">
             <div class="admin-modal-header">
-              <h3><i class="ph-bold ph-video"></i> Yangi Video Dars Yaratish</h3>
+              <h3><i class="ph ph-bold ph-video"></i> Yangi Video Dars Yaratish</h3>
               <button id="adminCloseSceneModalBtn" class="admin-modal-close-btn">&times;</button>
             </div>
             <form id="adminNewSceneForm" class="admin-modal-form">
@@ -542,7 +548,7 @@ export class AdminView {
                 <label>Video URL yoki YouTube / Cloudflare R2 Havolasi *</label>
                 <input type="text" id="newSceneVideoUrl" class="admin-input" placeholder="https://pub-xxx.r2.dev/video.mp4 yoki r2:fayl.mp4 yoki YouTube URL" required />
                 <small class="admin-field-hint" style="display:block; margin-top: 4px; font-size: 0.8rem; color: #94A3B8;">
-                  <i class="ph-bold ph-cloud"></i> Cloudflare R2 dan streaming uchun to‘liq R2 URL (<code>https://pub-xxx.r2.dev/video.mp4</code>) yoki <code>r2:video.mp4</code> kiriting.
+                  <i class="ph ph-bold ph-cloud"></i> Cloudflare R2 dan streaming uchun to‘liq R2 URL (<code>https://pub-xxx.r2.dev/video.mp4</code>) yoki <code>r2:video.mp4</code> kiriting.
                 </small>
               </div>
 
@@ -559,7 +565,7 @@ export class AdminView {
               <div class="admin-modal-footer">
                 <button type="button" id="adminCancelSceneBtn" class="admin-btn admin-btn-secondary">Bekor Qilish</button>
                 <button type="submit" id="adminSaveSceneBtn" class="admin-btn admin-btn-primary">
-                  <i class="ph-bold ph-check"></i> Darsni Saqlash
+                  <i class="ph ph-bold ph-check"></i> Darsni Saqlash
                 </button>
               </div>
             </form>
@@ -582,7 +588,7 @@ export class AdminView {
         <div class="admin-guide-grid">
           <!-- Guide 1: How to change route on Render.com -->
           <div class="admin-card-section">
-            <h3 class="admin-section-subtitle"><i class="ph-bold ph-gear-six"></i> Render.com da Admin Marshrutini O‘zgartirish</h3>
+            <h3 class="admin-section-subtitle"><i class="ph ph-bold ph-gear-six"></i> Render.com da Admin Marshrutini O‘zgartirish</h3>
             <p class="admin-text-muted">
               Ushbu panel manzilini (URL) Render.com boshqaruv panelida istalgan vaqt o'zgartirishingiz mumkin. Buning uchun:
             </p>
@@ -601,7 +607,7 @@ export class AdminView {
 
           <!-- Guide 2: Admin Password -->
           <div class="admin-card-section">
-            <h3 class="admin-section-subtitle"><i class="ph-bold ph-key"></i> Admin Login va Parolini O‘zgartirish</h3>
+            <h3 class="admin-section-subtitle"><i class="ph ph-bold ph-key"></i> Admin Login va Parolini O‘zgartirish</h3>
             <p class="admin-text-muted">
               Xuddi shu <strong>Environment</strong> bo‘limida login va parolingizni belgilashingiz mumkin:
             </p>
@@ -616,31 +622,31 @@ export class AdminView {
 
           <!-- Guide 3: Active Protections -->
           <div class="admin-card-section">
-            <h3 class="admin-section-subtitle"><i class="ph-bold ph-shield-check"></i> Faol Xavfsizlik Qatlamlari</h3>
+            <h3 class="admin-section-subtitle"><i class="ph ph-bold ph-shield-check"></i> Faol Xavfsizlik Qatlamlari</h3>
             <div class="admin-security-checks">
               <div class="admin-security-item">
-                <i class="ph-bold ph-check-circle text-green"></i>
+                <i class="ph ph-bold ph-check-circle text-green"></i>
                 <div>
                   <strong>Strict-Transport-Security (HSTS)</strong>
                   <p>max-age=31536000; includeSubDomains; preload orqali barcha so'rovlar faqat HTTPS orqali qabul qilinadi.</p>
                 </div>
               </div>
               <div class="admin-security-item">
-                <i class="ph-bold ph-check-circle text-green"></i>
+                <i class="ph ph-bold ph-check-circle text-green"></i>
                 <div>
                   <strong>CSRF & Double Submit Cookie Himoyasi</strong>
                   <p>Har bir POST va DELETE so'rovi maxfiy X-CSRF-Token orqali tasdiqlanadi.</p>
                 </div>
               </div>
               <div class="admin-security-item">
-                <i class="ph-bold ph-check-circle text-green"></i>
+                <i class="ph ph-bold ph-check-circle text-green"></i>
                 <div>
                   <strong>Rate Limiting & Anti-Bruteforce</strong>
                   <p>So'rovlar soni cheklangan va xavfsiz HMAC Captcha qo'llab-quvvatlanadi.</p>
                 </div>
               </div>
               <div class="admin-security-item">
-                <i class="ph-bold ph-check-circle text-green"></i>
+                <i class="ph ph-bold ph-check-circle text-green"></i>
                 <div>
                   <strong>HttpOnly Secure Cookies</strong>
                   <p>Admin seans tokeni faqat server orqali o'qiladi, brauzer JavaScript (XSS) orqali o'g'irlab bo'lmaydi.</p>
@@ -651,7 +657,7 @@ export class AdminView {
 
           <!-- Guide 4: Cloudflare R2 Video Streaming Setup -->
           <div class="admin-card-section">
-            <h3 class="admin-section-subtitle"><i class="ph-bold ph-cloud-arrow-up" style="color: #F48120;"></i> Cloudflare R2 Video Streaming & CORS Sozlamalari</h3>
+            <h3 class="admin-section-subtitle"><i class="ph ph-bold ph-cloud-arrow-up" style="color: #F48120;"></i> Cloudflare R2 Video Streaming & CORS Sozlamalari</h3>
             <p class="admin-text-muted">
               Videolarni Cloudflare R2 orqali xarajatlarsiz (Zero Egress fees) tezkor va sifatli stream qilish uchun quyidagi 4 ta qadamni bajaring:
             </p>
@@ -678,13 +684,13 @@ export class AdminView {
               </li>
             </ol>
             <p class="admin-text-muted" style="margin-top: 8px;">
-              <i class="ph-bold ph-info"></i> Sozlangandan so'ng, dars yaratishda to‘liq URL yoki shunchaki <code>r2:kino_nomi.mp4</code> kiritishingiz kifoya! Player avtomatik Cloudflare R2 Edge Streaming bilan ulanadi.
+              <i class="ph ph-bold ph-info"></i> Sozlangandan so'ng, dars yaratishda to‘liq URL yoki shunchaki <code>r2:kino_nomi.mp4</code> kiritishingiz kifoya! Player avtomatik Cloudflare R2 Edge Streaming bilan ulanadi.
             </p>
           </div>
 
           <!-- Guide 5: Render.com Keep-Alive & UptimeRobot Setup -->
           <div class="admin-card-section">
-            <h3 class="admin-section-subtitle"><i class="ph-bold ph-heartbeat" style="color: #10B981;"></i> Render.com Uxlab Qolmasligi (UptimeRobot & Keep-Alive)</h3>
+            <h3 class="admin-section-subtitle"><i class="ph ph-bold ph-heartbeat" style="color: #10B981;"></i> Render.com Uxlab Qolmasligi (UptimeRobot & Keep-Alive)</h3>
             <p class="admin-text-muted">
               Render.com bepul tarifida 15 daqiqa davomida so‘rov kelmasa, server "Spin down" (uyqu) rejimiga o‘tadi va keyingi ochilishda 50 soniya kutdiradi. Server doimo 24/7 uyg‘oq turishi uchun <strong>UptimeRobot</strong> orqali bepul monitoring yoqing:
             </p>
@@ -708,10 +714,10 @@ export class AdminView {
             </ol>
             <div style="margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <a href="/health" target="_blank" class="admin-btn admin-btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">
-                <i class="ph-bold ph-heartbeat"></i> /health Endpointini Sinash
+                <i class="ph ph-bold ph-heartbeat"></i> /health Endpointini Sinash
               </a>
               <a href="/ping" target="_blank" class="admin-btn admin-btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">
-                <i class="ph-bold ph-bell-ringing"></i> /ping (Pong) Sinash
+                <i class="ph ph-bold ph-bell-ringing"></i> /ping (Pong) Sinash
               </a>
             </div>
           </div>
