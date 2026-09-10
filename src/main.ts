@@ -800,18 +800,6 @@ class MovieListenApp {
 
     if (isValidYouTubeVideoId(this.currentScene.youtubeVideoId) || this.currentScene.videoUrl) {
       this.animatedStage.playVideoSegment(sentence.startTime, sentence.endTime);
-    } else {
-      speechService.speakDialogue(
-        sentence,
-        this.currentScene.accent,
-        (event) => {
-          if (event === 'start') {
-            this.animatedStage.setSpeakingState(true);
-          } else if (event === 'end' || event === 'error') {
-            this.animatedStage.setSpeakingState(false);
-          }
-        }
-      );
     }
   }
 

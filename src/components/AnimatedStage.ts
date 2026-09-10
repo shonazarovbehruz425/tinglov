@@ -157,15 +157,8 @@ export class AnimatedStage {
 
     // 2. HTML5 Video Player Mode
     if (!this.videoElement || !this.currentScene?.videoUrl) {
-      if (this.currentSentence) {
-        this.setSpeakingState(true);
-        speechService.speakDialogue(this.currentSentence, this.currentScene?.accent || 'American', (ev) => {
-          if (ev === 'end' || ev === 'error') {
-            this.setSpeakingState(false);
-            onEnd?.();
-          }
-        });
-      }
+      this.setSpeakingState(false);
+      onEnd?.();
       return;
     }
 
@@ -195,17 +188,8 @@ export class AnimatedStage {
 
         this.animFrameId = requestAnimationFrame(checkTime);
       }).catch(() => {
-        // Fallback to speech synthesis when video fails to play
-        if (this.currentSentence) {
-          speechService.speakDialogue(this.currentSentence, this.currentScene?.accent || 'American', (ev) => {
-            if (ev === 'end' || ev === 'error') {
-              this.setSpeakingState(false);
-              onEnd?.();
-            }
-          });
-        } else {
-          this.setSpeakingState(false);
-        }
+        this.setSpeakingState(false);
+        onEnd?.();
       });
     };
 
