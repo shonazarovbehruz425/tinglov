@@ -24,6 +24,17 @@
         } catch (e) {}
       })();
     </script>
+
+    <!-- Anti-Clickjacking Defense-in-Depth (OWASP Framebuster) -->
+    <style id="antiClickjack">body{display:none !important;}</style>
+    <script>
+      if (self === top) {
+        var antiClickjack = document.getElementById('antiClickjack');
+        if (antiClickjack) antiClickjack.parentNode.removeChild(antiClickjack);
+      } else {
+        top.location = self.location;
+      }
+    </script>
   </head>
   <body class="learnify-theme">
     <div id="app"></div>
