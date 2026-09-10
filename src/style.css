@@ -8678,18 +8678,45 @@ body.in-auth-mode #authViewContainer {
 }
 
 .auth-tabs-toggle {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  background: var(--bg-surface-subtle, rgba(255, 255, 255, 0.06));
-  padding: 0.35rem;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 4px;
   border-radius: var(--radius-pill, 9999px);
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  isolation: isolate;
+  user-select: none;
+}
+
+.auth-tab-slider {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  background: linear-gradient(135deg, #FF5722 0%, #FF7043 100%);
+  border-radius: var(--radius-pill, 9999px);
+  box-shadow: 0 4px 18px rgba(255, 87, 34, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+  z-index: 1;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.auth-tabs-toggle[data-active="login"] .auth-tab-slider {
+  transform: translateX(0%);
+}
+
+.auth-tabs-toggle[data-active="register"] .auth-tab-slider {
+  transform: translateX(100%);
 }
 
 .auth-tab-choice {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary, #94A3B8);
+  position: relative;
+  z-index: 2;
+  background: transparent !important;
+  border: none !important;
+  color: #94A3B8;
   font-size: 0.88rem;
   font-weight: 700;
   padding: 0.65rem 1rem;
@@ -8699,13 +8726,22 @@ body.in-auth-mode #authViewContainer {
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  transition: all 0.2s ease;
+  transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s ease;
+  box-shadow: none !important;
+}
+
+.auth-tab-choice:active {
+  transform: scale(0.97);
 }
 
 .auth-tab-choice.active {
-  background: var(--accent-orange, #FF5722);
-  color: #FFFFFF;
-  box-shadow: 0 4px 14px rgba(255, 87, 34, 0.4);
+  color: #FFFFFF !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.auth-tab-choice:hover:not(.active) {
+  color: #F1F5F9;
 }
 
 .auth-card-heading {
@@ -8718,6 +8754,7 @@ body.in-auth-mode #authViewContainer {
   color: var(--text-main, #FFFFFF);
   margin-bottom: 0.35rem;
   letter-spacing: -0.02em;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .auth-card-desc {
@@ -8725,6 +8762,54 @@ body.in-auth-mode #authViewContainer {
   color: var(--text-secondary, #94A3B8);
   line-height: 1.45;
   margin: 0;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-card-body {
+  position: relative;
+  width: 100%;
+}
+
+.auth-form-slide {
+  width: 100%;
+}
+
+.auth-form-slide.active {
+  display: block;
+}
+
+.auth-form-slide:not(.active) {
+  display: none;
+}
+
+@keyframes authSlideInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes authSlideInLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.auth-form-slide.slide-in-right {
+  animation: authSlideInRight 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.auth-form-slide.slide-in-left {
+  animation: authSlideInLeft 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Alert */

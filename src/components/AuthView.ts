@@ -16,6 +16,12 @@ export class AuthView {
   }
 
   public render(tab: 'login' | 'register' = 'login'): void {
+    const existingToggle = this.container.querySelector('#pageAuthTabsToggle');
+    if (existingToggle) {
+      this.switchTab(tab);
+      return;
+    }
+
     this.activeTab = tab;
     this.container.innerHTML = `
       <div class="auth-page-wrapper">
@@ -74,21 +80,22 @@ export class AuthView {
             <div class="auth-page-card">
               <!-- Header with tabs -->
               <div class="auth-card-top">
-                <div class="auth-tabs-toggle">
-                  <button class="auth-tab-choice ${this.activeTab === 'login' ? 'active' : ''}" id="pageTabLogin">
-                    <i class="ph ph-sign-in"></i> Kirish
+                <div class="auth-tabs-toggle" id="pageAuthTabsToggle" data-active="${this.activeTab}">
+                  <div class="auth-tab-slider"></div>
+                  <button type="button" class="auth-tab-choice ${this.activeTab === 'login' ? 'active' : ''}" id="pageTabLogin">
+                    <i class="ph ph-sign-in"></i> <span>Kirish</span>
                   </button>
-                  <button class="auth-tab-choice ${this.activeTab === 'register' ? 'active' : ''}" id="pageTabRegister">
-                    <i class="ph ph-user-plus"></i> Ro‘yxatdan o‘tish
+                  <button type="button" class="auth-tab-choice ${this.activeTab === 'register' ? 'active' : ''}" id="pageTabRegister">
+                    <i class="ph ph-user-plus"></i> <span>Ro‘yxatdan o‘tish</span>
                   </button>
                 </div>
               </div>
 
               <div class="auth-card-heading">
-                <h3 class="auth-card-title">
+                <h3 class="auth-card-title" id="authCardTitle">
                   ${this.activeTab === 'login' ? 'Xush kelibsiz!' : 'Yangi hisob yaratish'}
                 </h3>
-                <p class="auth-card-desc">
+                <p class="auth-card-desc" id="authCardDesc">
                   ${this.activeTab === 'login' 
                     ? 'Platformaga kirish uchun ma‘lumotlaringizni kiriting' 
                     : 'Bepul ro‘yxatdan o‘ting va o‘rganishni boshlang'}
@@ -115,24 +122,22 @@ export class AuthView {
                 </div>
               </div>
 
-              <!-- Forms -->
+              <!-- Forms Slider -->
               <div class="auth-card-body">
-                ${this.activeTab === 'login' ? this.renderLoginFormHtml() : this.renderRegisterFormHtml()}
+                <div class="auth-form-slide ${this.activeTab === 'login' ? 'active' : ''}" id="loginSlide" style="display: ${this.activeTab === 'login' ? 'block' : 'none'};">
+                  ${this.renderLoginFormHtml()}
+                </div>
+                <div class="auth-form-slide ${this.activeTab === 'register' ? 'active' : ''}" id="registerSlide" style="display: ${this.activeTab === 'register' ? 'block' : 'none'};">
+                  ${this.renderRegisterFormHtml()}
+                </div>
               </div>
 
               <!-- Footer Switcher -->
-              <div class="auth-card-footer">
-                ${this.activeTab === 'login' ? `
-                  <span>Akkauntingiz yo‘qmi?</span>
-                  <button type="button" class="auth-switch-link" id="pageSwitchToRegisterBtn">
-                    Ro‘yxatdan o‘tish
-                  </button>
-                ` : `
-                  <span>Hisobingiz bormi?</span>
-                  <button type="button" class="auth-switch-link" id="pageSwitchToLoginBtn">
-                    Kirish
-                  </button>
-                `}
+              <div class="auth-card-footer" id="authCardFooter">
+                <span id="authFooterText">${this.activeTab === 'login' ? 'Akkauntingiz yo‘qmi?' : 'Hisobingiz bormi?'}</span>
+                <button type="button" class="auth-switch-link" id="authFooterSwitchBtn">
+                  ${this.activeTab === 'login' ? 'Ro‘yxatdan o‘tish' : 'Kirish'}
+                </button>
               </div>
             </div>
           </div>
@@ -297,26 +302,101 @@ export class AuthView {
     }
   }
 
+  public switchTab(tab: 'login' | 'register'): void {
+    if (this.activeTab === tab) return;
+
+    soundEffects.playKeyClick();
+    this.activeTab = tab;
+
+    // 1. Sliding pill animation
+    const toggleEl = this.container.querySelector<HTMLElement>('#pageAuthTabsToggle');
+    if (toggleEl) {
+      toggleEl.setAttribute('data-active', tab);
+    }
+
+    const tabLoginBtn = this.container.querySelector('#pageTabLogin');
+    const tabRegBtn = this.container.querySelector('#pageTabRegister');
+    tabLoginBtn?.classList.toggle('active', tab === 'login');
+    tabRegBtn?.classList.toggle('active', tab === 'register');
+
+    // 2. Headings with soft fade
+    const titleEl = this.container.querySelector<HTMLElement>('#authCardTitle');
+    const descEl = this.container.querySelector<HTMLElement>('#authCardDesc');
+    if (titleEl && descEl) {
+      titleEl.style.opacity = '0';
+      descEl.style.opacity = '0';
+      titleEl.style.transform = 'translateY(-4px)';
+      descEl.style.transform = 'translateY(-4px)';
+      setTimeout(() => {
+        titleEl.textContent = tab === 'login' ? 'Xush kelibsiz!' : 'Yangi hisob yaratish';
+        descEl.textContent = tab === 'login'
+          ? 'Platformaga kirish uchun ma‘lumotlaringizni kiriting'
+          : 'Bepul ro‘yxatdan o‘ting va o‘rganishni boshlang';
+        titleEl.style.opacity = '1';
+        descEl.style.opacity = '1';
+        titleEl.style.transform = 'translateY(0)';
+        descEl.style.transform = 'translateY(0)';
+      }, 140);
+    }
+
+    // 3. Clear alert box
+    this.clearAlert();
+
+    // 4. Form slides with smooth sliding animation
+    const loginSlide = this.container.querySelector<HTMLElement>('#loginSlide');
+    const regSlide = this.container.querySelector<HTMLElement>('#registerSlide');
+
+    if (loginSlide && regSlide) {
+      if (tab === 'login') {
+        regSlide.style.display = 'none';
+        regSlide.classList.remove('active', 'slide-in-right', 'slide-in-left');
+
+        loginSlide.style.display = 'block';
+        loginSlide.classList.remove('slide-in-right', 'slide-in-left');
+        void loginSlide.offsetWidth; // trigger reflow
+        loginSlide.classList.add('active', 'slide-in-left');
+        this.container.querySelector<HTMLInputElement>('#pageLoginId')?.focus();
+      } else {
+        loginSlide.style.display = 'none';
+        loginSlide.classList.remove('active', 'slide-in-right', 'slide-in-left');
+
+        regSlide.style.display = 'block';
+        regSlide.classList.remove('slide-in-right', 'slide-in-left');
+        void regSlide.offsetWidth; // trigger reflow
+        regSlide.classList.add('active', 'slide-in-right');
+        this.container.querySelector<HTMLInputElement>('#pageRegFullName')?.focus();
+      }
+    }
+
+    // 5. Footer Switcher
+    const footerText = this.container.querySelector<HTMLElement>('#authFooterText');
+    const footerBtn = this.container.querySelector<HTMLElement>('#authFooterSwitchBtn');
+    if (footerText && footerBtn) {
+      footerText.textContent = tab === 'login' ? 'Akkauntingiz yo‘qmi?' : 'Hisobingiz bormi?';
+      footerBtn.textContent = tab === 'login' ? 'Ro‘yxatdan o‘tish' : 'Kirish';
+    }
+
+    // 6. Update URL and title smoothly
+    try {
+      const newPath = tab === 'register' ? '/register' : '/login';
+      const newTitle = `${tab === 'register' ? 'Ro‘yxatdan o‘tish' : 'Kirish'} — Tinglov`;
+      window.history.replaceState({ path: newPath }, newTitle, newPath);
+      document.title = newTitle;
+    } catch {}
+  }
+
   private bindEvents(): void {
-    // Tabs
+    // Tabs click
     this.container.querySelector('#pageTabLogin')?.addEventListener('click', () => {
-      soundEffects.playKeyClick();
-      this.render('login');
+      this.switchTab('login');
     });
 
     this.container.querySelector('#pageTabRegister')?.addEventListener('click', () => {
-      soundEffects.playKeyClick();
-      this.render('register');
+      this.switchTab('register');
     });
 
-    this.container.querySelector('#pageSwitchToRegisterBtn')?.addEventListener('click', () => {
-      soundEffects.playKeyClick();
-      this.render('register');
-    });
-
-    this.container.querySelector('#pageSwitchToLoginBtn')?.addEventListener('click', () => {
-      soundEffects.playKeyClick();
-      this.render('login');
+    this.container.querySelector('#authFooterSwitchBtn')?.addEventListener('click', () => {
+      this.switchTab(this.activeTab === 'login' ? 'register' : 'login');
     });
 
     // Google Sign-In button
