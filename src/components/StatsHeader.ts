@@ -298,7 +298,7 @@ export class StatsHeader {
             ${results.dialogueMatches.slice(0, 8).map((match) => `
               <div class="search-dialogue-item" data-scene-id="${escapeHtml(match.scene.id)}" data-dialogue-index="${match.dialogueIndex}">
                 <div class="search-item-poster">
-                  <img src="${match.scene.coverImage || '/cartoons/snow_white_poster.jpg'}" alt="${escapeHtml(match.scene.title)}" />
+                  <img src="${match.scene.coverImage || '/logo.png'}" alt="${escapeHtml(match.scene.title)}" />
                 </div>
                 <div class="search-item-info">
                   <div class="search-item-header">

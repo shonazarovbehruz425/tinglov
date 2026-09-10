@@ -66,7 +66,7 @@ export class LevelSelector {
         <!-- 1. Featured Cinematic Hero Card (Item 2) -->
         ${heroScene ? `
           <div class="featured-hero-banner" id="heroBannerCard" data-scene-id="${heroScene.id}">
-            <div class="hero-banner-backdrop" style="background-image: url('${heroScene.coverImage || '/cartoons/snow_white_poster.jpg'}');"></div>
+            <div class="hero-banner-backdrop" style="background-image: url('${heroScene.coverImage || '/logo-full.png'}');"></div>
             <div class="hero-banner-content">
               <div class="hero-banner-left">
                 <div class="hero-badge-row">
@@ -105,7 +105,7 @@ export class LevelSelector {
 
               <div class="hero-banner-right" id="heroPreviewPoster">
                 <div class="hero-poster-wrapper">
-                  <img src="${heroScene.coverImage || '/cartoons/snow_white_poster.jpg'}" alt="${heroScene.title}" class="hero-poster-img" />
+                  <img src="${heroScene.coverImage || '/logo-full.png'}" alt="${heroScene.title}" class="hero-poster-img" />
                   <div class="hero-poster-play-overlay">
                     <div class="hero-play-circle"><i class="ph ph-play-fill"></i></div>
                   </div>
@@ -196,7 +196,7 @@ export class LevelSelector {
 
     return scenes.map((scene) => {
       const isCompleted = stats.completedScenes.includes(scene.id);
-      const poster = scene.coverImage || '/cartoons/snow_white_poster.jpg';
+      const poster = scene.coverImage || '/logo-full.png';
       return `
         <div class="cinema-course-card" data-scene-id="${escapeHtml(scene.id)}">
           <div class="cinema-card-poster-area">

@@ -25,7 +25,7 @@ export class OnboardingStepper {
         contentHtml: `
           <div class="stepper-visual-hero">
             <div class="stepper-hero-film-strip">
-              <img src="/cartoons/snow_white_poster.jpg" alt="Snow White" class="stepper-hero-thumb" />
+              <img src="/logo-full.png" alt="Tinglov" class="stepper-hero-thumb" style="object-fit: contain; background: rgba(0,0,0,0.4); padding: 1rem;" />
               <div class="stepper-hero-badge-float">
                 <i class="ph ph-sparkle-fill"></i>
                 <span>Interaktiv Listening</span>

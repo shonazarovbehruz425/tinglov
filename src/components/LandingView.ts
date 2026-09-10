@@ -32,7 +32,7 @@ export class LandingView {
     const userName = displayName;
 
     const featuredScenesHtml = featuredScenes.map((scene: Scene) => {
-      const poster = scene.coverImage || '/cartoons/snow_white_poster.jpg';
+      const poster = scene.coverImage || '/logo.png';
       return `
         <div class="landing-movie-card" data-scene-id="${scene.id}">
           <div class="movie-card-thumb-wrap">
