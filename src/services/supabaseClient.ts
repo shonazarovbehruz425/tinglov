@@ -1,12 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 
-export const SUPABASE_URL = 'https://juzytimtoetduvkbigih.supabase.co';
-export const SUPABASE_ANON_KEY = 'sb_publishable_1jH-EkUd3QmczGBi_ImTGQ_zVSYtCJG';
+export const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) || '';
+export const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || '';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-});
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.warn(
+    'Tinglov: Supabase environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) are missing. Please set them in your .env or host dashboard.'
+  );
+}
+
+export const supabase = createClient(
+  SUPABASE_URL || 'https://placeholder.supabase.co',
+  SUPABASE_ANON_KEY || 'placeholder',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  }
+);
