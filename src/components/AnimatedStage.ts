@@ -4,7 +4,7 @@ import { videoStreamService, VideoStreamStatus } from '../services/videoStreamSe
 import { soundEffects } from '../services/soundEffects';
 import { i18n } from '../services/i18nService';
 import { storageService } from '../services/storageService';
-import { escapeHtml } from '../utils/sanitize';
+import { escapeHtml, isValidYouTubeVideoId, buildSecureYouTubeEmbedUrl } from '../utils/sanitize';
 
 export class AnimatedStage {
   private container: HTMLElement;
@@ -107,12 +107,15 @@ export class AnimatedStage {
 
   public playVideoSegment(startTime: number, endTime: number, onEnd?: () => void): void {
     // 1. YouTube Player Mode
-    if (this.currentScene?.youtubeVideoId && this.ytIframeElement) {
+    const validYtVideoId = isValidYouTubeVideoId(this.currentScene?.youtubeVideoId);
+    if (validYtVideoId && this.ytIframeElement) {
       this.stopVideoTracking();
       this.setSpeakingState(true);
 
       const iframe = this.ytIframeElement;
-      // Send postMessage command to seek and play
+      const targetOrigin = 'https://www.youtube-nocookie.com';
+
+      // Send postMessage command to seek and play strictly to trusted origin
       const seekMsg = JSON.stringify({
         event: 'command',
         func: 'seekTo',
@@ -124,8 +127,8 @@ export class AnimatedStage {
         args: []
       });
 
-      iframe.contentWindow?.postMessage(seekMsg, '*');
-      iframe.contentWindow?.postMessage(playMsg, '*');
+      iframe.contentWindow?.postMessage(seekMsg, targetOrigin);
+      iframe.contentWindow?.postMessage(playMsg, targetOrigin);
 
       const startTimestamp = Date.now();
 
@@ -140,7 +143,7 @@ export class AnimatedStage {
             func: 'pauseVideo',
             args: []
           });
-          iframe.contentWindow?.postMessage(pauseMsg, '*');
+          iframe.contentWindow?.postMessage(pauseMsg, targetOrigin);
           this.stopVideoTracking();
           this.setSpeakingState(false);
           onEnd?.();
@@ -381,7 +384,9 @@ export class AnimatedStage {
 
     const isFirstSentence = this.sentenceIndex === 0;
     const isLastSentence = this.sentenceIndex === this.totalSentences - 1;
-    const isYouTube = Boolean(this.currentScene.youtubeVideoId);
+    const validYtVideoId = isValidYouTubeVideoId(this.currentScene.youtubeVideoId) ? this.currentScene.youtubeVideoId.trim() : null;
+    const isYouTube = Boolean(validYtVideoId);
+    const secureYtEmbedUrl = isYouTube && validYtVideoId ? buildSecureYouTubeEmbedUrl(validYtVideoId, window.location.origin) : null;
     const totalDuration = this.getTotalDuration();
 
     this.container.innerHTML = `
@@ -442,16 +447,19 @@ export class AnimatedStage {
         </div>
 
         <!-- Cinema / YouTube Video Player with CDN & Streaming Indicator -->
-        <div class="cinema-video-card ${isYouTube ? 'youtube-player-active' : ''}">
-          ${isYouTube ? `
+        <div class="cinema-video-card ${isYouTube && secureYtEmbedUrl ? 'youtube-player-active' : ''}">
+          ${isYouTube && secureYtEmbedUrl ? `
             <iframe
               id="youtubeIframePlayer"
               class="youtube-embedded-player"
-              src="https://www.youtube-nocookie.com/embed/${this.currentScene.youtubeVideoId}?enablejsapi=1&autoplay=0&controls=0&modestbranding=1&rel=0&playsinline=1&origin=${encodeURIComponent(window.location.origin)}"
+              src="${secureYtEmbedUrl}"
               title="${escapeHtml(this.currentScene.title)}"
               frameborder="0"
+              sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowfullscreen
+              referrerpolicy="strict-origin-when-cross-origin"
+              loading="lazy"
             ></iframe>
           ` : `
             <video
@@ -597,7 +605,7 @@ export class AnimatedStage {
     this.videoElement = this.container.querySelector<HTMLVideoElement>('#sceneVideoElement');
     this.ytIframeElement = this.container.querySelector<HTMLIFrameElement>('#youtubeIframePlayer');
 
-    if (this.videoElement && this.currentScene && !this.currentScene.youtubeVideoId) {
+    if (this.videoElement && this.currentScene && !isValidYouTubeVideoId(this.currentScene.youtubeVideoId)) {
       videoStreamService.attachSmartVideoStream(this.videoElement, this.currentScene, (status) => {
         this.streamStatus = status;
         const badgeLabel = this.container.querySelector('#videoStreamCdnBadge .stream-status-label');

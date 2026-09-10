@@ -22,6 +22,7 @@ import { SettingsView } from './components/SettingsView';
 import { LandingView } from './components/LandingView';
 import { onboardingStepper } from './components/OnboardingStepper';
 import { initCursorGlow } from './utils/cursorGlow';
+import { isValidYouTubeVideoId } from './utils/sanitize';
 
 type AppViewMode = 'landing' | 'library' | 'practice' | 'profile' | 'settings' | 'auth';
 
@@ -699,7 +700,7 @@ class MovieListenApp {
     const sentence = this.currentScene.dialogues[this.currentSentenceIndex];
     if (!sentence) return;
 
-    if (this.currentScene.youtubeVideoId || this.currentScene.videoUrl) {
+    if (isValidYouTubeVideoId(this.currentScene.youtubeVideoId) || this.currentScene.videoUrl) {
       this.animatedStage.playVideoSegment(sentence.startTime, sentence.endTime);
     } else {
       speechService.speakDialogue(
