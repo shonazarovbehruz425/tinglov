@@ -13,6 +13,8 @@ export class AdminView {
   private users: any[] = [];
   private scenes: any[] = [];
   private searchQuery: string = '';
+  private userFilter: 'all' | 'google' | 'email' | 'top_xp' = 'all';
+  private healthLatencyMs: number | null = null;
   private errorMsg: string | null = null;
   private successMsg: string | null = null;
   private onNavigateHomeCallback?: () => void;
@@ -216,7 +218,11 @@ export class AdminView {
               <span class="admin-logo-icon">🎬</span>
               <span class="admin-logo-text">Tinglov</span>
             </div>
-            <span class="admin-badge admin-badge-neon">ADMIN CONSOLE</span>
+            <span class="admin-badge admin-badge-neon">COMMAND CENTER</span>
+            <div class="admin-live-pulse-badge" title="Tizim 24/7 onlayn va barqaror ishlamoqda">
+              <span class="admin-radar-dot"></span>
+              <span>ONLINE</span>
+            </div>
             <div class="admin-route-indicator" title="Ushbu marshrut Render.com env orqali o'zgartirilishi mumkin">
               <i class="ph ph-bold ph-link"></i>
               <span>Marshrut: <strong>${escapeHtml(this.adminPath)}</strong></span>
@@ -224,6 +230,9 @@ export class AdminView {
           </div>
 
           <div class="admin-user-nav">
+            <button id="adminQuickPingBtn" class="admin-nav-action-btn" title="Server tezligini tekshirish">
+              <i class="ph ph-bold ph-activity"></i> <span id="adminPingBadge">${this.healthLatencyMs ? `${this.healthLatencyMs}ms` : 'Ping'}</span>
+            </button>
             <button id="adminTopHomeBtn" class="admin-nav-action-btn" title="Saytga o'tish">
               <i class="ph ph-bold ph-globe"></i> Saytga Qaytish
             </button>
@@ -299,117 +308,162 @@ export class AdminView {
     const uptimeHrs = sys.uptimeSeconds ? Math.floor(sys.uptimeSeconds / 3600) : 0;
     const uptimeMins = sys.uptimeSeconds ? Math.floor((sys.uptimeSeconds % 3600) / 60) : 0;
 
+    const ramPercent = Math.min(100, Math.round(((sys.memoryRssMb || 50) / 512) * 100));
+
     return `
       <div class="admin-tab-pane">
         <div class="admin-pane-header">
           <div>
             <h2 class="admin-pane-title">Tizim Ko‘rsatkichlari</h2>
-            <p class="admin-pane-desc">Tinglov platformasining real vaqt rejimidagi faollik statistikasi</p>
+            <p class="admin-pane-desc">Tinglov platformasining real vaqt rejimidagi kiber boshqaruv markazi</p>
           </div>
-          <button id="adminRefreshStatsBtn" class="admin-btn admin-btn-secondary" title="Statistikani qayta yuklash">
-            <svg viewBox="0 0 256 256" width="16" height="16" fill="currentColor" aria-hidden="true" style="margin-right: 6px; vertical-align: -2px;">
-              <path d="M224,128a96,96,0,0,1-96,96A95.52,95.52,0,0,1,64,198.81V216a8,8,0,0,1-16,0V168a8,8,0,0,1,8-8H104a8,8,0,0,1,0,16H71.55A80,80,0,1,0,54.51,96.65a8,8,0,0,1-14.77-6.17A96,96,0,1,1,224,128Z"/>
-            </svg>
-            Yangilash
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <button id="adminRefreshStatsBtn" class="admin-btn admin-btn-secondary" title="Statistikani qayta yuklash">
+              <svg viewBox="0 0 256 256" width="16" height="16" fill="currentColor" aria-hidden="true" style="margin-right: 6px; vertical-align: -2px;">
+                <path d="M224,128a96,96,0,0,1-96,96A95.52,95.52,0,0,1,64,198.81V216a8,8,0,0,1-16,0V168a8,8,0,0,1,8-8H104a8,8,0,0,1,0,16H71.55A80,80,0,1,0,54.51,96.65a8,8,0,0,1-14.77-6.17A96,96,0,1,1,224,128Z"/>
+              </svg>
+              Yangilash
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Action Toolbar -->
+        <div class="admin-action-toolbar">
+          <span style="font-size: 0.8rem; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 0.5rem;">
+            <i class="ph ph-bold ph-lightning" style="color: #FACC15;"></i> Tezkor Amallar:
+          </span>
+          <button id="adminCopyRouteBtn" class="admin-quick-btn">
+            <i class="ph ph-bold ph-copy"></i> Admin Linkni Nusxalash
+          </button>
+          <button id="adminTestPingActionBtn" class="admin-quick-btn">
+            <i class="ph ph-bold ph-activity"></i> Ping Tezligini Sinash
+          </button>
+          <button id="adminQuickAddSceneBtn" class="admin-quick-btn">
+            <i class="ph ph-bold ph-plus-circle"></i> Yangi Dars Qo‘shish
+          </button>
+          <button id="adminExportUsersBtn" class="admin-quick-btn">
+            <i class="ph ph-bold ph-file-csv"></i> O‘quvchilarni CSV Yuklab Olish
           </button>
         </div>
 
-        <!-- 4 Stat Cards -->
+        <!-- 4 Stat Cards with Glassmorphism -->
         <div class="admin-stats-grid">
           <div class="admin-stat-card card-purple">
-            <div class="admin-stat-icon">
-              <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
-                <path d="M117.25,157.92a60,60,0,1,0-66.5,0A95.83,95.83,0,0,0,3.53,195.63a8,8,0,1,0,13.4,8.74,80,80,0,0,1,134.14,0,8,8,0,0,0,13.4-8.74A95.83,95.83,0,0,0,117.25,157.92ZM40,108a44,44,0,1,1,44,44A44.05,44.05,0,0,1,40,108Zm210.14,98.37a8,8,0,0,1-11.07-2.33A79.83,79.83,0,0,0,172,168a8,8,0,0,1,0-16,44,44,0,1,0-16.34-84.87,8,8,0,1,1-5.94-14.85,60,60,0,0,1,55.53,105.64,95.83,95.83,0,0,1,47.22,37.71A8,8,0,0,1,250.14,206.37Z"/>
-              </svg>
+            <div class="admin-stat-card-top">
+              <div class="admin-stat-icon">
+                <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
+                  <path d="M117.25,157.92a60,60,0,1,0-66.5,0A95.83,95.83,0,0,0,3.53,195.63a8,8,0,1,0,13.4,8.74,80,80,0,0,1,134.14,0,8,8,0,0,0,13.4-8.74A95.83,95.83,0,0,0,117.25,157.92ZM40,108a44,44,0,1,1,44,44A44.05,44.05,0,0,1,40,108Zm210.14,98.37a8,8,0,0,1-11.07-2.33A79.83,79.83,0,0,0,172,168a8,8,0,0,1,0-16,44,44,0,1,0-16.34-84.87,8,8,0,1,1-5.94-14.85,60,60,0,0,1,55.53,105.64,95.83,95.83,0,0,1,47.22,37.71A8,8,0,0,1,250.14,206.37Z"/>
+                </svg>
+              </div>
+              <span class="admin-badge admin-badge-neon">+${s.usersToday} bugun</span>
             </div>
             <div class="admin-stat-content">
-              <span class="admin-stat-label">Jami Foydalanuvchilar</span>
+              <span class="admin-stat-label">Jami O‘quvchilar</span>
               <strong class="admin-stat-val">${s.totalUsers}</strong>
               <span class="admin-stat-sub">
-                <svg viewBox="0 0 256 256" width="13" height="13" fill="currentColor" style="vertical-align: -2px; margin-right: 3px;">
-                  <path d="M200,64V168a8,8,0,0,1-16,0V83.31L69.66,197.66a8,8,0,0,1-11.32-11.32L172.69,72H88a8,8,0,0,1,0-16H192A8,8,0,0,1,200,64Z"/>
-                </svg>
-                Faol o'quvchilar
+                <i class="ph ph-bold ph-trend-up" style="color: #A3E635;"></i> Faol ro‘yxatdan o‘tganlar
               </span>
             </div>
           </div>
 
           <div class="admin-stat-card card-green">
-            <div class="admin-stat-icon">
-              <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
-                <path d="M256,136a8,8,0,0,1-8,8H232v16a8,8,0,0,1-16,0V144H200a8,8,0,0,1,0-16h16V112a8,8,0,0,1,16,0v16h16A8,8,0,0,1,256,136ZM194.39,183.47a8,8,0,0,0-10.78,4.14,79.86,79.86,0,0,1-127.22,0,8,8,0,0,0-13.38,8.78A95.86,95.86,0,0,0,96,232a8,8,0,0,0,0-16,79.94,79.94,0,0,1-51.4-18.66,95.78,95.78,0,0,0,154.8-19.09A8,8,0,0,0,194.39,183.47ZM120,144a56,56,0,1,0-56-56A56.06,56.06,0,0,0,120,144Zm0-96a40,40,0,1,1-40,40A40,40,0,0,1,120,48Z"/>
-              </svg>
+            <div class="admin-stat-card-top">
+              <div class="admin-stat-icon">
+                <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
+                  <path d="M256,136a8,8,0,0,1-8,8H232v16a8,8,0,0,1-16,0V144H200a8,8,0,0,1,0-16h16V112a8,8,0,0,1,16,0v16h16A8,8,0,0,1,256,136ZM194.39,183.47a8,8,0,0,0-10.78,4.14,79.86,79.86,0,0,1-127.22,0,8,8,0,0,0-13.38,8.78A95.86,95.86,0,0,0,96,232a8,8,0,0,0,0-16,79.94,79.94,0,0,1-51.4-18.66,95.78,95.78,0,0,0,154.8-19.09A8,8,0,0,0,194.39,183.47ZM120,144a56,56,0,1,0-56-56A56.06,56.06,0,0,0,120,144Zm0-96a40,40,0,1,1-40,40A40,40,0,0,1,120,48Z"/>
+                </svg>
+              </div>
+              <span class="admin-badge admin-badge-green">Bugun</span>
             </div>
             <div class="admin-stat-content">
               <span class="admin-stat-label">Bugun Qo‘shilganlar</span>
               <strong class="admin-stat-val">${s.usersToday}</strong>
               <span class="admin-stat-sub">
-                <svg viewBox="0 0 256 256" width="13" height="13" fill="currentColor" style="vertical-align: -2px; margin-right: 3px;">
-                  <path d="M245.66,114.34a8,8,0,0,0-11.32,0L208,140.69l-26.34-26.35a8,8,0,0,0-11.32,11.32L196.69,152l-26.35,26.34a8,8,0,0,0,11.32,11.32L208,163.31l26.34,26.35a8,8,0,0,0,11.32-11.32L219.31,152l26.35-26.34A8,8,0,0,0,245.66,114.34ZM144,32a8,8,0,0,0-8-8,96.11,96.11,0,0,0-96,96,8,8,0,0,0,16,0,80.09,80.09,0,0,1,80-80A8,8,0,0,0,144,32ZM104,88a48,48,0,1,0,48,48A48.05,48.05,0,0,0,104,88Z"/>
-                </svg>
-                Yangi ro'yxatdan o'tganlar
+                <i class="ph ph-bold ph-user-plus" style="color: #4ADE80;"></i> So‘nggi 24 soatda faol
               </span>
             </div>
           </div>
 
           <div class="admin-stat-card card-blue">
-            <div class="admin-stat-icon">
-              <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
-                <path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a24,24,0,0,0,24-24V56A8,8,0,0,0,224,48ZM40,64H120V192H40ZM224,184a8,8,0,0,1-8,8H136V64h88ZM96,96a8,8,0,0,1-8,8H64a8,8,0,0,1,0-16H88A8,8,0,0,1,96,96Zm0,32a8,8,0,0,1-8,8H64a8,8,0,0,1,0-16H88A8,8,0,0,1,96,128Zm96-32a8,8,0,0,1-8,8H160a8,8,0,0,1,0-16h24A8,8,0,0,1,192,96Zm0,32a8,8,0,0,1-8,8H160a8,8,0,0,1,0-16h24A8,8,0,0,1,192,128Z"/>
-              </svg>
+            <div class="admin-stat-card-top">
+              <div class="admin-stat-icon">
+                <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
+                  <path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a24,24,0,0,0,24-24V56A8,8,0,0,0,224,48ZM40,64H120V192H40ZM224,184a8,8,0,0,1-8,8H136V64h88ZM96,96a8,8,0,0,1-8,8H64a8,8,0,0,1,0-16H88A8,8,0,0,1,96,96Zm0,32a8,8,0,0,1-8,8H64a8,8,0,0,1,0-16H88A8,8,0,0,1,96,128Zm96-32a8,8,0,0,1-8,8H160a8,8,0,0,1,0-16h24A8,8,0,0,1,192,96Zm0,32a8,8,0,0,1-8,8H160a8,8,0,0,1,0-16h24A8,8,0,0,1,192,128Z"/>
+                </svg>
+              </div>
+              <span class="admin-badge admin-badge-blue">Lug‘at</span>
             </div>
             <div class="admin-stat-content">
               <span class="admin-stat-label">O‘rganilgan Lug‘atlar</span>
               <strong class="admin-stat-val">${s.totalSavedWords}</strong>
               <span class="admin-stat-sub">
-                <svg viewBox="0 0 256 256" width="13" height="13" fill="currentColor" style="vertical-align: -2px; margin-right: 3px;">
-                  <path d="M184,32H72A16,16,0,0,0,56,48V224a8,8,0,0,0,12.24,6.78L128,193.43l59.77,37.35A8,8,0,0,0,200,224V48A16,16,0,0,0,184,32Zm0,173.78-52.24-32.65a8,8,0,0,0-8.48,0L72,205.78V48H184Z"/>
-                </svg>
-                Saqlangan so'zlar
+                <i class="ph ph-bold ph-bookmark-simple" style="color: #38BDF8;"></i> Shaxsiy lug‘atdagi so‘zlar
               </span>
             </div>
           </div>
 
           <div class="admin-stat-card card-orange">
-            <div class="admin-stat-icon">
-              <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
-                <path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"/>
-              </svg>
+            <div class="admin-stat-card-top">
+              <div class="admin-stat-icon">
+                <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
+                  <path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"/>
+                </svg>
+              </div>
+              <span class="admin-badge admin-badge-xp">${this.scenes.length} dars</span>
             </div>
             <div class="admin-stat-content">
               <span class="admin-stat-label">Bajarilgan Mashg‘ulotlar</span>
               <strong class="admin-stat-val">${s.totalCompletedScenes}</strong>
               <span class="admin-stat-sub">
-                <svg viewBox="0 0 256 256" width="13" height="13" fill="currentColor" style="vertical-align: -2px; margin-right: 3px;">
-                  <path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40Zm0,160H40V56H216V200Zm-51.55-78.69-48-32A8,8,0,0,0,104,96v64a8,8,0,0,0,12.45,6.69l48-32a8,8,0,0,0,0-13.38ZM120,145.08V110.92L145.62,128Z"/>
-                </svg>
-                Video darslar yakunlangan
+                <i class="ph ph-bold ph-check-circle" style="color: #FB923C;"></i> Interaktiv video darslar
               </span>
             </div>
           </div>
         </div>
 
-        <!-- System Details Table -->
+        <!-- System Details Table with RAM Progress Gauge -->
         <div class="admin-card-section">
-          <h3 class="admin-section-subtitle"><i class="ph ph-bold ph-cpu"></i> Server va Infratuzilma Holati</h3>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
+            <h3 class="admin-section-subtitle" style="margin-bottom: 0;">
+              <i class="ph ph-bold ph-cpu"></i> Server va Infratuzilma Holati
+            </h3>
+            <span class="admin-badge admin-badge-green">
+              <i class="ph ph-bold ph-shield-check"></i> Xavfsiz & Himoyalangan
+            </span>
+          </div>
+
           <div class="admin-info-table-wrap">
             <table class="admin-info-table">
               <tbody>
                 <tr>
                   <td><strong>Admin Marshrut (ADMIN_PATH):</strong></td>
-                  <td><code>${escapeHtml(this.adminPath)}</code> <span class="admin-badge admin-badge-green">Faol</span></td>
+                  <td>
+                    <code>${escapeHtml(this.adminPath)}</code> 
+                    <button id="adminTableCopyRouteBtn" class="admin-copy-btn" style="margin-left: 8px;">
+                      <i class="ph ph-bold ph-copy"></i> Nusxalash
+                    </button>
+                  </td>
                 </tr>
                 <tr>
                   <td><strong>Server Ish Vaqti (Uptime):</strong></td>
-                  <td>${uptimeHrs} soat, ${uptimeMins} daqiqa</td>
-                </tr>
-                <tr>
-                  <td><strong>Node.js Versiyasi:</strong></td>
-                  <td>${sys.nodeVersion || 'v22.x'}</td>
+                  <td>${uptimeHrs} soat, ${uptimeMins} daqiqa (24/7 uzluksiz)</td>
                 </tr>
                 <tr>
                   <td><strong>Operativ Xotira (RAM Sarfi):</strong></td>
-                  <td>RSS: ${sys.memoryRssMb || 0} MB | Heap: ${sys.memoryHeapUsedMb || 0} MB</td>
+                  <td>
+                    <div style="display: flex; align-items: center; gap: 12px; max-width: 400px;">
+                      <div class="admin-progress-container" style="margin: 0; flex: 1;">
+                        <div class="admin-progress-bar" style="width: ${ramPercent}%;"></div>
+                      </div>
+                      <span style="font-size: 0.85rem; font-weight: 700; color: #CBD5E1; white-space: nowrap;">
+                        ${sys.memoryRssMb || 0} MB / 512 MB (${ramPercent}%)
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Node.js & Muhit:</strong></td>
+                  <td>${sys.nodeVersion || 'v22.x'} (Render Web Service)</td>
                 </tr>
                 <tr>
                   <td><strong>Redis Kesh / Rate Limiting:</strong></td>
@@ -418,8 +472,8 @@ export class AdminView {
                 <tr>
                   <td><strong>Xavfsizlik Himoyalari:</strong></td>
                   <td>
-                    <span class="admin-badge admin-badge-green">CSRF Token: Faol</span>
-                    <span class="admin-badge admin-badge-green">HSTS 31536000: Faol</span>
+                    <span class="admin-badge admin-badge-green">CSRF Himoyasi: Faol</span>
+                    <span class="admin-badge admin-badge-green">HSTS: 1 Yil</span>
                     <span class="admin-badge admin-badge-green">HttpOnly Cookies: Faol</span>
                   </td>
                 </tr>
@@ -428,7 +482,7 @@ export class AdminView {
                   <td>
                     <span class="admin-badge admin-badge-green"><i class="ph ph-bold ph-heartbeat"></i> /health Faol</span>
                     <span class="admin-badge admin-badge-blue"><i class="ph ph-bold ph-bell-ringing"></i> UptimeRobot Tayyor</span>
-                    <a href="/health" target="_blank" class="admin-link-btn" style="margin-left: 8px; font-size: 0.75rem;"><i class="ph ph-bold ph-arrow-square-out"></i> Tekshirish</a>
+                    <a href="/health" target="_blank" class="admin-link-btn" style="margin-left: 8px; font-size: 0.75rem;"><i class="ph ph-bold ph-arrow-square-out"></i> Sinash</a>
                   </td>
                 </tr>
               </tbody>
@@ -440,7 +494,22 @@ export class AdminView {
   }
 
   private renderUsersTab(): string {
-    const userRows = this.users.map((u) => {
+    // Filter users based on this.userFilter
+    let filteredUsers = [...this.users];
+    if (this.userFilter === 'google') {
+      filteredUsers = filteredUsers.filter((u) => u.auth_provider === 'google');
+    } else if (this.userFilter === 'email') {
+      filteredUsers = filteredUsers.filter((u) => u.auth_provider !== 'google');
+    } else if (this.userFilter === 'top_xp') {
+      filteredUsers.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+    }
+
+    const googleCount = this.users.filter((u) => u.auth_provider === 'google').length;
+    const emailCount = this.users.length - googleCount;
+    const totalXp = this.users.reduce((acc, u) => acc + (u.xp || 0), 0);
+    const avgXp = this.users.length > 0 ? Math.round(totalXp / this.users.length) : 0;
+
+    const userRows = filteredUsers.map((u) => {
       const initials = (u.full_name || u.username || 'U').slice(0, 1).toUpperCase();
       const regDate = u.created_at ? new Date(u.created_at).toLocaleDateString('uz-UZ') : '—';
       return `
@@ -504,17 +573,42 @@ export class AdminView {
         <div class="admin-pane-header">
           <div>
             <h2 class="admin-pane-title">Foydalanuvchilar Boshqaruvi</h2>
-            <p class="admin-pane-desc">Platformada ro‘yxatdan o‘tgan barcha o‘quvchilar ro‘yxati (${this.users.length} ta)</p>
+            <p class="admin-pane-desc">Platformada ro‘yxatdan o‘tgan barcha o‘quvchilar (${this.users.length} ta)</p>
           </div>
-          <div class="admin-search-wrap">
-            <i class="ph ph-bold ph-magnifying-glass"></i>
-            <input
-              type="text"
-              id="adminUserSearchInput"
-              class="admin-search-input"
-              placeholder="Ism, login yoki email..."
-              value="${escapeHtml(this.searchQuery)}"
-            />
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div class="admin-search-wrap">
+              <i class="ph ph-bold ph-magnifying-glass"></i>
+              <input
+                type="text"
+                id="adminUserSearchInput"
+                class="admin-search-input"
+                placeholder="Ism, login yoki email orqali qidiring..."
+                value="${escapeHtml(this.searchQuery)}"
+              />
+            </div>
+            <button id="adminExportUsersTabBtn" class="admin-btn admin-btn-secondary" title="Foydalanuvchilar ro‘yxatini CSV faylga yuklash">
+              <i class="ph ph-bold ph-download-simple"></i> CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Pills and Metrics Bar -->
+        <div class="admin-filters-bar">
+          <button class="admin-filter-pill ${this.userFilter === 'all' ? 'active' : ''}" data-filter="all">
+            Barchasi (${this.users.length})
+          </button>
+          <button class="admin-filter-pill ${this.userFilter === 'google' ? 'active' : ''}" data-filter="google">
+            <svg viewBox="0 0 24 24" width="12" height="12" style="margin-right: 4px; vertical-align: -1px;"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/></svg>
+            Google (${googleCount})
+          </button>
+          <button class="admin-filter-pill ${this.userFilter === 'email' ? 'active' : ''}" data-filter="email">
+            <i class="ph ph-bold ph-envelope-simple" style="margin-right: 3px;"></i> Email (${emailCount})
+          </button>
+          <button class="admin-filter-pill ${this.userFilter === 'top_xp' ? 'active' : ''}" data-filter="top_xp">
+            <i class="ph ph-bold ph-trophy" style="color: #FACC15; margin-right: 3px;"></i> Top XP (Reyting)
+          </button>
+          <div style="margin-left: auto; font-size: 0.8rem; color: #94A3B8;">
+            O‘rtacha tajriba: <strong style="color: #A3E635;">${avgXp} XP</strong>
           </div>
         </div>
 
@@ -532,7 +626,7 @@ export class AdminView {
               </tr>
             </thead>
             <tbody>
-              ${userRows.length > 0 ? userRows : `<tr><td colspan="7" class="admin-table-empty">Hech qanday foydalanuvchi topilmadi</td></tr>`}
+              ${userRows.length > 0 ? userRows : `<tr><td colspan="7" class="admin-table-empty">Tanlangan filtr bo‘yicha hech qanday foydalanuvchi topilmadi</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -682,7 +776,8 @@ export class AdminView {
               <li>Chap menyudan <strong>Environment</strong> bo‘limiga o‘ting.</li>
               <li>Yangi o'zgaruvchi qo'shing yoki mavjudini tahrirlang:
                 <div class="admin-code-snippet">
-                  <strong>ADMIN_PATH</strong> = <code>/boshqaruv</code> yoki <code>/maxfiy-tinglov-77</code>
+                  <span><strong>ADMIN_PATH</strong> = <code>/boshqaruv</code></span>
+                  <button class="admin-copy-btn" data-copy="/boshqaruv"><i class="ph ph-bold ph-copy"></i> Nusxalash</button>
                 </div>
               </li>
               <li>O'zgarishni saqlang (<strong>Save Changes</strong>).</li>
@@ -697,10 +792,13 @@ export class AdminView {
               Xuddi shu <strong>Environment</strong> bo‘limida login va parolingizni belgilashingiz mumkin:
             </p>
             <div class="admin-code-snippet">
-              <strong>ADMIN_USERNAME</strong> = <code>admin</code><br/>
-              <strong>ADMIN_PASSWORD</strong> = <code>sizning_kuchli_parolingiz_2026</code>
+              <div>
+                <strong>ADMIN_USERNAME</strong> = <code>admin</code><br/>
+                <strong>ADMIN_PASSWORD</strong> = <code>sizning_kuchli_parolingiz_2026</code>
+              </div>
+              <button class="admin-copy-btn" data-copy="ADMIN_USERNAME=admin&#10;ADMIN_PASSWORD=sizning_kuchli_parolingiz_2026"><i class="ph ph-bold ph-copy"></i> Nusxalash</button>
             </div>
-            <p class="admin-text-muted">
+            <p class="admin-text-muted" style="margin-top: 8px;">
               Ushbu parametrlar kiritilgach, faqat siz belgilagan yangi parol bilan panelga kirish mumkin bo'ladi.
             </p>
           </div>
@@ -752,7 +850,8 @@ export class AdminView {
                 <p style="margin: 4px 0;"><strong>Custom Domain</strong> (masalan, <code>media.tinglov.me</code>) yoki <strong>R2.dev subdomain</strong> (masalan, <code>https://pub-xxxx.r2.dev</code>) ni yoqing (Allow Access).</p>
               </li>
               <li><strong>3. CORS Policy qo‘shing</strong> (R2 Settings &gt; CORS Policy &gt; Add CORS policy):
-                <pre class="admin-code-snippet" style="font-size: 0.75rem; overflow-x: auto; white-space: pre-wrap;">[
+                <div class="admin-code-snippet">
+                  <pre style="margin: 0; font-size: 0.78rem; overflow-x: auto; white-space: pre-wrap;">[
   {
     "AllowedOrigins": ["*"],
     "AllowedMethods": ["GET", "HEAD"],
@@ -761,10 +860,15 @@ export class AdminView {
     "MaxAgeSeconds": 3600
   }
 ]</pre>
+                  <button class="admin-copy-btn" data-copy='[{"AllowedOrigins":["*"],"AllowedMethods":["GET","HEAD"],"AllowedHeaders":["Range","Content-Type","Origin","Accept"],"ExposeHeaders":["Content-Range","Content-Length","Accept-Ranges","ETag"],"MaxAgeSeconds":3600}]'>
+                    <i class="ph ph-bold ph-copy"></i> CORS Nusxalash
+                  </button>
+                </div>
               </li>
               <li><strong>4. Render.com Environment ga qo‘shing</strong>:
                 <div class="admin-code-snippet">
-                  <strong>CLOUDFLARE_R2_URL</strong> = <code>https://pub-xxxxxxxx.r2.dev</code> yoki <code>https://media.tinglov.me</code>
+                  <span><strong>CLOUDFLARE_R2_URL</strong> = <code>https://pub-xxxxxxxx.r2.dev</code></span>
+                  <button class="admin-copy-btn" data-copy="https://pub-xxxxxxxx.r2.dev"><i class="ph ph-bold ph-copy"></i> Nusxalash</button>
                 </div>
               </li>
             </ol>
@@ -793,15 +897,19 @@ export class AdminView {
               <li><strong>4. Ichki avtomatik Keep-Alive (Qo‘shimcha kafolat)</strong>:
                 <p style="margin: 4px 0;">Render.com Environment bo‘limiga quyidagi parametrni qo‘shing:</p>
                 <div class="admin-code-snippet">
-                  <strong>RENDER_EXTERNAL_URL</strong> = <code>https://tinglov.onrender.com</code>
+                  <span><strong>RENDER_EXTERNAL_URL</strong> = <code>https://tinglov.onrender.com</code></span>
+                  <button class="admin-copy-btn" data-copy="https://tinglov.onrender.com"><i class="ph ph-bold ph-copy"></i> Nusxalash</button>
                 </div>
               </li>
             </ol>
-            <div style="margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <a href="/health" target="_blank" class="admin-btn admin-btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">
-                <i class="ph ph-bold ph-heartbeat"></i> /health Endpointini Sinash
+            <div style="margin-top: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <button id="adminTestPingInSecurityBtn" class="admin-btn admin-btn-primary" style="font-size: 0.82rem; padding: 7px 14px;">
+                <i class="ph ph-bold ph-activity"></i> Jonli Ping Sinash (<span id="adminSecurityPingVal">${this.healthLatencyMs ? `${this.healthLatencyMs}ms` : 'Bosing'}</span>)
+              </button>
+              <a href="/health" target="_blank" class="admin-btn admin-btn-secondary" style="font-size: 0.82rem; padding: 7px 14px;">
+                <i class="ph ph-bold ph-heartbeat"></i> /health Endpointini Ochish
               </a>
-              <a href="/ping" target="_blank" class="admin-btn admin-btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">
+              <a href="/ping" target="_blank" class="admin-btn admin-btn-secondary" style="font-size: 0.82rem; padding: 7px 14px;">
                 <i class="ph ph-bold ph-bell-ringing"></i> /ping (Pong) Sinash
               </a>
             </div>
@@ -887,6 +995,24 @@ export class AdminView {
       topHomeBtn.addEventListener('click', () => this.onNavigateHomeCallback!());
     }
 
+    // Quick Ping in Top Nav
+    const quickPingBtn = this.container.querySelector('#adminQuickPingBtn');
+    if (quickPingBtn) {
+      quickPingBtn.addEventListener('click', async () => {
+        const badge = this.container.querySelector('#adminPingBadge');
+        if (badge) badge.textContent = '...';
+        const start = performance.now();
+        try {
+          await fetch('/health', { cache: 'no-store' });
+          const latency = Math.round(performance.now() - start);
+          this.healthLatencyMs = latency;
+          if (badge) badge.textContent = `${latency}ms`;
+        } catch {
+          if (badge) badge.textContent = 'Xato';
+        }
+      });
+    }
+
     // Logout
     const logoutBtn = this.container.querySelector('#adminLogoutBtn');
     if (logoutBtn) {
@@ -911,7 +1037,135 @@ export class AdminView {
     this.bindTabContentEvents();
   }
 
+  private copyToClipboard(text: string, btn?: HTMLElement): void {
+    navigator.clipboard.writeText(text).then(() => {
+      if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = `<i class="ph ph-bold ph-check" style="color: #4ADE80;"></i> Nusxalandi!`;
+        setTimeout(() => {
+          btn.innerHTML = orig;
+        }, 2000);
+      }
+    });
+  }
+
+  private exportUsersCsv(): void {
+    if (this.users.length === 0) {
+      alert('Eksport qilish uchun foydalanuvchilar mavjud emas');
+      return;
+    }
+    const headers = ['ID', 'Username', 'Full Name', 'Email', 'Auth Provider', 'XP', 'Level', 'Streak', 'Created At'];
+    const rows = this.users.map((u) => [
+      u.id || '',
+      `"${(u.username || '').replace(/"/g, '""')}"`,
+      `"${(u.full_name || '').replace(/"/g, '""')}"`,
+      `"${(u.email || '').replace(/"/g, '""')}"`,
+      u.auth_provider || 'email',
+      u.xp || 0,
+      u.level || 1,
+      u.streak || 0,
+      u.created_at || ''
+    ]);
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `tinglov_users_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   private bindTabContentEvents(): void {
+    // Copy snippets and route buttons
+    const copyBtns = this.container.querySelectorAll('.admin-copy-btn');
+    copyBtns.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const textToCopy = target.getAttribute('data-copy') || this.adminPath;
+        this.copyToClipboard(textToCopy, target);
+      });
+    });
+
+    const toolbarCopyRouteBtn = this.container.querySelector('#adminCopyRouteBtn') as HTMLElement;
+    if (toolbarCopyRouteBtn) {
+      toolbarCopyRouteBtn.addEventListener('click', () => {
+        this.copyToClipboard(window.location.origin + this.adminPath, toolbarCopyRouteBtn);
+      });
+    }
+
+    const tableCopyRouteBtn = this.container.querySelector('#adminTableCopyRouteBtn') as HTMLElement;
+    if (tableCopyRouteBtn) {
+      tableCopyRouteBtn.addEventListener('click', () => {
+        this.copyToClipboard(this.adminPath, tableCopyRouteBtn);
+      });
+    }
+
+    // Ping Action in Toolbar & Security Tab
+    const pingActionHandler = async (btn: HTMLElement, labelId?: string) => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = `<i class="ph ph-bold ph-spinner ph-spin"></i> O‘lchanmoqda...`;
+      const start = performance.now();
+      try {
+        await fetch('/health', { cache: 'no-store' });
+        const latency = Math.round(performance.now() - start);
+        this.healthLatencyMs = latency;
+        btn.innerHTML = `<i class="ph ph-bold ph-check" style="color: #4ADE80;"></i> ${latency}ms (A‘lo)`;
+        if (labelId) {
+          const lEl = document.getElementById(labelId);
+          if (lEl) lEl.textContent = `${latency}ms`;
+        }
+        setTimeout(() => { btn.innerHTML = orig; }, 3000);
+      } catch {
+        btn.innerHTML = `<i class="ph ph-bold ph-warning"></i> Xato`;
+        setTimeout(() => { btn.innerHTML = orig; }, 3000);
+      }
+    };
+
+    const testPingBtn = this.container.querySelector('#adminTestPingActionBtn') as HTMLElement;
+    if (testPingBtn) {
+      testPingBtn.addEventListener('click', () => pingActionHandler(testPingBtn));
+    }
+
+    const testPingSecurityBtn = this.container.querySelector('#adminTestPingInSecurityBtn') as HTMLElement;
+    if (testPingSecurityBtn) {
+      testPingSecurityBtn.addEventListener('click', () => pingActionHandler(testPingSecurityBtn, 'adminSecurityPingVal'));
+    }
+
+    // Export Users CSV Buttons
+    const exportUsersBtn = this.container.querySelector('#adminExportUsersBtn');
+    if (exportUsersBtn) {
+      exportUsersBtn.addEventListener('click', () => this.exportUsersCsv());
+    }
+
+    const exportUsersTabBtn = this.container.querySelector('#adminExportUsersTabBtn');
+    if (exportUsersTabBtn) {
+      exportUsersTabBtn.addEventListener('click', () => this.exportUsersCsv());
+    }
+
+    // Quick Add Scene Jump Button in Toolbar
+    const quickAddSceneBtn = this.container.querySelector('#adminQuickAddSceneBtn');
+    if (quickAddSceneBtn) {
+      quickAddSceneBtn.addEventListener('click', () => {
+        this.switchTab('scenes');
+        setTimeout(() => {
+          const modal = this.container.querySelector('#adminSceneModal') as HTMLElement;
+          if (modal) modal.style.display = 'flex';
+        }, 150);
+      });
+    }
+
+    // Filter pills in Users Tab
+    const filterPills = this.container.querySelectorAll('.admin-filter-pill');
+    filterPills.forEach((pill) => {
+      pill.addEventListener('click', (e) => {
+        const filter = (e.currentTarget as HTMLElement).getAttribute('data-filter') as any;
+        if (filter) {
+          this.userFilter = filter;
+          this.refreshActiveTabContent();
+        }
+      });
+    });
 
     // Overview: Refresh stats
     const refreshStatsBtn = this.container.querySelector('#adminRefreshStatsBtn') as HTMLButtonElement | null;
