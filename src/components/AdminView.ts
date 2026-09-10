@@ -1369,12 +1369,19 @@ export class AdminView {
 
     if (openSceneModalBtn && sceneModal) {
       openSceneModalBtn.addEventListener('click', () => {
+        sceneModal.classList.remove('admin-modal-closing');
         sceneModal.style.display = 'flex';
       });
     }
 
     const closeModal = () => {
-      if (sceneModal) sceneModal.style.display = 'none';
+      if (sceneModal) {
+        sceneModal.classList.add('admin-modal-closing');
+        setTimeout(() => {
+          sceneModal.style.display = 'none';
+          sceneModal.classList.remove('admin-modal-closing');
+        }, 260);
+      }
     };
 
     if (closeSceneModalBtn) closeSceneModalBtn.addEventListener('click', closeModal);

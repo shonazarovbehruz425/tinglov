@@ -33,7 +33,7 @@ export class VocabularyModal {
       setTimeout(() => {
         this.container.innerHTML = '';
         this.onCloseCallback?.();
-      }, 240);
+      }, 260);
     } else {
       this.container.innerHTML = '';
       this.onCloseCallback?.();

@@ -121,7 +121,7 @@ export class CompletionModal {
       backdrop.classList.add('modal-closing');
       setTimeout(() => {
         this.container.innerHTML = '';
-      }, 240);
+      }, 260);
     } else {
       this.container.innerHTML = '';
     }

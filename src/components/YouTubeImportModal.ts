@@ -39,7 +39,7 @@ export class YouTubeImportModal {
       setTimeout(() => {
         this.container.innerHTML = '';
         this.onCloseCallback?.();
-      }, 220);
+      }, 260);
     } else {
       this.container.innerHTML = '';
       this.onCloseCallback?.();

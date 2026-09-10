@@ -2732,8 +2732,10 @@ body {
   animation: modalBackdropFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.modal-backdrop.modal-closing {
-  animation: modalBackdropFadeOut 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.modal-backdrop.modal-closing,
+.auth-modal-backdrop.modal-closing,
+.admin-modal.admin-modal-closing {
+  animation: modalBackdropFadeOut 0.26s cubic-bezier(0.32, 0, 0.67, 0) forwards !important;
   pointer-events: none;
 }
 
@@ -2770,8 +2772,11 @@ body {
   transform-origin: center center;
 }
 
-.modal-backdrop.modal-closing .modal-card {
-  animation: modalCardPopOut 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.modal-backdrop.modal-closing .modal-card,
+.modal-backdrop.modal-closing .shadowing-modal-card,
+.auth-modal-backdrop.modal-closing .auth-modal-dialog,
+.admin-modal.admin-modal-closing .admin-modal-content {
+  animation: modalCardPopOut 0.26s cubic-bezier(0.32, 0, 0.67, 0) forwards !important;
 }
 
 @keyframes modalCardPopIn {
@@ -2786,13 +2791,13 @@ body {
 }
 
 @keyframes modalCardPopOut {
-  from {
+  0% {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
-  to {
+  100% {
     opacity: 0;
-    transform: scale(0.94) translateY(12px);
+    transform: scale(0.92) translateY(14px);
   }
 }
 
@@ -2817,22 +2822,41 @@ body {
 }
 
 .close-modal-round-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-pill);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
   border: 1px solid var(--border-subtle);
-  background: #FFFFFF;
+  background: var(--bg-surface-subtle);
   color: var(--text-main);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.25s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
 
 .close-modal-round-btn:hover {
-  background: var(--bg-surface-subtle);
+  background: var(--bg-surface);
   border-color: var(--text-main);
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+.close-modal-round-btn:active {
+  transform: scale(0.88) rotate(90deg);
+  transition-duration: 0.1s;
+}
+
+.close-modal-round-btn i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  line-height: 1;
+  transition: transform 0.22s ease;
 }
 
 .modal-body {
@@ -3514,14 +3538,21 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .close-modal-round-btn {
-  background: #272B30;
-  border-color: #33383F;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
   color: #FCFCFC;
 }
 
 [data-theme="dark"] .close-modal-round-btn:hover {
-  background: #33383F;
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 91, 55, 0.45);
   color: #FF5B37;
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 4px 16px rgba(255, 87, 34, 0.25);
+}
+
+[data-theme="dark"] .close-modal-round-btn:active {
+  transform: scale(0.88) rotate(90deg);
 }
 
 [data-theme="dark"] .form-clean-input {
@@ -8163,17 +8194,26 @@ body.theme-oled .challenge-toast-notice {
   color: var(--text-secondary);
   cursor: pointer;
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.25s ease;
+  z-index: 10;
 }
 
 .auth-modal-close-btn:hover {
   background: var(--bg-canvas);
-  color: var(--text-heading);
+  color: #FF5B37;
+  border-color: rgba(255, 91, 55, 0.35);
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 4px 14px rgba(255, 87, 34, 0.2);
+}
+
+.auth-modal-close-btn:active {
+  transform: scale(0.88) rotate(90deg);
+  transition-duration: 0.1s;
 }
 
 .auth-modal-header {
@@ -12101,20 +12141,27 @@ body:not(.in-admin-mode) .app-skeleton-box {
   border: 1px solid rgba(255, 255, 255, 0.1);
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   color: #94A3B8;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.25s ease;
 }
 
 .admin-modal-close-btn:hover {
   background: rgba(239, 68, 68, 0.2);
   color: #F87171;
   border-color: rgba(239, 68, 68, 0.4);
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
+}
+
+.admin-modal-close-btn:active {
+  transform: scale(0.88) rotate(90deg);
+  transition-duration: 0.1s;
 }
 
 .admin-modal-form {

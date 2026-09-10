@@ -48,7 +48,15 @@ export class AuthModal {
       this.cooldownInterval = null;
     }
     this.isOpen = false;
-    this.container.innerHTML = '';
+    const backdrop = this.container.querySelector('.auth-modal-backdrop');
+    if (backdrop) {
+      backdrop.classList.add('modal-closing');
+      setTimeout(() => {
+        this.container.innerHTML = '';
+      }, 260);
+    } else {
+      this.container.innerHTML = '';
+    }
   }
 
   private switchTab(tab: 'login' | 'register'): void {
