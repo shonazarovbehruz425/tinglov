@@ -1,6 +1,8 @@
 import { storageService } from '../services/storageService';
+import { soundEffects } from '../services/soundEffects';
 import { i18n, AppLanguage } from '../services/i18nService';
 import { escapeHtml } from '../utils/sanitize';
+import { safeValidate, profileUpdateSchema } from '../utils/validation';
 
 export class ProfileModal {
   private container: HTMLElement;
@@ -235,7 +237,18 @@ export class ProfileModal {
       const nameInput = this.container.querySelector<HTMLInputElement>('#editUserNameInput');
       const handleInput = this.container.querySelector<HTMLInputElement>('#editUserHandleInput');
       if (nameInput && handleInput) {
-        storageService.updateProfile(nameInput.value, handleInput.value);
+        const validation = safeValidate(profileUpdateSchema, {
+          name: nameInput.value,
+          handle: handleInput.value,
+        });
+
+        if (!validation.success) {
+          soundEffects.triggerErrorFeedback();
+          alert(validation.error);
+          return;
+        }
+
+        storageService.updateProfile(validation.data.name, validation.data.handle);
         this.isEditing = false;
         this.onProfileUpdatedCallback?.();
         this.render();

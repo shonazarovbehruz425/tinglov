@@ -2,6 +2,7 @@ import { apiService, AuthUser } from '../services/apiService';
 import { soundEffects } from '../services/soundEffects';
 import { storageService } from '../services/storageService';
 import { escapeHtml } from '../utils/sanitize';
+import { safeValidate, registerSchema, loginSchema } from '../utils/validation';
 
 export class AuthView {
   private container: HTMLElement;
@@ -255,15 +256,16 @@ export class AuthView {
               id="pageRegPw"
               name="new-password"
               class="auth-text-input"
-              placeholder="Kamida 6 ta belgi"
+              placeholder="Kamida 8 ta belgi (1 ta katta harf va raqam)"
               required
-              minlength="6"
+              minlength="8"
               autocomplete="new-password"
             />
             <button type="button" class="pw-eye-btn" id="pageRegPwToggle" title="Parolni ko‘rsatish">
               <i class="ph ph-eye"></i>
             </button>
           </div>
+          <span class="auth-field-hint" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; display: block;">Kamida 8 ta belgi, 1 ta katta harf (A-Z) va 1 ta raqam (0-9)</span>
         </div>
 
         <button type="submit" class="auth-submit-btn" id="pageRegSubmitBtn">
@@ -423,6 +425,17 @@ export class AuthView {
 
       if (!idInput || !pwInput) return;
 
+      const validation = safeValidate(loginSchema, {
+        identifier: idInput.value,
+        password: pwInput.value,
+      });
+
+      if (!validation.success) {
+        soundEffects.triggerErrorFeedback();
+        this.showAlert(validation.error, 'error');
+        return;
+      }
+
       this.setBtnLoading(submitBtn, true, 'Kirish');
       const result = await apiService.login({
         identifier: idInput.value,
@@ -457,6 +470,19 @@ export class AuthView {
       const submitBtn = this.container.querySelector<HTMLButtonElement>('#pageRegSubmitBtn');
 
       if (!userInput || !emailInput || !pwInput) return;
+
+      const validation = safeValidate(registerSchema, {
+        fullName: nameInput?.value,
+        username: userInput.value,
+        email: emailInput.value,
+        password: pwInput.value,
+      });
+
+      if (!validation.success) {
+        soundEffects.triggerErrorFeedback();
+        this.showAlert(validation.error, 'error');
+        return;
+      }
 
       this.setBtnLoading(submitBtn, true, 'Ro‘yxatdan o‘tish');
       const result = await apiService.register({

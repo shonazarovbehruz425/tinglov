@@ -3,6 +3,7 @@ import { soundEffects } from '../services/soundEffects';
 import { i18n, AppLanguage } from '../services/i18nService';
 import { apiService } from '../services/apiService';
 import { escapeHtml } from '../utils/sanitize';
+import { safeValidate, profileUpdateSchema } from '../utils/validation';
 
 export class SettingsView {
   private container: HTMLElement;
@@ -309,7 +310,18 @@ export class SettingsView {
       const nameInput = this.container.querySelector<HTMLInputElement>('#settingsNameInput');
       const handleInput = this.container.querySelector<HTMLInputElement>('#settingsHandleInput');
       if (nameInput && handleInput) {
-        storageService.updateProfile(nameInput.value, handleInput.value);
+        const validation = safeValidate(profileUpdateSchema, {
+          name: nameInput.value,
+          handle: handleInput.value,
+        });
+
+        if (!validation.success) {
+          soundEffects.triggerErrorFeedback();
+          alert(validation.error);
+          return;
+        }
+
+        storageService.updateProfile(validation.data.name, validation.data.handle);
         this.onSettingsChangedCallback?.();
         soundEffects.playSentenceComplete();
         alert("Ma'lumotlar muvaffaqiyatli saqlandi!");

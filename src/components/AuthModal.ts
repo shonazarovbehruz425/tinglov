@@ -2,6 +2,7 @@ import { apiService, AuthUser } from '../services/apiService';
 import { soundEffects } from '../services/soundEffects';
 import { storageService } from '../services/storageService';
 import { escapeHtml } from '../utils/sanitize';
+import { safeValidate, registerSchema, loginSchema } from '../utils/validation';
 
 export class AuthModal {
   private container: HTMLElement;
@@ -211,15 +212,16 @@ export class AuthModal {
               type="password"
               id="registerPassword"
               class="auth-input"
-              placeholder="Kamida 6 ta belgi"
+              placeholder="Kamida 8 ta belgi, 1 ta katta harf va raqam"
               required
-              minlength="6"
+              minlength="8"
               autocomplete="new-password"
             />
             <button type="button" class="auth-pw-toggle" id="registerPwToggle" title="Parolni ko‘rsatish">
               <i class="ph ph-eye"></i>
             </button>
           </div>
+          <span class="auth-field-hint">Kamida 8 ta belgi, 1 ta katta harf (A-Z) va 1 ta raqam (0-9)</span>
         </div>
 
         <button type="submit" class="auth-submit-btn" id="registerSubmitBtn">
@@ -315,6 +317,17 @@ export class AuthModal {
 
       if (!idInput || !pwInput) return;
 
+      const validation = safeValidate(loginSchema, {
+        identifier: idInput.value,
+        password: pwInput.value,
+      });
+
+      if (!validation.success) {
+        soundEffects.triggerErrorFeedback();
+        this.showAlert(validation.error, 'error');
+        return;
+      }
+
       this.setBtnLoading(submitBtn, true, 'Kirish');
       const result = await apiService.login({
         identifier: idInput.value,
@@ -352,6 +365,19 @@ export class AuthModal {
       const submitBtn = this.container.querySelector<HTMLButtonElement>('#registerSubmitBtn');
 
       if (!userInput || !emailInput || !pwInput) return;
+
+      const validation = safeValidate(registerSchema, {
+        fullName: nameInput?.value,
+        username: userInput.value,
+        email: emailInput.value,
+        password: pwInput.value,
+      });
+
+      if (!validation.success) {
+        soundEffects.triggerErrorFeedback();
+        this.showAlert(validation.error, 'error');
+        return;
+      }
 
       this.setBtnLoading(submitBtn, true, 'Akkaunt yaratish');
       const result = await apiService.register({

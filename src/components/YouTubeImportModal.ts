@@ -4,6 +4,7 @@ import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
 import { i18n } from '../services/i18nService';
 import { escapeHtml, sanitizeUrl } from '../utils/sanitize';
+import { safeValidate, youtubeUrlSchema } from '../utils/validation';
 
 export class YouTubeImportModal {
   private container: HTMLElement;
@@ -263,9 +264,18 @@ export class YouTubeImportModal {
 
     const urlInput = this.container.querySelector<HTMLInputElement>('#youtubeUrlInput');
     const rawUrl = urlInput?.value.trim() || '';
-    const videoId = youtubeService.extractVideoId(rawUrl);
 
+    const validation = safeValidate(youtubeUrlSchema, rawUrl);
+    if (!validation.success) {
+      soundEffects.triggerErrorFeedback();
+      alert(validation.error);
+      urlInput?.focus();
+      return;
+    }
+
+    const videoId = youtubeService.extractVideoId(validation.data);
     if (!videoId) {
+      soundEffects.triggerErrorFeedback();
       alert('Iltimos, to\'g\'ri YouTube video havolasini kiriting!');
       urlInput?.focus();
       return;

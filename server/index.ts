@@ -18,6 +18,7 @@ import {
   getGlobalLeaderboard
 } from './db';
 import { hashPassword, comparePassword, generateToken, requireAuth, AuthenticatedRequest } from './auth';
+import { safeValidate, registerSchema, loginSchema } from '../src/utils/validation';
 
 dotenv.config();
 
@@ -61,36 +62,13 @@ function sanitizeUser(user: any) {
 // 1. Register
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, email, password, fullName } = req.body;
-
-    if (!username || !email || !password) {
-      res.status(400).json({ error: 'Barcha maydonlarni to‘ldiring' });
+    const validation = safeValidate(registerSchema, req.body);
+    if (!validation.success) {
+      res.status(400).json({ error: validation.error });
       return;
     }
 
-    const cleanUsername = String(username).trim().toLowerCase();
-    const cleanEmail = String(email).trim().toLowerCase();
-    const cleanName = String(fullName || cleanUsername).trim();
-
-    if (cleanUsername.length < 3) {
-      res.status(400).json({ error: 'Login kamida 3 ta belgidan iborat bo‘lishi kerak' });
-      return;
-    }
-
-    if (!/^[a-zA-Z0-9_.-]+$/.test(cleanUsername)) {
-      res.status(400).json({ error: 'Login faqat harf, son va pastki chiziqdan iborat bo‘lishi mumkin' });
-      return;
-    }
-
-    if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
-      res.status(400).json({ error: 'Email manzili noto‘g‘ri formatda' });
-      return;
-    }
-
-    if (String(password).length < 6) {
-      res.status(400).json({ error: 'Parol kamida 6 ta belgidan iborat bo‘lishi kerak' });
-      return;
-    }
+    const { username: cleanUsername, email: cleanEmail, password, fullName: cleanName } = validation.data;
 
     // Check uniqueness
     if (findUserByEmail(cleanEmail)) {
@@ -103,7 +81,7 @@ app.post('/api/auth/register', async (req, res) => {
       return;
     }
 
-    const password_hash = await hashPassword(String(password));
+    const password_hash = await hashPassword(password);
     const randomColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 
     const user = createUser({
@@ -133,14 +111,13 @@ app.post('/api/auth/register', async (req, res) => {
 // 2. Login
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { identifier, password } = req.body;
-
-    if (!identifier || !password) {
-      res.status(400).json({ error: 'Login/Email va parolni kiriting' });
+    const validation = safeValidate(loginSchema, req.body);
+    if (!validation.success) {
+      res.status(400).json({ error: validation.error });
       return;
     }
 
-    const cleanId = String(identifier).trim().toLowerCase();
+    const { identifier: cleanId, password } = validation.data;
     const user = cleanId.includes('@') ? findUserByEmail(cleanId) : findUserByUsername(cleanId);
 
     if (!user) {
@@ -148,7 +125,7 @@ app.post('/api/auth/login', async (req, res) => {
       return;
     }
 
-    const isMatch = await comparePassword(String(password), user.password_hash);
+    const isMatch = await comparePassword(password, user.password_hash);
     if (!isMatch) {
       res.status(401).json({ error: 'Bunday foydalanuvchi topilmadi yoki parol noto‘g‘ri' });
       return;

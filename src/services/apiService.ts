@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { safeValidate, registerSchema, loginSchema } from '../utils/validation';
 
 export interface AuthUser {
   id: string | number;
@@ -169,9 +170,13 @@ class ApiService {
     fullName?: string;
   }): Promise<AuthResponse> {
     try {
-      const cleanEmail = params.email.trim().toLowerCase();
-      const cleanUsername = params.username.trim().toLowerCase();
-      const cleanFullName = (params.fullName || '').trim();
+      // Validate input data using Zod schema
+      const validation = safeValidate(registerSchema, params);
+      if (!validation.success) {
+        return { error: validation.error };
+      }
+
+      const { username: cleanUsername, email: cleanEmail, password: cleanPassword, fullName: cleanFullName } = validation.data;
 
       // Check if username already exists in profiles
       const { data: existingUser } = await supabase
@@ -187,7 +192,7 @@ class ApiService {
       // Supabase Sign Up
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
-        password: params.password,
+        password: cleanPassword,
         options: {
           data: {
             username: cleanUsername,
@@ -252,7 +257,13 @@ class ApiService {
     password: string;
   }): Promise<AuthResponse> {
     try {
-      let email = params.identifier.trim().toLowerCase();
+      // Validate input data using Zod schema
+      const validation = safeValidate(loginSchema, params);
+      if (!validation.success) {
+        return { error: validation.error };
+      }
+
+      let email = validation.data.identifier.toLowerCase();
 
       // If user typed username instead of email, check if email column exists or if we can resolve it
       if (!email.includes('@')) {
