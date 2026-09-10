@@ -8751,7 +8751,7 @@ body.in-auth-mode #authViewContainer {
 .auth-card-title {
   font-size: 1.45rem;
   font-weight: 800;
-  color: var(--text-main, #FFFFFF);
+  color: #FFFFFF !important;
   margin-bottom: 0.35rem;
   letter-spacing: -0.02em;
   transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -8759,7 +8759,7 @@ body.in-auth-mode #authViewContainer {
 
 .auth-card-desc {
   font-size: 0.88rem;
-  color: var(--text-secondary, #94A3B8);
+  color: #94A3B8 !important;
   line-height: 1.45;
   margin: 0;
   transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -8847,9 +8847,9 @@ body.in-auth-mode #authViewContainer {
 
 .auth-google-btn {
   width: 100%;
-  background: var(--bg-surface-subtle, rgba(255, 255, 255, 0.06));
-  border: 1.5px solid var(--border-subtle, rgba(255, 255, 255, 0.15));
-  color: var(--text-main, #FFFFFF);
+  background: #FFFFFF !important;
+  border: 1.5px solid #E2E8F0 !important;
+  color: #0F172A !important;
   padding: 0.82rem 1.25rem;
   border-radius: 14px;
   font-size: 0.95rem;
@@ -8860,13 +8860,13 @@ body.in-auth-mode #authViewContainer {
   justify-content: center;
   gap: 0.75rem;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .auth-google-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: #F8FAFC !important;
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
 }
 
 .auth-google-btn:active {
@@ -8881,22 +8881,22 @@ body.in-auth-mode #authViewContainer {
   display: flex;
   align-items: center;
   text-align: center;
-  color: var(--text-muted, #64748B);
-  font-size: 0.8rem;
-  font-weight: 600;
+  color: #94A3B8 !important;
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 .auth-divider::before,
 .auth-divider::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 
 .auth-divider span {
   padding: 0 0.85rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
 /* Form inputs */
@@ -8913,9 +8913,9 @@ body.in-auth-mode #authViewContainer {
 }
 
 .auth-form-field label {
-  font-size: 0.84rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  color: var(--text-main, #F1F5F9);
+  color: #F1F5F9 !important;
   letter-spacing: 0.01em;
 }
 
@@ -8928,32 +8928,32 @@ body.in-auth-mode #authViewContainer {
 .auth-field-input-box .field-icon {
   position: absolute;
   left: 1rem;
-  color: var(--text-muted, #64748B);
+  color: #94A3B8 !important;
   font-size: 1.15rem;
   pointer-events: none;
 }
 
 .auth-text-input {
   width: 100%;
-  background: var(--bg-surface-subtle, rgba(255, 255, 255, 0.05));
-  border: 1.5px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
-  color: var(--text-main, #FFFFFF);
-  padding: 0.78rem 1rem 0.78rem 2.75rem;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.14) !important;
+  color: #FFFFFF !important;
+  padding: 0.8rem 1rem 0.8rem 2.75rem;
   border-radius: 14px;
-  font-size: 0.92rem;
+  font-size: 0.94rem;
   font-weight: 500;
   outline: none;
   transition: all 0.2s ease;
 }
 
 .auth-text-input:focus {
-  border-color: var(--accent-orange, #FF5722);
-  background: var(--bg-surface, rgba(255, 255, 255, 0.08));
-  box-shadow: 0 0 0 3px rgba(255, 87, 34, 0.18);
+  border-color: #FF5722 !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  box-shadow: 0 0 0 3px rgba(255, 87, 34, 0.22) !important;
 }
 
 .auth-text-input::placeholder {
-  color: var(--text-muted, #64748B);
+  color: #64748B !important;
 }
 
 .pw-eye-btn {
@@ -8961,7 +8961,7 @@ body.in-auth-mode #authViewContainer {
   right: 0.85rem;
   background: transparent;
   border: none;
-  color: var(--text-muted, #64748B);
+  color: #94A3B8 !important;
   font-size: 1.15rem;
   cursor: pointer;
   padding: 0.25rem;
@@ -8971,7 +8971,7 @@ body.in-auth-mode #authViewContainer {
 }
 
 .pw-eye-btn:hover {
-  color: var(--text-main, #FFFFFF);
+  color: #FFFFFF !important;
 }
 
 .auth-submit-btn {
@@ -9011,27 +9011,28 @@ body.in-auth-mode #authViewContainer {
 .auth-card-footer {
   margin-top: 1.5rem;
   padding-top: 1.25rem;
-  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  font-size: 0.86rem;
-  color: var(--text-secondary, #94A3B8);
+  font-size: 0.88rem;
+  color: #94A3B8 !important;
 }
 
 .auth-switch-link {
   background: transparent;
   border: none;
-  color: var(--accent-orange, #FF5722);
+  color: #FF7043 !important;
   font-weight: 800;
   cursor: pointer;
   padding: 0;
-  font-size: 0.86rem;
+  font-size: 0.88rem;
   transition: text-decoration 0.2s ease;
 }
 
 .auth-switch-link:hover {
+  color: #FF8A65 !important;
   text-decoration: underline;
 }
 
