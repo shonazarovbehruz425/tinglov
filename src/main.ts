@@ -315,12 +315,20 @@ class MovieListenApp {
       }
     });
 
-    // React to auth state changes (e.g. sign out)
+    // React to auth state changes (e.g. sign out or Google OAuth sign in)
     apiService.onAuthChange((user) => {
       if (!user) {
         this.showAuthPage('login');
       } else {
         this.statsHeader.update();
+        // Clean URL hash if it contains OAuth access_token
+        if (window.location.hash.includes('access_token=') || window.location.hash.includes('error=')) {
+          window.history.replaceState(null, '', window.location.pathname || '/');
+        }
+        // If user was on auth view, redirect to main library
+        if (this.currentView === 'auth') {
+          this.showLibrary(true);
+        }
       }
     });
 
@@ -383,39 +391,63 @@ class MovieListenApp {
   }
 
   private routeCurrentUrl(pushHistory: boolean = false): void {
+    // 0. Clean up OAuth hash (#access_token=...) from address bar so URL is always clean!
+    if (window.location.hash.includes('access_token=') || window.location.hash.includes('error=')) {
+      window.history.replaceState(null, '', window.location.pathname || '/');
+    }
+
+    // Handle OAuth error params if returned by Supabase or Google (e.g. bad_oauth_state)
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.has('error') || searchParams.has('error_description') || searchParams.has('error_code')) {
+      const errorMsg = searchParams.get('error_description') || searchParams.get('error') || 'Kirishda xatolik yuz berdi';
+      window.history.replaceState(null, '', '/login');
+      this.showAuthPage('login', false);
+      setTimeout(() => {
+        this.authView.showAlert(`Google orqali kirishda xatolik: ${decodeURIComponent(errorMsg).replace(/\+/g, ' ')}`, 'error');
+      }, 150);
+      return;
+    }
+
     const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
     const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-    const searchParams = new URLSearchParams(window.location.search);
 
-    // 1. Explicit Auth routes
+    // 1. Explicit Auth routes (/login, /register, /auth)
     if (rawPath === '/login' || rawHash === 'login' || rawPath === '/auth') {
+      if (apiService.isAuthenticated()) {
+        this.showLibrary(pushHistory);
+        return;
+      }
       this.showAuthPage('login', pushHistory);
       return;
     }
     if (rawPath === '/register' || rawHash === 'register') {
+      if (apiService.isAuthenticated()) {
+        this.showLibrary(pushHistory);
+        return;
+      }
       this.showAuthPage('register', pushHistory);
       return;
     }
 
-    // 2. If not authenticated, always show dedicated auth page
+    // 2. If not authenticated, always enforce dedicated auth page (/login)
     if (!apiService.isAuthenticated()) {
       this.showAuthPage('login', false);
       return;
     }
 
-    // 3. Settings View
+    // 3. Settings View (/settings)
     if (rawPath === '/settings' || rawHash === 'settings') {
       this.showSettingsPage(pushHistory);
       return;
     }
 
-    // 4. Profile View
+    // 4. Profile View (/profile)
     if (rawPath === '/profile' || rawHash === 'profile') {
       this.showProfilePage(pushHistory);
       return;
     }
 
-    // 5. Practice View
+    // 5. Practice View (/practice?scene=... or /practice/...)
     if (rawPath === '/practice' || rawPath.startsWith('/practice/') || rawHash.startsWith('practice')) {
       let sceneId = searchParams.get('scene');
       if (!sceneId && rawPath.startsWith('/practice/')) {
@@ -430,7 +462,7 @@ class MovieListenApp {
       }
     }
 
-    // 6. Default: Library
+    // 6. Library View (/ or /library)
     this.showLibrary(pushHistory);
   }
 
@@ -509,10 +541,12 @@ class MovieListenApp {
   }
 
   public showLibrary(pushHistory: boolean = true): void {
+    if (!this.checkAndEnforceAuth()) return;
     this.switchView('library');
     this.levelSelector.render();
+    const targetUrl = window.location.pathname === '/library' ? '/library' : '/';
     if (pushHistory) {
-      this.updateUrl('/', 'Tinglov — Kino va Multfilm orqali Listening');
+      this.updateUrl(targetUrl, 'Tinglov — Kino va Multfilm orqali Listening');
     } else {
       document.title = 'Tinglov — Kino va Multfilm orqali Listening';
     }

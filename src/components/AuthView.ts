@@ -273,7 +273,7 @@ export class AuthView {
     `;
   }
 
-  private showAlert(msg: string, type: 'error' | 'success'): void {
+  public showAlert(msg: string, type: 'error' | 'success'): void {
     const alertBox = this.container.querySelector<HTMLElement>('#pageAuthAlertBox');
     if (!alertBox) return;
     alertBox.className = `auth-page-alert ${type}`;
