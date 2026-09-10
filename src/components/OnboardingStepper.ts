@@ -165,13 +165,23 @@ export class OnboardingStepper {
     return localStorage.getItem('movielisten_onboarded') !== 'true';
   }
 
+  private handleWindowResize = (): void => {
+    this.adjustViewportHeight();
+  };
+
   public open(startStep: number = 1): void {
     this.currentStep = Math.min(Math.max(1, startStep), this.steps.length);
     this.direction = 1;
+    document.body.classList.add('modal-open-locked');
+    document.documentElement.classList.add('modal-open-locked');
     this.render();
+    window.addEventListener('resize', this.handleWindowResize);
   }
 
   public close(): void {
+    document.body.classList.remove('modal-open-locked');
+    document.documentElement.classList.remove('modal-open-locked');
+    window.removeEventListener('resize', this.handleWindowResize);
     if (!this.overlay) return;
     this.overlay.classList.add('closing');
     setTimeout(() => {
@@ -326,6 +336,9 @@ export class OnboardingStepper {
         oldPanel.innerHTML = this.renderCurrentStepHtml();
         oldPanel.className = `stepper-slide-panel ${slideInClass}`;
         
+        const viewport = this.overlay?.querySelector('#stepperContentViewport') as HTMLElement;
+        if (viewport) viewport.scrollTop = 0;
+
         requestAnimationFrame(() => {
           this.adjustViewportHeight();
           oldPanel.className = 'stepper-slide-panel slide-center';
@@ -370,8 +383,10 @@ export class OnboardingStepper {
     const viewport = this.overlay.querySelector('#stepperContentViewport') as HTMLElement;
     const panel = this.overlay.querySelector('#stepperSlidePanel') as HTMLElement;
     if (viewport && panel) {
-      const targetHeight = panel.scrollHeight;
+      const availableSpace = Math.max(200, window.innerHeight - 250);
+      const targetHeight = Math.min(panel.scrollHeight, availableSpace);
       viewport.style.height = `${targetHeight}px`;
+      viewport.style.maxHeight = `${availableSpace}px`;
     }
   }
 
@@ -388,6 +403,29 @@ export class OnboardingStepper {
 
   private bindEvents(): void {
     if (!this.overlay) return;
+
+    // Prevent background scrolling / wheel leakage to underlying page
+    this.overlay.addEventListener('wheel', (e) => {
+      const target = e.target as HTMLElement;
+      const viewport = target?.closest('#stepperContentViewport') as HTMLElement | null;
+      if (!viewport) {
+        e.preventDefault();
+        return;
+      }
+      const isAtTop = viewport.scrollTop <= 0 && e.deltaY < 0;
+      const isAtBottom = viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 1 && e.deltaY > 0;
+      if (isAtTop || isAtBottom) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    this.overlay.addEventListener('touchmove', (e) => {
+      const target = e.target as HTMLElement;
+      const viewport = target?.closest('#stepperContentViewport');
+      if (!viewport) {
+        e.preventDefault();
+      }
+    }, { passive: false });
 
     this.overlay.querySelector('#stepperCloseBtn')?.addEventListener('click', () => {
       this.complete();

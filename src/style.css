@@ -3703,16 +3703,32 @@ html[data-theme="dark"],
    AnimatedStepper Onboarding Modal & First-Time User Guide
    ========================================================================== */
 
+/* Prevent background page scroll leakage when any modal/stepper is open */
+body:has(.stepper-overlay-backdrop),
+body:has(.modal-backdrop),
+body:has(.auth-modal-backdrop),
+body.modal-open-locked,
+html.modal-open-locked {
+  overflow: hidden !important;
+  height: 100vh !important;
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+}
+
 .stepper-overlay-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 999;
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
-  background: rgba(0, 0, 0, 0.72);
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.78);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   animation: stepperFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -3734,10 +3750,14 @@ html[data-theme="dark"],
   position: relative;
   max-width: 530px;
   width: 100%;
-  border-radius: 2.5rem;
+  max-height: min(92vh, 720px);
+  display: flex;
+  flex-direction: column;
+  margin: auto;
+  border-radius: 2.25rem;
   background: #FFFFFF;
   border: 1px solid var(--border-subtle);
-  box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   animation: stepperZoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -3754,6 +3774,7 @@ html[data-theme="dark"],
 }
 
 .stepper-top-header {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3801,6 +3822,7 @@ html[data-theme="dark"],
 
 /* Stepper Indicators Header */
 .stepper-indicators-bar {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   padding: 0.75rem 2.25rem 1.25rem;
@@ -3869,12 +3891,27 @@ html[data-theme="dark"],
   transition: transform 0.45s cubic-bezier(0.33, 1, 0.68, 1);
 }
 
-/* Content Viewport with Dynamic Height */
+/* Content Viewport with Dynamic Height & Internal Scroll */
 .stepper-content-viewport {
   position: relative;
-  overflow: hidden;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   transition: height 0.32s cubic-bezier(0.16, 1, 0.3, 1);
   padding: 0.5rem 2.25rem 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 91, 55, 0.35) transparent;
+}
+
+.stepper-content-viewport::-webkit-scrollbar {
+  width: 5px;
+}
+
+.stepper-content-viewport::-webkit-scrollbar-thumb {
+  background: rgba(255, 91, 55, 0.35);
+  border-radius: 9999px;
 }
 
 .stepper-slide-panel {
@@ -4254,11 +4291,13 @@ html[data-theme="dark"],
 
 /* Footer Bar */
 .stepper-footer-bar {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1.2rem 2.25rem 2rem;
   border-top: 1px solid var(--border-divider);
+  background: inherit;
 }
 
 .stepper-back-btn {
