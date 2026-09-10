@@ -2,8 +2,19 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { findUserById, DbUser } from './db';
+import dotenv from 'dotenv';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tinglov_super_secure_jwt_secret_2026_x89f';
+dotenv.config();
+
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET environment variable is required. Please define a strong secret in your .env or host dashboard.');
+}
+
+if (JWT_SECRET.length < 32 && process.env.NODE_ENV === 'production') {
+  throw new Error('FATAL: JWT_SECRET must be at least 32 characters long for production security.');
+}
+
 const JWT_EXPIRES_IN = '7d';
 
 export async function hashPassword(password: string): Promise<string> {
