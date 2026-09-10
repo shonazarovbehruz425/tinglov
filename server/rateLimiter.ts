@@ -1,8 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'node:crypto';
+import Redis from 'ioredis';
 
 // Secret key for HMAC CAPTCHA signing
 const CAPTCHA_SECRET = process.env.CAPTCHA_SECRET || crypto.randomBytes(32).toString('hex');
+
+// Max entries for bounded in-memory fallback to prevent memory exhaustion attacks
+const MAX_STORE_ENTRIES = 10000;
 
 interface RateRecord {
   count: number;
@@ -15,24 +19,94 @@ interface AuthAttemptRecord {
   lockedUntil: number;
 }
 
-// In-memory stores with periodic garbage collection
-const ipStore = new Map<string, RateRecord>();
-const authStore = new Map<string, AuthAttemptRecord>();
+// --------------------------------------------------------------------------
+// 1. Redis Connection Setup (with automatic fallback on error / disconnect)
+// --------------------------------------------------------------------------
+const REDIS_URL = process.env.REDIS_URL;
+const REDIS_HOST = process.env.REDIS_HOST;
+const REDIS_PORT = process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : 6379;
+const REDIS_PASSWORD = process.env.REDIS_PASSWORD;
 
-// Periodic cleanup every 10 minutes to prevent memory leaks
-setInterval(() => {
+let redisClient: Redis | null = null;
+let isRedisConnected = false;
+
+if (REDIS_URL || REDIS_HOST) {
+  try {
+    redisClient = REDIS_URL
+      ? new Redis(REDIS_URL, {
+          maxRetriesPerRequest: 1,
+          enableOfflineQueue: false,
+          connectTimeout: 5000,
+          lazyConnect: true,
+        })
+      : new Redis({
+          host: REDIS_HOST,
+          port: REDIS_PORT,
+          password: REDIS_PASSWORD,
+          maxRetriesPerRequest: 1,
+          enableOfflineQueue: false,
+          connectTimeout: 5000,
+          lazyConnect: true,
+        });
+
+    redisClient.on('connect', () => {
+      isRedisConnected = true;
+      console.log('✅ [RateLimiter] Connected to Redis for distributed rate limiting & persistence.');
+    });
+
+    redisClient.on('error', (err) => {
+      isRedisConnected = false;
+      console.warn('⚠️ [RateLimiter] Redis connection warning (falling back to bounded in-memory store):', err.message);
+    });
+
+    redisClient.connect().catch((err) => {
+      isRedisConnected = false;
+      console.warn('⚠️ [RateLimiter] Could not connect to Redis, fallback to bounded memory store:', err.message);
+    });
+  } catch (err: any) {
+    console.warn('⚠️ [RateLimiter] Redis initialization failed, fallback to bounded memory store:', err.message);
+  }
+} else {
+  console.log('ℹ️ [RateLimiter] REDIS_URL not configured. Running with high-capacity bounded in-memory rate limiter.');
+}
+
+// --------------------------------------------------------------------------
+// 2. High-Capacity Bounded In-Memory Store (Fallback with LRU/FIFO eviction)
+// --------------------------------------------------------------------------
+const memoryIpStore = new Map<string, RateRecord>();
+const memoryAuthStore = new Map<string, AuthAttemptRecord>();
+
+function cleanMemoryStore<T extends { resetTime?: number; lockedUntil?: number }>(
+  store: Map<string, T>,
+  maxEntries: number
+): void {
   const now = Date.now();
-  for (const [key, record] of ipStore.entries()) {
-    if (record.resetTime <= now) {
-      ipStore.delete(key);
+  // 1. Evict expired entries
+  for (const [key, val] of store.entries()) {
+    if (val.resetTime && val.resetTime <= now) {
+      store.delete(key);
+    } else if (val.lockedUntil && val.lockedUntil <= now) {
+      store.delete(key);
     }
   }
-  for (const [key, record] of authStore.entries()) {
-    if (record.lockedUntil <= now && now - record.lastFailureTime > 60 * 60 * 1000) {
-      authStore.delete(key);
+
+  // 2. If capacity still exceeded, evict oldest 20% to prevent memory exhaustion
+  if (store.size > maxEntries) {
+    const excess = store.size - Math.floor(maxEntries * 0.8);
+    let removed = 0;
+    for (const key of store.keys()) {
+      store.delete(key);
+      removed++;
+      if (removed >= excess) break;
     }
   }
-}, 10 * 60 * 1000).unref();
+}
+
+// Periodic cleanup every 5 minutes
+setInterval(() => {
+  cleanMemoryStore(memoryIpStore, MAX_STORE_ENTRIES);
+  cleanMemoryStore(memoryAuthStore, MAX_STORE_ENTRIES);
+}, 5 * 60 * 1000).unref();
 
 /**
  * Gets real client IP handling proxies/load balancers
@@ -47,7 +121,46 @@ export function getClientIp(req: Request): string {
 }
 
 /**
- * General Rate Limiter Factory (sliding window)
+ * Increment rate limit count atomically in Redis or bounded memory store
+ */
+async function incrementRateLimit(key: string, windowMs: number): Promise<{ count: number; resetTime: number }> {
+  if (isRedisConnected && redisClient) {
+    try {
+      const redisKey = `tinglov:rl:${key}`;
+      const multi = redisClient.multi();
+      multi.incr(redisKey);
+      multi.pttl(redisKey);
+      const results = await multi.exec();
+
+      if (results && results[0] && results[1]) {
+        const count = Number(results[0][1]) || 1;
+        let pttl = Number(results[1][1]);
+        if (pttl === -1 || pttl === -2) {
+          await redisClient.pexpire(redisKey, windowMs);
+          pttl = windowMs;
+        }
+        return { count, resetTime: Date.now() + Math.max(1, pttl) };
+      }
+    } catch {
+      // Fall through to memory store if Redis operation fails
+    }
+  }
+
+  // Bounded Memory Fallback
+  cleanMemoryStore(memoryIpStore, MAX_STORE_ENTRIES);
+  const now = Date.now();
+  let record = memoryIpStore.get(key);
+  if (!record || record.resetTime <= now) {
+    record = { count: 1, resetTime: now + windowMs };
+    memoryIpStore.set(key, record);
+  } else {
+    record.count++;
+  }
+  return record;
+}
+
+/**
+ * General Rate Limiter Factory (sliding window with Redis support)
  */
 export function createRateLimiter(options: {
   windowMs: number;
@@ -55,23 +168,21 @@ export function createRateLimiter(options: {
   message?: string;
   keyPrefix?: string;
 }) {
-  const { windowMs, max, message = 'Juda ko‘p so‘rov yuborildi. Iltimos, birozdan keyin qayta urinib ko‘ring.', keyPrefix = 'rl' } = options;
+  const {
+    windowMs,
+    max,
+    message = 'Juda ko‘p so‘rov yuborildi. Iltimos, birozdan keyin qayta urinib ko‘ring.',
+    keyPrefix = 'rl'
+  } = options;
 
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     const ip = getClientIp(req);
     const key = `${keyPrefix}:${ip}`;
     const now = Date.now();
 
-    let record = ipStore.get(key);
-    if (!record || record.resetTime <= now) {
-      record = { count: 1, resetTime: now + windowMs };
-      ipStore.set(key, record);
-    } else {
-      record.count++;
-    }
-
+    const record = await incrementRateLimit(key, windowMs);
     const remaining = Math.max(0, max - record.count);
-    const resetSec = Math.ceil((record.resetTime - now) / 1000);
+    const resetSec = Math.max(1, Math.ceil((record.resetTime - now) / 1000));
 
     res.setHeader('RateLimit-Limit', max);
     res.setHeader('RateLimit-Remaining', remaining);
@@ -111,15 +222,64 @@ export const registerLimiter = createRateLimiter({
 });
 
 /**
- * Record a failed authentication attempt and apply exponential backoff
+ * Record a failed authentication attempt and apply exponential backoff (Redis + Memory fallback)
  */
-export function recordAuthFailure(key: string): { failures: number; delayMs: number; isLocked: boolean; retryAfterSec: number } {
+export async function recordAuthFailure(key: string): Promise<{
+  failures: number;
+  delayMs: number;
+  isLocked: boolean;
+  retryAfterSec: number;
+}> {
   const now = Date.now();
-  let record = authStore.get(key);
+
+  // Try Redis first
+  if (isRedisConnected && redisClient) {
+    try {
+      const redisKey = `tinglov:auth:${key}`;
+      const raw = await redisClient.get(redisKey);
+      let record: AuthAttemptRecord = raw
+        ? JSON.parse(raw)
+        : { failures: 0, lastFailureTime: now, lockedUntil: 0 };
+
+      if (now - record.lastFailureTime > 30 * 60 * 1000) {
+        record.failures = 1;
+        record.lockedUntil = 0;
+      } else {
+        record.failures++;
+      }
+      record.lastFailureTime = now;
+
+      let delayMs = 0;
+      if (record.failures === 3) delayMs = 3000;
+      else if (record.failures >= 4 && record.failures < 15) delayMs = 5000;
+      else if (record.failures >= 15 && record.failures < 20) {
+        delayMs = 60000;
+        record.lockedUntil = now + delayMs;
+      } else if (record.failures >= 20) {
+        delayMs = 15 * 60 * 1000;
+        record.lockedUntil = now + delayMs;
+      }
+
+      let isLocked = false;
+      let retryAfterSec = 0;
+      if (record.lockedUntil > now) {
+        isLocked = true;
+        retryAfterSec = Math.ceil((record.lockedUntil - now) / 1000);
+      }
+
+      await redisClient.set(redisKey, JSON.stringify(record), 'EX', 3600);
+      return { failures: record.failures, delayMs, isLocked, retryAfterSec };
+    } catch {
+      // Fall through to memory store on error
+    }
+  }
+
+  // Bounded Memory Fallback
+  cleanMemoryStore(memoryAuthStore, MAX_STORE_ENTRIES);
+  let record = memoryAuthStore.get(key);
   if (!record) {
     record = { failures: 1, lastFailureTime: now, lockedUntil: 0 };
   } else {
-    // If previous failure was more than 30 minutes ago, reset counter
     if (now - record.lastFailureTime > 30 * 60 * 1000) {
       record.failures = 1;
       record.lockedUntil = 0;
@@ -129,12 +289,6 @@ export function recordAuthFailure(key: string): { failures: number; delayMs: num
     record.lastFailureTime = now;
   }
 
-  // Exponential backoff calculation:
-  // 1-2 attempts: 0s
-  // 3 attempts: 3s
-  // 4-14 attempts: 5s delay
-  // 15-19 attempts: 60s temporary lockout
-  // 20+ attempts: 15 minutes full lockout
   let delayMs = 0;
   let isLocked = false;
   let retryAfterSec = 0;
@@ -147,7 +301,7 @@ export function recordAuthFailure(key: string): { failures: number; delayMs: num
     delayMs = 60000;
     record.lockedUntil = now + delayMs;
   } else if (record.failures >= 20) {
-    delayMs = 15 * 60 * 1000; // 15 minutes lockout
+    delayMs = 15 * 60 * 1000;
     record.lockedUntil = now + delayMs;
   }
 
@@ -156,23 +310,50 @@ export function recordAuthFailure(key: string): { failures: number; delayMs: num
     retryAfterSec = Math.ceil((record.lockedUntil - now) / 1000);
   }
 
-  authStore.set(key, record);
+  memoryAuthStore.set(key, record);
   return { failures: record.failures, delayMs, isLocked, retryAfterSec };
 }
 
 /**
  * Reset authentication failure counter on successful login
  */
-export function resetAuthFailure(key: string): void {
-  authStore.delete(key);
+export async function resetAuthFailure(key: string): Promise<void> {
+  if (isRedisConnected && redisClient) {
+    try {
+      await redisClient.del(`tinglov:auth:${key}`);
+    } catch {}
+  }
+  memoryAuthStore.delete(key);
 }
 
 /**
  * Get current failure count for an IP or identifier
  */
-export function getAuthAttempts(key: string): { failures: number; isLocked: boolean; retryAfterSec: number } {
+export async function getAuthAttempts(key: string): Promise<{
+  failures: number;
+  isLocked: boolean;
+  retryAfterSec: number;
+}> {
   const now = Date.now();
-  const record = authStore.get(key);
+
+  if (isRedisConnected && redisClient) {
+    try {
+      const raw = await redisClient.get(`tinglov:auth:${key}`);
+      if (raw) {
+        const record: AuthAttemptRecord = JSON.parse(raw);
+        if (record.lockedUntil > now) {
+          return {
+            failures: record.failures,
+            isLocked: true,
+            retryAfterSec: Math.ceil((record.lockedUntil - now) / 1000),
+          };
+        }
+        return { failures: record.failures, isLocked: false, retryAfterSec: 0 };
+      }
+    } catch {}
+  }
+
+  const record = memoryAuthStore.get(key);
   if (!record) {
     return { failures: 0, isLocked: false, retryAfterSec: 0 };
   }
@@ -189,14 +370,14 @@ export function getAuthAttempts(key: string): { failures: number; isLocked: bool
 /**
  * Express middleware to check for auth lockout before processing login
  */
-export const checkAuthRateLimit = (req: Request, res: Response, next: NextFunction) => {
+export const checkAuthRateLimit = async (req: Request, res: Response, next: NextFunction) => {
   const ip = getClientIp(req);
   const identifier = (req.body?.identifier || '').toString().toLowerCase().trim();
   const ipKey = `auth:ip:${ip}`;
   const userKey = `auth:user:${identifier}`;
 
-  const ipStatus = getAuthAttempts(ipKey);
-  const userStatus = identifier ? getAuthAttempts(userKey) : { isLocked: false, retryAfterSec: 0, failures: 0 };
+  const ipStatus = await getAuthAttempts(ipKey);
+  const userStatus = identifier ? await getAuthAttempts(userKey) : { isLocked: false, retryAfterSec: 0, failures: 0 };
 
   const isLocked = ipStatus.isLocked || userStatus.isLocked;
   const retryAfterSec = Math.max(ipStatus.retryAfterSec, userStatus.retryAfterSec);

@@ -234,8 +234,8 @@ app.post('/api/auth/login', checkAuthRateLimit, requireCsrf, async (req, res) =>
     const user = cleanId.includes('@') ? findUserByEmail(cleanId) : findUserByUsername(cleanId);
 
     if (!user) {
-      const ipFail = recordAuthFailure(ipKey);
-      const userFail = recordAuthFailure(userKey);
+      const ipFail = await recordAuthFailure(ipKey);
+      const userFail = await recordAuthFailure(userKey);
       const maxFail = Math.max(ipFail.failures, userFail.failures);
       const maxDelay = Math.max(ipFail.delayMs, userFail.delayMs);
       if (maxDelay > 0 && maxDelay <= 8000) {
@@ -251,8 +251,8 @@ app.post('/api/auth/login', checkAuthRateLimit, requireCsrf, async (req, res) =>
 
     const isMatch = await comparePassword(password, user.password_hash);
     if (!isMatch) {
-      const ipFail = recordAuthFailure(ipKey);
-      const userFail = recordAuthFailure(userKey);
+      const ipFail = await recordAuthFailure(ipKey);
+      const userFail = await recordAuthFailure(userKey);
       const maxFail = Math.max(ipFail.failures, userFail.failures);
       const maxDelay = Math.max(ipFail.delayMs, userFail.delayMs);
       if (maxDelay > 0 && maxDelay <= 8000) {
@@ -267,8 +267,8 @@ app.post('/api/auth/login', checkAuthRateLimit, requireCsrf, async (req, res) =>
     }
 
     // Reset failure tracking on successful authentication
-    resetAuthFailure(ipKey);
-    resetAuthFailure(userKey);
+    await resetAuthFailure(ipKey);
+    await resetAuthFailure(userKey);
 
     const token = generateToken(user);
 
