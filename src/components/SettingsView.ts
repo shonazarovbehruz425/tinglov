@@ -1,6 +1,7 @@
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
 import { i18n, AppLanguage } from '../services/i18nService';
+import { apiService } from '../services/apiService';
 import { escapeHtml } from '../utils/sanitize';
 
 export class SettingsView {
@@ -352,9 +353,10 @@ export class SettingsView {
     });
 
     // Sign out
-    this.container.querySelector('#settingsSignOutBtn')?.addEventListener('click', () => {
+    this.container.querySelector('#settingsSignOutBtn')?.addEventListener('click', async () => {
       if (confirm(i18n.t().signOutConfirm)) {
-        storageService.updateProfile('Mehmon', '@mehmon');
+        await apiService.logout();
+        storageService.resetForGuest();
         this.onSettingsChangedCallback?.();
         this.onBackToLibraryCallback?.();
       }

@@ -498,11 +498,11 @@ export class StatsHeader {
       this.onOpenAuthCallback?.('login');
     });
 
-    this.container.querySelector('#dropdownSignOutBtn')?.addEventListener('click', () => {
+    this.container.querySelector('#dropdownSignOutBtn')?.addEventListener('click', async () => {
       dropdownMenu?.classList.remove('show-dropdown');
       if (confirm(i18n.t().signOutConfirm)) {
-        apiService.logout();
-        storageService.updateProfile('Mehmon', '@mehmon');
+        await apiService.logout();
+        storageService.resetForGuest();
         this.onSignOutCallback?.();
         this.update();
       }

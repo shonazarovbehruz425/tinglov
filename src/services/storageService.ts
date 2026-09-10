@@ -233,6 +233,23 @@ export class StorageService {
     this.saveStats();
   }
 
+  public resetForGuest(): void {
+    this.stats = {
+      xp: 0,
+      streak: 1,
+      level: 1,
+      totalWordsTyped: 0,
+      correctWordsTyped: 0,
+      wpmHistory: [],
+      completedScenes: [],
+      savedWords: [],
+      lastActiveDate: new Date().toISOString().split('T')[0],
+      userName: 'Mehmon',
+      userHandle: '@mehmon'
+    };
+    this.saveStats();
+  }
+
   public saveStats(): void {
     try {
       localStorage.setItem(STATS_KEY, JSON.stringify(this.stats));

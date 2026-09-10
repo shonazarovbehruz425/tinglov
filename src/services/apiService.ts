@@ -34,18 +34,19 @@ class ApiService {
   private onAuthChangeCallbacks: Array<(user: AuthUser | null) => void> = [];
 
   constructor() {
-    this.token = localStorage.getItem(TOKEN_KEY);
+    // 1. Initialize from sessionStorage (preventing persistent disk token exposure)
+    this.token = this.getStoredToken();
+
+    // 2. Clean up any legacy localStorage token left behind by previous versions
+    this.purgeLegacyLocalStorage();
 
     // Listen to real-time auth state changes in Supabase
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        this.token = session.access_token;
-        localStorage.setItem(TOKEN_KEY, session.access_token);
+        this.setToken(session.access_token);
         await this.loadUserProfile(session.user);
       } else {
-        this.token = null;
-        this.currentUser = null;
-        localStorage.removeItem(TOKEN_KEY);
+        this.clearSession();
         this.notifyAuthChange();
       }
     });
@@ -53,11 +54,60 @@ class ApiService {
     // Check existing active session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        this.token = session.access_token;
-        localStorage.setItem(TOKEN_KEY, session.access_token);
+        this.setToken(session.access_token);
         await this.loadUserProfile(session.user);
       }
     }).catch(() => {});
+  }
+
+  private getStoredToken(): string | null {
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        return sessionStorage.getItem(TOKEN_KEY);
+      }
+    } catch {
+      // Ignore
+    }
+    return null;
+  }
+
+  private setToken(token: string | null): void {
+    this.token = token;
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        if (token) {
+          sessionStorage.setItem(TOKEN_KEY, token);
+        } else {
+          sessionStorage.removeItem(TOKEN_KEY);
+        }
+      }
+      this.purgeLegacyLocalStorage();
+    } catch {
+      // Ignore
+    }
+  }
+
+  private purgeLegacyLocalStorage(): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem(TOKEN_KEY);
+        // Clean any legacy supabase tokens from localStorage
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('sb-') || key.includes('auth-token'))) {
+            localStorage.removeItem(key);
+          }
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  private clearSession(): void {
+    this.token = null;
+    this.currentUser = null;
+    this.setToken(null);
   }
 
   public getToken(): string | null {
@@ -171,8 +221,7 @@ class ApiService {
         await supabase.from('profiles').upsert(newProfile);
 
         if (data.session) {
-          this.token = data.session.access_token;
-          localStorage.setItem(TOKEN_KEY, data.session.access_token);
+          this.setToken(data.session.access_token);
         }
 
         const authUser: AuthUser = {
@@ -242,13 +291,12 @@ class ApiService {
       }
 
       if (data.user && data.session) {
-        this.token = data.session.access_token;
-        localStorage.setItem(TOKEN_KEY, data.session.access_token);
+        this.setToken(data.session.access_token);
         const user = await this.loadUserProfile(data.user);
 
         return {
           message: 'Xush kelibsiz!',
-          token: this.token,
+          token: this.token || undefined,
           user: user || undefined,
         };
       }
@@ -410,9 +458,26 @@ class ApiService {
     } catch {
       // Ignore
     }
-    this.token = null;
-    this.currentUser = null;
-    localStorage.removeItem(TOKEN_KEY);
+
+    try {
+      // Clear backend HttpOnly cookie if using backend service
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch {
+      // Ignore network errors on logout
+    }
+
+    this.clearSession();
+    this.purgeLegacyLocalStorage();
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.clear();
+      }
+    } catch {
+      // Ignore
+    }
     this.notifyAuthChange();
   }
 }

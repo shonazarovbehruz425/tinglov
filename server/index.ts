@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'node:path';
 import fs from 'node:fs';
 import dotenv from 'dotenv';
@@ -23,7 +24,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
+app.use(cookieParser());
 app.use(express.json());
 
 // Security Headers
@@ -34,6 +39,13 @@ app.use((_req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   next();
 });
+
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: (process.env.NODE_ENV === 'production' ? 'strict' : 'lax') as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+};
 
 const AVATAR_COLORS = ['#A3E635', '#FF5B37', '#38BDF8', '#F59E0B', '#EC4899', '#8B5CF6', '#10B981'];
 
@@ -104,6 +116,9 @@ app.post('/api/auth/register', async (req, res) => {
 
     const token = generateToken(user);
 
+    // Set secure HttpOnly cookie
+    res.cookie('token', token, COOKIE_OPTIONS);
+
     res.status(201).json({
       message: 'Muvaffaqiyatli ro‘yxatdan o‘tdingiz!',
       token,
@@ -141,6 +156,9 @@ app.post('/api/auth/login', async (req, res) => {
 
     const token = generateToken(user);
 
+    // Set secure HttpOnly cookie
+    res.cookie('token', token, COOKIE_OPTIONS);
+
     res.json({
       message: 'Xush kelibsiz!',
       token,
@@ -150,6 +168,16 @@ app.post('/api/auth/login', async (req, res) => {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Serverda xatolik yuz berdi' });
   }
+});
+
+// 2.5. Logout (Clear HttpOnly cookie)
+app.post('/api/auth/logout', (_req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: (process.env.NODE_ENV === 'production' ? 'strict' : 'lax') as const,
+  });
+  res.json({ success: true, message: 'Muvaffaqiyatli tizimdan chiqildi' });
 });
 
 // 3. Current User Profile (/api/auth/me)

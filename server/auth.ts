@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import { findUserById, DbUser } from './db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tinglov_super_secure_jwt_secret_2026_x89f';
-const JWT_EXPIRES_IN = '30d';
+const JWT_EXPIRES_IN = '7d';
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
@@ -26,14 +26,26 @@ export interface AuthenticatedRequest extends Request {
   user?: DbUser;
 }
 
-export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+export function extractToken(req: Request): string | null {
+  // 1. Check HttpOnly cookie first
+  if (req.cookies && req.cookies.token) {
+    return req.cookies.token;
+  }
+  // 2. Fallback to Bearer token in Authorization header
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.split(' ')[1];
+  }
+  return null;
+}
+
+export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+  const token = extractToken(req);
+  if (!token) {
     res.status(401).json({ error: 'Avtorizatsiyadan o‘tish talab etiladi (Token topilmadi)' });
     return;
   }
 
-  const token = authHeader.split(' ')[1];
   try {
     const payload = jwt.verify(token, JWT_SECRET) as { id: number; username: string; email: string };
     const user = findUserById(payload.id);
@@ -50,9 +62,8 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
 }
 
 export function optionalAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction): void {
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.split(' ')[1];
+  const token = extractToken(req);
+  if (token) {
     try {
       const payload = jwt.verify(token, JWT_SECRET) as { id: number };
       const user = findUserById(payload.id);
