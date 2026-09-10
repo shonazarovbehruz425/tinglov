@@ -10379,6 +10379,192 @@ body.in-admin-mode .app-header {
    ADMIN PANEL - 10X COOLER CYBER COMMAND CENTER STYLES
    ========================================================================== */
 
+/* ==========================================================================
+   SKELETON LOADERS (ADMIN PANEL & SITE UI)
+   ========================================================================== */
+
+@keyframes appSkeletonPulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Base shimmering skeleton box */
+.admin-skeleton-box,
+.app-skeleton-box {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.12) 37%,
+    rgba(255, 255, 255, 0.04) 63%
+  );
+  background-size: 400% 100%;
+  animation: appSkeletonPulse 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  border-radius: 8px;
+}
+
+/* Light theme / Site subtle skeleton support */
+body:not(.in-admin-mode) .app-skeleton-box {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.06) 25%,
+    rgba(0, 0, 0, 0.12) 37%,
+    rgba(0, 0, 0, 0.06) 63%
+  );
+  background-size: 400% 100%;
+}
+
+/* Admin Dashboard Skeleton Layout */
+.admin-skeleton-layout {
+  min-height: 100vh;
+  width: 100%;
+  background: #080A0E;
+  pointer-events: none;
+  user-select: none;
+}
+
+.admin-skeleton-layout .admin-skel-logo {
+  width: 140px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.admin-skeleton-layout .admin-skel-badge {
+  width: 90px;
+  height: 22px;
+  border-radius: 9999px;
+}
+
+.admin-skeleton-layout .admin-skel-route {
+  width: 180px;
+  height: 24px;
+  border-radius: 8px;
+}
+
+.admin-skeleton-layout .admin-skel-btn {
+  width: 70px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.admin-skeleton-layout .admin-skel-user {
+  width: 120px;
+  height: 36px;
+  border-radius: 9999px;
+}
+
+.admin-skeleton-layout .admin-skel-tab {
+  height: 44px;
+  border-radius: 12px;
+  margin-bottom: 0.6rem;
+  width: 100%;
+}
+
+.admin-skeleton-layout .admin-skel-tab.active {
+  background: linear-gradient(
+    90deg,
+    rgba(163, 230, 53, 0.1) 25%,
+    rgba(163, 230, 53, 0.2) 37%,
+    rgba(163, 230, 53, 0.1) 63%
+  );
+  background-size: 400% 100%;
+  border: 1px solid rgba(163, 230, 53, 0.25);
+}
+
+.admin-skeleton-header {
+  margin-bottom: 2rem;
+}
+
+.admin-skel-title {
+  width: 280px;
+  height: 30px;
+  margin-bottom: 10px;
+}
+
+.admin-skel-desc {
+  width: 380px;
+  height: 16px;
+}
+
+.admin-skeleton-card {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.admin-skeleton-card .admin-skel-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+
+.admin-skeleton-card .admin-skel-chip {
+  width: 80px;
+  height: 22px;
+  border-radius: 9999px;
+}
+
+.admin-skeleton-card .admin-skel-line-sm {
+  width: 140px;
+  height: 14px;
+  margin-top: 14px;
+  margin-bottom: 8px;
+}
+
+.admin-skeleton-card .admin-skel-val {
+  width: 90px;
+  height: 34px;
+  margin-bottom: 8px;
+}
+
+.admin-skeleton-card .admin-skel-line-md {
+  width: 180px;
+  height: 14px;
+}
+
+.admin-skeleton-table-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.admin-skeleton-row {
+  width: 100%;
+  height: 48px;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 37%,
+    rgba(255, 255, 255, 0.03) 63%
+  );
+  background-size: 400% 100%;
+  animation: appSkeletonPulse 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Skeleton table row in active table */
+.admin-skeleton-tr td {
+  padding: 1.1rem 1rem !important;
+  vertical-align: middle;
+}
+
+/* Site cinema card skeleton */
+.app-skeleton-card {
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--bg-surface, #FFFFFF);
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+}
+
+.youtube-skeleton-card {
+  background: var(--bg-surface-subtle);
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+}
+
 .admin-loading-wrapper {
   min-height: 100vh;
   width: 100%;

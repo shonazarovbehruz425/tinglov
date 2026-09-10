@@ -50,9 +50,92 @@ export class AdminView {
 
   private renderLoading(): void {
     this.container.innerHTML = `
-      <div class="admin-loading-wrapper">
-        <div class="admin-spinner"></div>
-        <p>Boshqaruv tizimi yuklanmoqda...</p>
+      <div class="admin-dashboard-layout admin-skeleton-layout">
+        <!-- Top Nav Skeleton -->
+        <header class="admin-top-nav">
+          <div class="admin-brand-section">
+            <div class="admin-skeleton-box admin-skel-logo"></div>
+            <div class="admin-skeleton-box admin-skel-badge"></div>
+            <div class="admin-skeleton-box admin-skel-route"></div>
+          </div>
+          <div class="admin-user-nav">
+            <div class="admin-skeleton-box admin-skel-btn"></div>
+            <div class="admin-skeleton-box admin-skel-btn"></div>
+            <div class="admin-skeleton-box admin-skel-user"></div>
+          </div>
+        </header>
+
+        <div class="admin-workspace">
+          <!-- Sidebar Skeleton -->
+          <aside class="admin-sidebar">
+            <div class="admin-nav-tabs">
+              <div class="admin-skeleton-box admin-skel-tab active"></div>
+              <div class="admin-skeleton-box admin-skel-tab"></div>
+              <div class="admin-skeleton-box admin-skel-tab"></div>
+              <div class="admin-skeleton-box admin-skel-tab"></div>
+            </div>
+          </aside>
+
+          <!-- Main Panel Skeleton -->
+          <main class="admin-main-panel">
+            <!-- Header Skeleton -->
+            <div class="admin-skeleton-header">
+              <div class="admin-skeleton-box admin-skel-title"></div>
+              <div class="admin-skeleton-box admin-skel-desc"></div>
+            </div>
+
+            <!-- Stats Grid Skeleton -->
+            <div class="admin-stats-grid">
+              <div class="admin-stat-card admin-skeleton-card">
+                <div class="admin-stat-card-top">
+                  <div class="admin-skeleton-box admin-skel-icon"></div>
+                  <div class="admin-skeleton-box admin-skel-chip"></div>
+                </div>
+                <div class="admin-skeleton-box admin-skel-line-sm"></div>
+                <div class="admin-skeleton-box admin-skel-val"></div>
+                <div class="admin-skeleton-box admin-skel-line-md"></div>
+              </div>
+              <div class="admin-stat-card admin-skeleton-card">
+                <div class="admin-stat-card-top">
+                  <div class="admin-skeleton-box admin-skel-icon"></div>
+                  <div class="admin-skeleton-box admin-skel-chip"></div>
+                </div>
+                <div class="admin-skeleton-box admin-skel-line-sm"></div>
+                <div class="admin-skeleton-box admin-skel-val"></div>
+                <div class="admin-skeleton-box admin-skel-line-md"></div>
+              </div>
+              <div class="admin-stat-card admin-skeleton-card">
+                <div class="admin-stat-card-top">
+                  <div class="admin-skeleton-box admin-skel-icon"></div>
+                  <div class="admin-skeleton-box admin-skel-chip"></div>
+                </div>
+                <div class="admin-skeleton-box admin-skel-line-sm"></div>
+                <div class="admin-skeleton-box admin-skel-val"></div>
+                <div class="admin-skeleton-box admin-skel-line-md"></div>
+              </div>
+              <div class="admin-stat-card admin-skeleton-card">
+                <div class="admin-stat-card-top">
+                  <div class="admin-skeleton-box admin-skel-icon"></div>
+                  <div class="admin-skeleton-box admin-skel-chip"></div>
+                </div>
+                <div class="admin-skeleton-box admin-skel-line-sm"></div>
+                <div class="admin-skeleton-box admin-skel-val"></div>
+                <div class="admin-skeleton-box admin-skel-line-md"></div>
+              </div>
+            </div>
+
+            <!-- Content Area Skeleton -->
+            <div class="admin-card-section admin-skeleton-card" style="margin-top: 1.5rem; padding: 1.5rem;">
+              <div class="admin-skeleton-box admin-skel-title" style="width: 260px; margin-bottom: 1.25rem;"></div>
+              <div class="admin-skeleton-table-rows">
+                <div class="admin-skeleton-row"></div>
+                <div class="admin-skeleton-row"></div>
+                <div class="admin-skeleton-row"></div>
+                <div class="admin-skeleton-row"></div>
+              </div>
+            </div>
+          </main>
+        </div>
       </div>
     `;
   }
@@ -503,6 +586,31 @@ export class AdminView {
       filteredUsers.sort((a, b) => (b.xp || 0) - (a.xp || 0));
     }
     return filteredUsers;
+  }
+
+  private renderUserSkeletonRows(count: number = 4): string {
+    return Array.from({ length: count }).map(() => `
+      <tr class="admin-skeleton-tr">
+        <td>
+          <div class="admin-user-cell">
+            <div class="admin-skeleton-box" style="width: 36px; height: 36px; border-radius: 50%;"></div>
+            <div>
+              <div class="admin-skeleton-box" style="width: 110px; height: 14px; margin-bottom: 5px;"></div>
+              <div class="admin-skeleton-box" style="width: 70px; height: 11px;"></div>
+            </div>
+          </div>
+        </td>
+        <td><div class="admin-skeleton-box" style="width: 140px; height: 14px;"></div></td>
+        <td><div class="admin-skeleton-box" style="width: 85px; height: 22px; border-radius: 9999px;"></div></td>
+        <td>
+          <div class="admin-skeleton-box" style="width: 55px; height: 18px; border-radius: 6px; margin-bottom: 4px;"></div>
+          <div class="admin-skeleton-box" style="width: 45px; height: 10px;"></div>
+        </td>
+        <td><div class="admin-skeleton-box" style="width: 65px; height: 20px; border-radius: 9999px;"></div></td>
+        <td><div class="admin-skeleton-box" style="width: 75px; height: 14px;"></div></td>
+        <td><div class="admin-skeleton-box" style="width: 60px; height: 28px; border-radius: 8px;"></div></td>
+      </tr>
+    `).join('');
   }
 
   private renderUserRows(): string {
@@ -1231,9 +1339,12 @@ export class AdminView {
       searchInput.addEventListener('input', (e) => {
         clearTimeout(debounceTimer);
         this.searchQuery = (e.target as HTMLInputElement).value;
+        const tbody = this.container.querySelector('#adminUsersTableBody') as HTMLElement;
+        if (tbody) {
+          tbody.innerHTML = this.renderUserSkeletonRows(3);
+        }
         debounceTimer = setTimeout(async () => {
           this.users = await apiService.adminGetUsers(this.searchQuery).catch(() => []);
-          const tbody = this.container.querySelector('#adminUsersTableBody') as HTMLElement;
           if (tbody) {
             tbody.classList.remove('admin-table-fade');
             void tbody.offsetWidth;

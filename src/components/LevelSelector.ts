@@ -154,6 +154,27 @@ export class LevelSelector {
     });
   }
 
+  private renderCourseSkeletonCards(count: number = 6): string {
+    return Array.from({ length: count }).map(() => `
+      <div class="cinema-course-card app-skeleton-card">
+        <div class="cinema-card-poster-area app-skeleton-box" style="aspect-ratio: 16/9; width: 100%; border-radius: 12px 12px 0 0;"></div>
+        <div class="cinema-card-body" style="padding: 1.1rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+            <div class="app-skeleton-box" style="width: 80px; height: 16px; border-radius: 9999px;"></div>
+            <div class="app-skeleton-box" style="width: 65px; height: 16px; border-radius: 9999px;"></div>
+          </div>
+          <div class="app-skeleton-box" style="width: 85%; height: 20px; margin-bottom: 0.5rem;"></div>
+          <div class="app-skeleton-box" style="width: 50%; height: 14px; margin-bottom: 1rem;"></div>
+          <div class="app-skeleton-box" style="width: 100%; height: 6px; border-radius: 9999px; margin-bottom: 1.25rem;"></div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="app-skeleton-box" style="width: 70px; height: 14px;"></div>
+            <div class="app-skeleton-box" style="width: 90px; height: 32px; border-radius: 8px;"></div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
   private renderCoursesGridHtml(scenes: Scene[], stats: any): string {
     if (scenes.length === 0) {
       return `
@@ -340,6 +361,8 @@ export class LevelSelector {
     const wordResultsContainer = this.container.querySelector('#catalogWordResultsContainer') as HTMLElement;
     if (!grid) return;
 
+    // Show skeleton cards during transition
+    grid.innerHTML = this.renderCourseSkeletonCards(6);
     grid.classList.add('filter-animating');
 
     setTimeout(() => {

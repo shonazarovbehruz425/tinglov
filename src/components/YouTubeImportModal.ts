@@ -234,9 +234,13 @@ export class YouTubeImportModal {
     // Show loading skeleton in preview
     previewContainer.style.display = 'flex';
     previewContainer.innerHTML = `
-      <div class="youtube-preview-loading">
-        <i class="ph ph-circle-notch animate-spin"></i>
-        <span>Video ma'lumotlari olinmoqda...</span>
+      <div class="youtube-preview-card youtube-skeleton-card">
+        <div class="youtube-preview-thumb-wrap app-skeleton-box" style="background: transparent;"></div>
+        <div class="youtube-preview-details" style="flex: 1;">
+          <div class="app-skeleton-box" style="height: 18px; width: 85%; margin-bottom: 8px;"></div>
+          <div class="app-skeleton-box" style="height: 14px; width: 50%; margin-bottom: 8px;"></div>
+          <div class="app-skeleton-box" style="height: 20px; width: 120px; border-radius: 9999px;"></div>
+        </div>
       </div>
     `;
 
