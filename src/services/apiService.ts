@@ -851,10 +851,10 @@ class ApiService {
             provider = isGoogle ? 'google' : 'email';
           } else {
             // Intelligent detection for Google vs Email login
-            const isGoogle = (userEmail && userEmail.endsWith('@gmail.com'))
-              || p.username === 'shonazarovbehruz425'
-              || (p.full_name && p.full_name.toLowerCase().includes('behruz'))
-              || p.avatar_color === '#FF5722';
+            const isGoogle = Boolean((userEmail && userEmail.endsWith('@gmail.com'))
+              || p.avatar_color === '#FF5722'
+              || p.raw_user_meta_data?.iss?.includes('google')
+              || p.raw_app_meta_data?.provider === 'google');
             provider = isGoogle ? 'google' : 'email';
             if (!userEmail) {
               userEmail = isGoogle ? `${p.username}@gmail.com` : `${p.username}@mail.com`;

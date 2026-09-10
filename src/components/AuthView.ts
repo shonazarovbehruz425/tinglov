@@ -174,7 +174,7 @@ export class AuthView {
               id="pageLoginId"
               name="username"
               class="auth-text-input"
-              placeholder="masalan: behruz_99 yoki email@domain.com"
+              placeholder="masalan: user_99 yoki email@domain.com"
               required
               autocomplete="username"
             />
@@ -239,7 +239,7 @@ export class AuthView {
               id="pageRegFullName"
               name="name"
               class="auth-text-input"
-              placeholder="masalan: Behruz Shonazarov"
+              placeholder="masalan: Ali Valiyev"
               autocomplete="name"
             />
           </div>
@@ -254,7 +254,7 @@ export class AuthView {
               id="pageRegUsername"
               name="username"
               class="auth-text-input"
-              placeholder="masalan: behruz99 (kamida 3 belgi)"
+              placeholder="masalan: user99 (kamida 3 belgi)"
               required
               minlength="3"
               autocomplete="username"
@@ -271,7 +271,7 @@ export class AuthView {
               id="pageRegEmail"
               name="email"
               class="auth-text-input"
-              placeholder="masalan: behruz@gmail.com"
+              placeholder="masalan: user@gmail.com"
               required
               autocomplete="email"
             />

@@ -132,7 +132,7 @@ export class AuthModal {
               id="loginIdentifier"
               name="username"
               class="auth-input"
-              placeholder="masalan: behruz_99 yoki email"
+              placeholder="masalan: user_99 yoki email"
               required
               autocomplete="username"
             />
@@ -201,7 +201,7 @@ export class AuthModal {
               type="text"
               id="registerFullName"
               class="auth-input"
-              placeholder="masalan: Behruz Shonazarov"
+              placeholder="masalan: Ali Valiyev"
               required
               autocomplete="name"
             />
@@ -216,7 +216,7 @@ export class AuthModal {
               type="text"
               id="registerUsername"
               class="auth-input"
-              placeholder="masalan: behruz_99"
+              placeholder="masalan: user_99"
               required
               autocomplete="username"
             />
