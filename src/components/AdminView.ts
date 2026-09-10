@@ -172,6 +172,10 @@ export class AdminView {
       this.stats = statsRes;
       this.users = usersRes;
       this.scenes = scenesRes;
+
+      if (this.stats && this.stats.stats) {
+        this.stats.stats.totalUsers = Math.max(this.stats.stats.totalUsers || 0, this.users.length);
+      }
     } catch {
       // Ignored
     }
@@ -777,7 +781,7 @@ export class AdminView {
     const delUserBtns = this.container.querySelectorAll('.admin-btn-del-user');
     delUserBtns.forEach((btn) => {
       btn.addEventListener('click', async (e) => {
-        const userId = Number((e.currentTarget as HTMLElement).getAttribute('data-user-id'));
+        const userId = (e.currentTarget as HTMLElement).getAttribute('data-user-id') || '';
         const userName = (e.currentTarget as HTMLElement).getAttribute('data-user-name');
         if (!userId) return;
 
@@ -800,8 +804,9 @@ export class AdminView {
     editUserBtns.forEach((btn) => {
       btn.addEventListener('click', async (e) => {
         const target = e.currentTarget as HTMLElement;
-        const userId = Number(target.getAttribute('data-user-id'));
+        const userId = target.getAttribute('data-user-id') || '';
         const curXp = target.getAttribute('data-user-xp') || '0';
+        if (!userId) return;
 
         const newXpStr = prompt('Yangi XP miqdorini kiriting:', curXp);
         if (newXpStr === null) return;

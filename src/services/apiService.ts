@@ -676,43 +676,147 @@ class ApiService {
   }
 
   public async adminGetUsers(search?: string): Promise<any[]> {
-    const url = search ? `/api/admin/users?search=${encodeURIComponent(search)}` : '/api/admin/users';
-    const res = await fetch(url, {
-      headers: {
-        ...getCsrfHeaders(),
-        ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
-      },
-      credentials: 'include',
+    // 1. Fetch from backend SQLite
+    const backendPromise = (async () => {
+      try {
+        const url = search ? `/api/admin/users?search=${encodeURIComponent(search)}` : '/api/admin/users';
+        const res = await fetch(url, {
+          headers: {
+            ...getCsrfHeaders(),
+            ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+          },
+          credentials: 'include',
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.users || [];
+      } catch {
+        return [];
+      }
+    })();
+
+    // 2. Fetch from Supabase profiles (where web users are stored)
+    const supabasePromise = (async () => {
+      try {
+        let query = supabase.from('profiles').select('*');
+        if (search && search.trim()) {
+          const term = search.trim();
+          query = query.or(`username.ilike.%${term}%,full_name.ilike.%${term}%`);
+        }
+        const { data, error } = await query;
+        if (error || !data) return [];
+        return data.map((p: any) => ({
+          id: p.id,
+          username: p.username || (p.email ? p.email.split('@')[0] : 'foydalanuvchi'),
+          email: p.email || (p.username ? `${p.username}@user.tinglov` : '—'),
+          full_name: p.full_name || p.username || 'O‘quvchi',
+          avatar_color: p.avatar_color || '#A3E635',
+          xp: typeof p.xp === 'number' ? p.xp : 0,
+          streak: typeof p.streak === 'number' ? p.streak : 0,
+          level: typeof p.level === 'number' ? p.level : 1,
+          created_at: p.created_at || p.updated_at || new Date().toISOString()
+        }));
+      } catch {
+        return [];
+      }
+    })();
+
+    const [backendUsers, supabaseUsers] = await Promise.all([backendPromise, supabasePromise]);
+
+    // Merge users by username / email / id to avoid duplicates
+    const mergedMap = new Map<string, any>();
+
+    for (const u of backendUsers) {
+      const key = (u.email || u.username || String(u.id)).toLowerCase();
+      mergedMap.set(key, u);
+    }
+
+    for (const u of supabaseUsers) {
+      const key = (u.email || u.username || String(u.id)).toLowerCase();
+      if (mergedMap.has(key)) {
+        const existing = mergedMap.get(key);
+        mergedMap.set(key, {
+          ...existing,
+          ...u,
+          xp: Math.max(existing.xp || 0, u.xp || 0),
+          streak: Math.max(existing.streak || 0, u.streak || 0),
+          level: Math.max(existing.level || 1, u.level || 1),
+          email: existing.email && !existing.email.includes('@user.tinglov') ? existing.email : u.email
+        });
+      } else {
+        mergedMap.set(key, u);
+      }
+    }
+
+    const allUsers = Array.from(mergedMap.values());
+
+    return allUsers.sort((a, b) => {
+      const aXp = a.xp || 0;
+      const bXp = b.xp || 0;
+      return bXp - aXp;
     });
-    if (!res.ok) throw new Error('Foydalanuvchilar yuklanmadi');
-    const data = await res.json();
-    return data.users || [];
   }
 
-  public async adminDeleteUser(id: number): Promise<boolean> {
-    const res = await fetch(`/api/admin/users/${id}`, {
-      method: 'DELETE',
-      headers: {
-        ...getCsrfHeaders(),
-        ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
-      },
-      credentials: 'include',
-    });
-    return res.ok;
+  public async adminDeleteUser(id: string | number): Promise<boolean> {
+    let backendSuccess = false;
+    const strId = String(id);
+
+    // If numeric ID, delete from backend SQLite
+    if (!isNaN(Number(id)) && !strId.includes('-')) {
+      try {
+        const res = await fetch(`/api/admin/users/${id}`, {
+          method: 'DELETE',
+          headers: {
+            ...getCsrfHeaders(),
+            ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+          },
+          credentials: 'include',
+        });
+        backendSuccess = res.ok;
+      } catch {
+        // Continue to Supabase delete
+      }
+    }
+
+    // Also delete from Supabase profiles
+    try {
+      const { error } = await supabase.from('profiles').delete().eq('id', strId);
+      return !error || backendSuccess;
+    } catch {
+      return backendSuccess;
+    }
   }
 
-  public async adminUpdateUser(id: number, data: { xp?: number; streak?: number; level?: number }): Promise<boolean> {
-    const res = await fetch(`/api/admin/users/${id}/update`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getCsrfHeaders(),
-        ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
-      },
-      credentials: 'include',
-      body: JSON.stringify(data),
-    });
-    return res.ok;
+  public async adminUpdateUser(id: string | number, data: { xp?: number; streak?: number; level?: number }): Promise<boolean> {
+    let backendSuccess = false;
+    const strId = String(id);
+
+    // If numeric ID, update on backend SQLite
+    if (!isNaN(Number(id)) && !strId.includes('-')) {
+      try {
+        const res = await fetch(`/api/admin/users/${id}/update`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getCsrfHeaders(),
+            ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+          },
+          credentials: 'include',
+          body: JSON.stringify(data),
+        });
+        backendSuccess = res.ok;
+      } catch {
+        // Continue to Supabase update
+      }
+    }
+
+    // Also update in Supabase profiles
+    try {
+      const { error } = await supabase.from('profiles').update(data).eq('id', strId);
+      return !error || backendSuccess;
+    } catch {
+      return backendSuccess;
+    }
   }
 
   public async adminGetScenes(): Promise<any[]> {

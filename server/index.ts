@@ -262,6 +262,51 @@ app.post('/api/auth/register', registerLimiter, requireCsrf, async (req, res) =>
   }
 });
 
+// 1b. Session Sync (Sync authenticated users from Supabase or client to backend SQLite)
+app.post('/api/auth/session', async (req, res) => {
+  try {
+    const { email, username, fullName, avatarColor, xp, streak, level } = req.body || {};
+    if (!email && !username) {
+      res.status(400).json({ error: 'Email yoki username talab qilinadi' });
+      return;
+    }
+
+    const cleanEmail = (email || `${username}@user.tinglov`).trim().toLowerCase();
+    const cleanUser = (username || email.split('@')[0]).trim().toLowerCase();
+    const cleanName = (fullName || cleanUser).trim();
+    const cleanColor = avatarColor || AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+
+    let user = findUserByEmail(cleanEmail) || findUserByUsername(cleanUser);
+
+    if (!user) {
+      user = createUser({
+        username: cleanUser,
+        email: cleanEmail,
+        password_hash: 'supabase_auth_managed',
+        full_name: cleanName,
+        avatar_color: cleanColor
+      });
+    } else {
+      updateUserStats(user.id, {
+        full_name: cleanName || user.full_name,
+        avatar_color: cleanColor || user.avatar_color,
+        xp: typeof xp === 'number' ? xp : user.xp,
+        streak: typeof streak === 'number' ? streak : user.streak,
+        level: typeof level === 'number' ? level : user.level,
+        last_active_date: new Date().toISOString().split('T')[0]
+      });
+      user = findUserById(user.id)!;
+    }
+
+    const token = generateToken(user);
+    res.cookie('token', token, COOKIE_OPTIONS);
+    res.json({ success: true, user: sanitizeUser(user) });
+  } catch (err: any) {
+    console.error('Session sync error:', err);
+    res.status(500).json({ error: 'Foydalanuvchi seansini saqlashda xatolik yuz berdi' });
+  }
+});
+
 // 2. Login
 app.post('/api/auth/login', checkAuthRateLimit, requireCsrf, async (req, res) => {
   const ip = getClientIp(req);
