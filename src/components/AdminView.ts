@@ -243,16 +243,16 @@ export class AdminView {
           <aside class="admin-sidebar">
             <nav class="admin-nav-tabs">
               <button class="admin-tab-btn ${this.activeTab === 'overview' ? 'active' : ''}" data-tab="overview">
-                <i class="ph ph-bold ph-chart-polar"></i> Umumiy Statistika
+                <i class="ph ph-bold ph-chart-polar"></i> <span>Umumiy Statistika</span>
               </button>
               <button class="admin-tab-btn ${this.activeTab === 'users' ? 'active' : ''}" data-tab="users">
-                <i class="ph ph-bold ph-users"></i> Foydalanuvchilar (${this.users.length})
+                <i class="ph ph-bold ph-users"></i> <span>Foydalanuvchilar (${this.users.length})</span>
               </button>
               <button class="admin-tab-btn ${this.activeTab === 'scenes' ? 'active' : ''}" data-tab="scenes">
-                <i class="ph ph-bold ph-film-strip"></i> Darslar & Filmlar (${this.scenes.length})
+                <i class="ph ph-bold ph-film-strip"></i> <span>Darslar & Filmlar (${this.scenes.length})</span>
               </button>
               <button class="admin-tab-btn ${this.activeTab === 'security' ? 'active' : ''}" data-tab="security">
-                <i class="ph ph-bold ph-shield-check"></i> Xavfsizlik & Render.com
+                <i class="ph ph-bold ph-shield-check"></i> <span>Xavfsizlik & Render.com</span>
               </button>
             </nav>
           </aside>
@@ -811,6 +811,75 @@ export class AdminView {
     `;
   }
 
+  private switchTab(newTab: AdminTab): void {
+    if (newTab === this.activeTab) return;
+    this.activeTab = newTab;
+    this.errorMsg = null;
+    this.successMsg = null;
+
+    // Update active tab buttons smoothly
+    const tabBtns = this.container.querySelectorAll('.admin-tab-btn');
+    tabBtns.forEach((btn) => {
+      if (btn.getAttribute('data-tab') === newTab) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    const mainPanel = this.container.querySelector('.admin-main-panel');
+    if (!mainPanel) {
+      this.renderDashboard();
+      return;
+    }
+
+    const updatePanelContent = () => {
+      mainPanel.innerHTML = `
+        ${this.successMsg ? `<div class="admin-alert admin-alert-success"><i class="ph ph-bold ph-check-circle"></i> ${escapeHtml(this.successMsg)}</div>` : ''}
+        ${this.errorMsg ? `<div class="admin-alert admin-alert-error"><i class="ph ph-bold ph-warning-circle"></i> ${escapeHtml(this.errorMsg)}</div>` : ''}
+        ${this.renderActiveTabContent()}
+      `;
+      this.bindTabContentEvents();
+    };
+
+    if ('startViewTransition' in document && typeof (document as any).startViewTransition === 'function') {
+      (document as any).startViewTransition(() => {
+        updatePanelContent();
+      });
+    } else {
+      mainPanel.classList.add('admin-panel-switching');
+      setTimeout(() => {
+        updatePanelContent();
+        mainPanel.classList.remove('admin-panel-switching');
+      }, 100);
+    }
+  }
+
+  private refreshActiveTabContent(): void {
+    const mainPanel = this.container.querySelector('.admin-main-panel');
+    if (!mainPanel) {
+      this.renderDashboard();
+      return;
+    }
+
+    // Update tab counters in sidebar if present
+    const usersTabBtn = this.container.querySelector('.admin-tab-btn[data-tab="users"] span');
+    if (usersTabBtn) {
+      usersTabBtn.textContent = `Foydalanuvchilar (${this.users.length})`;
+    }
+    const scenesTabBtn = this.container.querySelector('.admin-tab-btn[data-tab="scenes"] span');
+    if (scenesTabBtn) {
+      scenesTabBtn.textContent = `Darslar & Filmlar (${this.scenes.length})`;
+    }
+
+    mainPanel.innerHTML = `
+      ${this.successMsg ? `<div class="admin-alert admin-alert-success"><i class="ph ph-bold ph-check-circle"></i> ${escapeHtml(this.successMsg)}</div>` : ''}
+      ${this.errorMsg ? `<div class="admin-alert admin-alert-error"><i class="ph ph-bold ph-warning-circle"></i> ${escapeHtml(this.errorMsg)}</div>` : ''}
+      ${this.renderActiveTabContent()}
+    `;
+    this.bindTabContentEvents();
+  }
+
   private bindDashboardEvents(): void {
     // Navigation home
     const topHomeBtn = this.container.querySelector('#adminTopHomeBtn');
@@ -833,14 +902,16 @@ export class AdminView {
     tabBtns.forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const tab = (e.currentTarget as HTMLElement).getAttribute('data-tab') as AdminTab;
-        if (tab && tab !== this.activeTab) {
-          this.activeTab = tab;
-          this.errorMsg = null;
-          this.successMsg = null;
-          this.renderDashboard();
+        if (tab) {
+          this.switchTab(tab);
         }
       });
     });
+
+    this.bindTabContentEvents();
+  }
+
+  private bindTabContentEvents(): void {
 
     // Overview: Refresh stats
     const refreshStatsBtn = this.container.querySelector('#adminRefreshStatsBtn') as HTMLButtonElement | null;
@@ -855,7 +926,7 @@ export class AdminView {
         try {
           await this.loadAllData();
           this.successMsg = 'Statistika muvaffaqiyatli yangilandi!';
-          this.renderDashboard();
+          this.refreshActiveTabContent();
           setTimeout(() => {
             const alertEl = this.container.querySelector('.admin-alert-success');
             if (alertEl) alertEl.remove();
@@ -879,7 +950,7 @@ export class AdminView {
           this.users = await apiService.adminGetUsers(this.searchQuery).catch(() => []);
           const tbody = this.container.querySelector('.admin-table tbody');
           if (tbody) {
-            this.renderDashboard();
+            this.refreshActiveTabContent();
           }
         }, 300);
       });
@@ -898,10 +969,10 @@ export class AdminView {
           if (success) {
             this.successMsg = `Foydalanuvchi "${userName}" muvaffaqiyatli o‘chirildi.`;
             await this.loadAllData();
-            this.renderDashboard();
+            this.refreshActiveTabContent();
           } else {
             this.errorMsg = 'Foydalanuvchini o‘chirishda xatolik yuz berdi.';
-            this.renderDashboard();
+            this.refreshActiveTabContent();
           }
         }
       });
@@ -929,7 +1000,7 @@ export class AdminView {
         if (ok) {
           this.successMsg = `Foydalanuvchi tajribasi muvaffaqiyatli yangilandi: ${newXp} XP (Level ${newLevel})`;
           await this.loadAllData();
-          this.renderDashboard();
+          this.refreshActiveTabContent();
         }
       });
     });
@@ -1020,7 +1091,7 @@ export class AdminView {
           closeModal();
           this.successMsg = `"${title}" darsi muvaffaqiyatli saqlandi va barcha o'quvchilar uchun chop etildi!`;
           await this.loadAllData();
-          this.renderDashboard();
+          this.refreshActiveTabContent();
         } else {
           alert('Darsni saqlashda xatolik yuz berdi');
         }
@@ -1039,10 +1110,10 @@ export class AdminView {
           if (ok) {
             this.successMsg = 'Dars muvaffaqiyatli o‘chirildi.';
             await this.loadAllData();
-            this.renderDashboard();
+            this.refreshActiveTabContent();
           } else {
             this.errorMsg = 'Darsni o‘chirishda xatolik yuz berdi.';
-            this.renderDashboard();
+            this.refreshActiveTabContent();
           }
         }
       });
