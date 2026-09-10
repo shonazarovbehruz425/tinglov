@@ -119,14 +119,14 @@ export class LandingView {
             <div class="landing-hero-cta-row">
               ${isAuth ? `
                 <button class="landing-btn-large landing-btn-pulse" id="landingHeroDashboardBtn">
-                  <i class="ph ph-play-circle-fill"></i> Boshqaruv paneliga o'tish
+                  <i class="ph-fill ph-play-circle"></i> Boshqaruv paneliga o'tish
                 </button>
               ` : `
                 <button class="landing-btn-large landing-btn-pulse" id="landingHeroRegisterBtn">
-                  <i class="ph ph-rocket-launch-fill"></i> Hoziroq bepul boshlash
+                  <i class="ph-fill ph-rocket-launch"></i> Hoziroq bepul boshlash
                 </button>
                 <button class="landing-btn-large landing-btn-secondary" id="landingHeroLoginBtn">
-                  <i class="ph ph-film-slate"></i> Platformaga kirish
+                  <i class="ph-fill ph-film-slate"></i> Platformaga kirish
                 </button>
               `}
             </div>
@@ -244,7 +244,7 @@ export class LandingView {
           <div class="landing-features-grid">
             <div class="landing-feature-card">
               <div class="feature-icon-box bg-orange">
-                <i class="ph ph-film-slate-fill"></i>
+                <i class="ph-fill ph-film-slate"></i>
               </div>
               <h3 class="feature-title">Haqiqiy Cinema & Seriallar</h3>
               <p class="feature-desc">
@@ -254,7 +254,7 @@ export class LandingView {
 
             <div class="landing-feature-card">
               <div class="feature-icon-box bg-blue">
-                <i class="ph ph-keyboard-fill"></i>
+                <i class="ph-fill ph-keyboard"></i>
               </div>
               <h3 class="feature-title">Interaktiv Harfma-harf Diktant</h3>
               <p class="feature-desc">
@@ -264,7 +264,7 @@ export class LandingView {
 
             <div class="landing-feature-card">
               <div class="feature-icon-box bg-purple">
-                <i class="ph ph-microphone-fill"></i>
+                <i class="ph-fill ph-microphone"></i>
               </div>
               <h3 class="feature-title">AI Shadowing & Talaffuz</h3>
               <p class="feature-desc">
@@ -274,7 +274,7 @@ export class LandingView {
 
             <div class="landing-feature-card">
               <div class="feature-icon-box bg-green">
-                <i class="ph ph-clock-countdown-fill"></i>
+                <i class="ph-fill ph-timer"></i>
               </div>
               <h3 class="feature-title">0.5x va 0.75x Sekinlashtirish</h3>
               <p class="feature-desc">
@@ -284,7 +284,7 @@ export class LandingView {
 
             <div class="landing-feature-card">
               <div class="feature-icon-box bg-yellow">
-                <i class="ph ph-bookmark-simple-fill"></i>
+                <i class="ph-fill ph-bookmark-simple"></i>
               </div>
               <h3 class="feature-title">Bir bosishda Shaxsiy Lug'at</h3>
               <p class="feature-desc">
@@ -294,7 +294,7 @@ export class LandingView {
 
             <div class="landing-feature-card">
               <div class="feature-icon-box bg-red">
-                <i class="ph ph-fire-fill"></i>
+                <i class="ph-fill ph-fire"></i>
               </div>
               <h3 class="feature-title">Streak, XP va Reyting</h3>
               <p class="feature-desc">
