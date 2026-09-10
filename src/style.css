@@ -131,11 +131,20 @@
   --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.9);
 }
 
-/* Common Dark & OLED adjustments */
-[data-theme="dark"] .app-header,
-[data-theme="oled"] .app-header {
-  background: var(--bg-canvas);
+[data-theme="dark"] .app-header {
+  background: rgba(26, 29, 31, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-color: var(--border-divider);
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="oled"] .app-header {
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-color: var(--border-divider);
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.6);
 }
 
 [data-theme="dark"] .header-search-box,
@@ -391,18 +400,28 @@ body {
    Header Bar (Matching reference header in Image 1 & 2)
    ========================================================================== */
 
+#statsHeaderContainer {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+}
+
 .app-header {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.95rem 2rem;
-  background: #FFFFFF;
+  padding: 0.85rem 2rem;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-divider);
-  position: sticky;
-  top: 0;
-  z-index: 50;
+  position: relative;
+  z-index: 100;
   gap: 1rem;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .header-left {
@@ -3032,7 +3051,7 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .app-header {
-  background: #1A1D1F;
+  background: rgba(26, 29, 31, 0.88);
   border-bottom-color: #272B30;
 }
 
