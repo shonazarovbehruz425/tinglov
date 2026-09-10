@@ -1,9 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'node:crypto';
 import Redis from 'ioredis';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Secret key for HMAC CAPTCHA signing
-const CAPTCHA_SECRET = process.env.CAPTCHA_SECRET || crypto.randomBytes(32).toString('hex');
+const CAPTCHA_SECRET = process.env.CAPTCHA_SECRET;
+if (!CAPTCHA_SECRET) {
+  throw new Error('FATAL: CAPTCHA_SECRET environment variable is required. Please define a static secret in your .env or host dashboard.');
+}
+
+if (CAPTCHA_SECRET.length < 16 && process.env.NODE_ENV === 'production') {
+  throw new Error('FATAL: CAPTCHA_SECRET must be at least 16 characters long for production security.');
+}
 
 // Max entries for bounded in-memory fallback to prevent memory exhaustion attacks
 const MAX_STORE_ENTRIES = 10000;
