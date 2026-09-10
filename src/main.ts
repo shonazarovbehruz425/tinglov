@@ -647,7 +647,7 @@ class MovieListenApp {
     if (profileContainer) profileContainer.style.display = view === 'profile' ? 'block' : 'none';
     if (settingsContainer) settingsContainer.style.display = view === 'settings' ? 'block' : 'none';
     if (authContainer) authContainer.style.display = view === 'auth' ? 'block' : 'none';
-    if (adminContainer) adminContainer.style.display = view === 'admin' ? 'block' : 'none';
+    if (adminContainer) adminContainer.style.display = view === 'admin' ? 'flex' : 'none';
     if (headerContainer) headerContainer.style.display = (view === 'practice' || view === 'auth' || view === 'landing' || view === 'admin') ? 'none' : 'block';
 
     document.body.classList.toggle('in-landing-mode', view === 'landing');

@@ -8492,6 +8492,57 @@ body.in-auth-mode #authViewContainer {
   padding: 0 !important;
 }
 
+/* ==========================================================================
+   Full Viewport Edge-to-Edge Admin Mode
+   ========================================================================== */
+body.in-admin-mode {
+  background: #0B0D11 !important;
+  background-color: #0B0D11 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  min-height: 100vh !important;
+  overflow-x: hidden;
+}
+
+body.in-admin-mode #app {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #0B0D11 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+body.in-admin-mode .app-main-content {
+  padding: 0 !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  width: 100% !important;
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+}
+
+body.in-admin-mode #adminViewContainer {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 100vh !important;
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body.in-admin-mode #statsHeaderContainer,
+body.in-admin-mode .app-header {
+  display: none !important;
+}
+
 .auth-page-wrapper {
   position: relative;
   width: 100%;
@@ -10361,11 +10412,14 @@ body.in-auth-mode #authViewContainer {
 
 /* Admin Login Screen */
 .admin-login-layout {
-  min-height: 85vh;
+  min-height: 100vh;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1rem;
+  padding: 2.5rem 1.5rem;
+  background: radial-gradient(circle at 50% 30%, rgba(163, 230, 53, 0.08) 0%, #0B0D11 75%);
+  flex: 1 1 auto;
 }
 
 .admin-login-card {
@@ -10577,18 +10631,23 @@ body.in-auth-mode #authViewContainer {
 /* Admin Dashboard Layout */
 .admin-dashboard-layout {
   min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
   background: #0B0D11;
   color: #F8FAFC;
+  flex: 1 1 auto;
 }
 
 .admin-top-nav {
   height: 68px;
+  width: 100%;
   background: rgba(15, 18, 24, 0.95);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 1.75rem;
+  padding: 0 2.5rem;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -10710,14 +10769,16 @@ body.in-auth-mode #authViewContainer {
 /* Workspace Grid */
 .admin-workspace {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 280px 1fr;
   min-height: calc(100vh - 68px);
+  width: 100%;
+  flex: 1 1 auto;
 }
 
 .admin-sidebar {
   background: #0E1117;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 1.5rem 1rem;
+  padding: 2rem 1.25rem;
 }
 
 .admin-nav-tabs {
@@ -10758,8 +10819,12 @@ body.in-auth-mode #authViewContainer {
 }
 
 .admin-main-panel {
-  padding: 2rem;
+  padding: 2.5rem 3.5rem 5rem;
+  width: 100%;
+  max-width: 100%;
   overflow-y: auto;
+  background: #0B0D11;
+  flex: 1 1 auto;
 }
 
 .admin-tab-pane {
