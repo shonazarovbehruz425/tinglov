@@ -389,6 +389,9 @@ export class AdminView {
             ${this.renderActiveTabContent()}
           </main>
         </div>
+
+        <!-- Global Add Scene Modal Dialog (Mounted at root level) -->
+        ${this.renderSceneModalHtml()}
       </div>
     `;
 
@@ -840,75 +843,82 @@ export class AdminView {
             </div>
           `}
         </div>
+      </div>
+    `;
+  }
 
-        <!-- Add Scene Modal Dialog -->
-        <div id="adminSceneModal" class="admin-modal" style="display: none;">
-          <div class="admin-modal-backdrop"></div>
-          <div class="admin-modal-content">
-            <div class="admin-modal-header">
-              <h3><i class="ph ph-bold ph-video"></i> Yangi Video Dars Yaratish</h3>
-              <button id="adminCloseSceneModalBtn" class="admin-modal-close-btn">&times;</button>
-            </div>
-            <form id="adminNewSceneForm" class="admin-modal-form">
-              <div class="admin-form-group">
-                <label>Dars Sarlavhasi *</label>
-                <input type="text" id="newSceneTitle" class="admin-input" placeholder="Masalan: Interstellar - So‘nggi Imkoniyat" required />
-              </div>
-
-              <div class="admin-form-row">
-                <div class="admin-form-group">
-                  <label>Kategoriya *</label>
-                  <select id="newSceneCategory" class="admin-input">
-                    <option value="Movie">Movie (Film)</option>
-                    <option value="TV Series">TV Series (Serial)</option>
-                    <option value="Animation">Animation (Multfilm)</option>
-                    <option value="TED Talk">TED Talk</option>
-                    <option value="Anime">Anime</option>
-                  </select>
-                </div>
-                <div class="admin-form-group">
-                  <label>Qiyinchilik Darajasi *</label>
-                  <select id="newSceneDifficulty" class="admin-input">
-                    <option value="Beginner">Beginner (A1-A2 Boshlang‘ich)</option>
-                    <option value="Intermediate" selected>Intermediate (B1-B2 O‘rta)</option>
-                    <option value="Advanced">Advanced (C1-C2 Murakkab)</option>
-                  </select>
-                </div>
-                <div class="admin-form-group">
-                  <label>Talaffuz (Accent) *</label>
-                  <select id="newSceneAccent" class="admin-input">
-                    <option value="American" selected>🇺🇸 US American</option>
-                    <option value="British">🇬🇧 GB British</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="admin-form-group">
-                <label>Video URL yoki YouTube / Cloudflare R2 Havolasi *</label>
-                <input type="text" id="newSceneVideoUrl" class="admin-input" placeholder="https://pub-xxx.r2.dev/video.mp4 yoki r2:fayl.mp4 yoki YouTube URL" required />
-                <small class="admin-field-hint" style="display:block; margin-top: 4px; font-size: 0.8rem; color: #94A3B8;">
-                  <i class="ph ph-bold ph-cloud"></i> Cloudflare R2 dan streaming uchun to‘liq R2 URL (<code>https://pub-xxx.r2.dev/video.mp4</code>) yoki <code>r2:video.mp4</code> kiriting.
-                </small>
-              </div>
-
-              <div class="admin-form-group">
-                <label>Poster Rasm Havolasi (Ixtiyoriy)</label>
-                <input type="text" id="newScenePosterUrl" class="admin-input" placeholder="https://... rasm havolasi" />
-              </div>
-
-              <div class="admin-form-group">
-                <label>Dialoglar va Subtitrlar (Har bir qator: Boshlanish(s) | Tugash(s) | Inglizcha matn | O‘zbekcha tarjima)</label>
-                <textarea id="newSceneDialogues" class="admin-textarea" rows="5" placeholder="0 | 3.5 | Hello, how are you? | Salom, ahvolingiz qanday?&#10;3.6 | 7.0 | I am doing great, thank you. | Rahmat, juda yaxshiman."></textarea>
-              </div>
-
-              <div class="admin-modal-footer">
-                <button type="button" id="adminCancelSceneBtn" class="admin-btn admin-btn-secondary">Bekor Qilish</button>
-                <button type="submit" id="adminSaveSceneBtn" class="admin-btn admin-btn-primary">
-                  <i class="ph ph-bold ph-check"></i> Darsni Saqlash
-                </button>
-              </div>
-            </form>
+  private renderSceneModalHtml(): string {
+    return `
+      <!-- Add Scene Modal Dialog -->
+      <div id="adminSceneModal" class="admin-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="adminModalHeading">
+        <div class="admin-modal-backdrop"></div>
+        <div class="admin-modal-content">
+          <div class="admin-modal-header">
+            <h3 id="adminModalHeading"><i class="ph ph-bold ph-video"></i> Yangi Video Dars Yaratish</h3>
+            <button type="button" id="adminCloseSceneModalBtn" class="admin-modal-close-btn" aria-label="Yopish">&times;</button>
           </div>
+          <form id="adminNewSceneForm" class="admin-modal-form">
+            <div class="admin-form-group">
+              <label for="newSceneTitle">Dars Sarlavhasi *</label>
+              <input type="text" id="newSceneTitle" class="admin-input" placeholder="Masalan: Interstellar - So‘nggi Imkoniyat" required />
+            </div>
+
+            <div class="admin-form-row">
+              <div class="admin-form-group">
+                <label for="newSceneCategory">Kategoriya *</label>
+                <select id="newSceneCategory" class="admin-input">
+                  <option value="Movie">Movie (Film)</option>
+                  <option value="TV Series">TV Series (Serial)</option>
+                  <option value="Animation">Animation (Multfilm)</option>
+                  <option value="TED Talk">TED Talk</option>
+                  <option value="Anime">Anime</option>
+                </select>
+              </div>
+              <div class="admin-form-group">
+                <label for="newSceneDifficulty">Qiyinchilik Darajasi *</label>
+                <select id="newSceneDifficulty" class="admin-input">
+                  <option value="Beginner">Beginner (A1-A2 Boshlang‘ich)</option>
+                  <option value="Intermediate" selected>Intermediate (B1-B2 O‘rta)</option>
+                  <option value="Advanced">Advanced (C1-C2 Murakkab)</option>
+                </select>
+              </div>
+              <div class="admin-form-group">
+                <label for="newSceneAccent">Talaffuz (Accent) *</label>
+                <select id="newSceneAccent" class="admin-input">
+                  <option value="American" selected>🇺🇸 US American</option>
+                  <option value="British">🇬🇧 GB British</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="admin-form-group">
+              <label for="newSceneVideoUrl">Video URL yoki YouTube / Cloudflare R2 Havolasi *</label>
+              <input type="text" id="newSceneVideoUrl" class="admin-input" placeholder="https://pub-xxx.r2.dev/video.mp4 yoki r2:fayl.mp4 yoki YouTube URL" required />
+              <small class="admin-field-hint" style="display:block; margin-top: 4px; font-size: 0.8rem; color: #94A3B8;">
+                <i class="ph ph-bold ph-cloud"></i> Cloudflare R2 dan streaming uchun to‘liq R2 URL (<code>https://pub-xxx.r2.dev/video.mp4</code>) yoki <code>r2:video.mp4</code> kiriting.
+              </small>
+            </div>
+
+            <div class="admin-form-group">
+              <label for="newScenePosterUrl">Poster Rasm Havolasi (Ixtiyoriy)</label>
+              <input type="text" id="newScenePosterUrl" class="admin-input" placeholder="https://... rasm havolasi" />
+            </div>
+
+            <div class="admin-form-group">
+              <label for="newSceneDialogues">Dialoglar va Subtitrlar (Ixtiyoriy, har bir qator: Boshlanish(s) | Tugash(s) | Inglizcha | O‘zbekcha)</label>
+              <textarea id="newSceneDialogues" class="admin-textarea" rows="4" placeholder="0 | 3.5 | Hello, how are you? | Salom, ahvolingiz qanday?&#10;3.6 | 7.0 | I am doing great, thank you. | Rahmat, juda yaxshiman."></textarea>
+              <small class="admin-field-hint" style="display:block; margin-top: 4px; font-size: 0.78rem; color: #94A3B8;">
+                Bo'sh qoldirsangiz, dars boshlang'ich replika bilan saqlanadi. Keyinchalik subtitrlarni qo'shishingiz mumkin.
+              </small>
+            </div>
+
+            <div class="admin-modal-footer">
+              <button type="button" id="adminCancelSceneBtn" class="admin-btn admin-btn-secondary">Bekor Qilish</button>
+              <button type="submit" id="adminSaveSceneBtn" class="admin-btn admin-btn-primary">
+                <i class="ph ph-bold ph-check"></i> Darsni Saqlash
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     `;
@@ -1191,6 +1201,7 @@ export class AdminView {
     });
 
     this.bindTabContentEvents();
+    this.bindSceneModalEvents();
   }
 
   private copyToClipboard(text: string, btn?: HTMLElement): void {
@@ -1303,11 +1314,7 @@ export class AdminView {
     const quickAddSceneBtn = this.container.querySelector('#adminQuickAddSceneBtn');
     if (quickAddSceneBtn) {
       quickAddSceneBtn.addEventListener('click', () => {
-        this.switchTab('scenes');
-        setTimeout(() => {
-          const modal = this.container.querySelector('#adminSceneModal') as HTMLElement;
-          if (modal) modal.style.display = 'flex';
-        }, 150);
+        this.openSceneModal();
       });
     }
 
@@ -1400,104 +1407,9 @@ export class AdminView {
 
     // Scenes: Open Modal
     const openSceneModalBtn = this.container.querySelector('#adminOpenNewSceneModalBtn');
-    const sceneModal = this.container.querySelector('#adminSceneModal') as HTMLElement;
-    const closeSceneModalBtn = this.container.querySelector('#adminCloseSceneModalBtn');
-    const cancelSceneBtn = this.container.querySelector('#adminCancelSceneBtn');
-
-    if (openSceneModalBtn && sceneModal) {
+    if (openSceneModalBtn) {
       openSceneModalBtn.addEventListener('click', () => {
-        sceneModal.classList.remove('admin-modal-closing');
-        sceneModal.style.display = 'flex';
-      });
-    }
-
-    const closeModal = () => {
-      if (sceneModal) {
-        sceneModal.classList.add('admin-modal-closing');
-        setTimeout(() => {
-          sceneModal.style.display = 'none';
-          sceneModal.classList.remove('admin-modal-closing');
-        }, 260);
-      }
-    };
-
-    if (closeSceneModalBtn) closeSceneModalBtn.addEventListener('click', closeModal);
-    if (cancelSceneBtn) cancelSceneBtn.addEventListener('click', closeModal);
-
-    // Scenes: Save Scene
-    const sceneForm = this.container.querySelector('#adminNewSceneForm') as HTMLFormElement;
-    if (sceneForm) {
-      sceneForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const titleInput = this.container.querySelector('#newSceneTitle') as HTMLInputElement;
-        const catInput = this.container.querySelector('#newSceneCategory') as HTMLSelectElement;
-        const diffInput = this.container.querySelector('#newSceneDifficulty') as HTMLSelectElement;
-        const accentInput = this.container.querySelector('#newSceneAccent') as HTMLSelectElement;
-        const videoInput = this.container.querySelector('#newSceneVideoUrl') as HTMLInputElement;
-        const posterInput = this.container.querySelector('#newScenePosterUrl') as HTMLInputElement;
-        const dialInput = this.container.querySelector('#newSceneDialogues') as HTMLTextAreaElement;
-
-        const title = titleInput.value.trim();
-        const category = catInput.value;
-        const difficulty = diffInput.value;
-        const accent = accentInput ? accentInput.value : 'American';
-        const videoUrl = videoInput.value.trim();
-        const posterUrl = posterInput.value.trim();
-        const dialoguesRaw = dialInput.value.trim();
-
-        if (!title || !videoUrl) return;
-
-        // Parse lines into dialogues
-        const dialogues: Array<{
-          id: string;
-          startTime: number;
-          endTime: number;
-          text: string;
-          translation: string;
-        }> = [];
-
-        if (dialoguesRaw) {
-          const lines = dialoguesRaw.split('\n');
-          lines.forEach((line, idx) => {
-            const parts = line.split('|').map((p) => p.trim());
-            if (parts.length >= 3) {
-              const start = parseFloat(parts[0]) || 0;
-              const end = parseFloat(parts[1]) || start + 3;
-              const text = parts[2] || '';
-              const trans = parts[3] || '';
-              if (text) {
-                dialogues.push({
-                  id: `line_${idx + 1}`,
-                  startTime: start,
-                  endTime: end,
-                  text,
-                  translation: trans,
-                });
-              }
-            }
-          });
-        }
-
-        const newScenePayload = {
-          id: `admin_scene_${Date.now()}`,
-          title,
-          category,
-          difficulty,
-          accent,
-          video_url: videoUrl,
-          poster_url: posterUrl,
-          dialogues,
-        };
-
-        const ok = await apiService.adminCreateScene(newScenePayload);
-        if (ok) {
-          closeModal();
-          this.successMsg = `"${title}" darsi muvaffaqiyatli saqlandi va barcha o'quvchilar uchun chop etildi!`;
-          await this.loadAllData();
-          this.refreshActiveTabContent();
-        } else {
-          alert('Darsni saqlashda xatolik yuz berdi');
-        }
+        this.openSceneModal();
       });
     }
 
@@ -1572,5 +1484,188 @@ export class AdminView {
         }
       });
     });
+  }
+
+  private openSceneModal(): void {
+    const modal = this.container.querySelector('#adminSceneModal') as HTMLElement | null;
+    if (modal) {
+      modal.classList.remove('admin-modal-closing');
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => {
+        (this.container.querySelector('#newSceneTitle') as HTMLInputElement | null)?.focus();
+      }, 60);
+    }
+  }
+
+  private closeSceneModal(): void {
+    const modal = this.container.querySelector('#adminSceneModal') as HTMLElement | null;
+    if (modal) {
+      modal.classList.add('admin-modal-closing');
+      document.body.style.overflow = '';
+      setTimeout(() => {
+        modal.style.display = 'none';
+        modal.classList.remove('admin-modal-closing');
+      }, 260);
+    }
+  }
+
+  private bindSceneModalEvents(): void {
+    const closeBtn = this.container.querySelector('#adminCloseSceneModalBtn');
+    const cancelBtn = this.container.querySelector('#adminCancelSceneBtn');
+    const backdrop = this.container.querySelector('#adminSceneModal .admin-modal-backdrop');
+    const form = this.container.querySelector('#adminNewSceneForm') as HTMLFormElement | null;
+
+    closeBtn?.addEventListener('click', () => this.closeSceneModal());
+    cancelBtn?.addEventListener('click', () => this.closeSceneModal());
+    backdrop?.addEventListener('click', () => this.closeSceneModal());
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const modal = this.container.querySelector('#adminSceneModal') as HTMLElement | null;
+        if (modal && modal.style.display !== 'none') {
+          this.closeSceneModal();
+        }
+      }
+    });
+
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const titleInput = this.container.querySelector('#newSceneTitle') as HTMLInputElement | null;
+        const catInput = this.container.querySelector('#newSceneCategory') as HTMLSelectElement | null;
+        const diffInput = this.container.querySelector('#newSceneDifficulty') as HTMLSelectElement | null;
+        const accentInput = this.container.querySelector('#newSceneAccent') as HTMLSelectElement | null;
+        const videoInput = this.container.querySelector('#newSceneVideoUrl') as HTMLInputElement | null;
+        const posterInput = this.container.querySelector('#newScenePosterUrl') as HTMLInputElement | null;
+        const dialInput = this.container.querySelector('#newSceneDialogues') as HTMLTextAreaElement | null;
+        const saveBtn = this.container.querySelector('#adminSaveSceneBtn') as HTMLButtonElement | null;
+
+        const title = titleInput?.value.trim() || '';
+        const category = catInput?.value || 'Movie';
+        const difficulty = diffInput?.value || 'Intermediate';
+        const accent = accentInput?.value || 'American';
+        const videoUrl = videoInput?.value.trim() || '';
+        const posterUrl = posterInput?.value.trim() || '';
+        const dialoguesRaw = dialInput?.value.trim() || '';
+
+        if (!title || !videoUrl) {
+          alert('Iltimos, dars sarlavhasi va video havolasini kiriting.');
+          return;
+        }
+
+        const dialogues: Array<{
+          id: string;
+          character: string;
+          characterAvatar: string;
+          startTime: number;
+          endTime: number;
+          text: string;
+          translation: string;
+          textEn: string;
+          textUz: string;
+        }> = [];
+
+        if (dialoguesRaw) {
+          const lines = dialoguesRaw.split('\n').map((l) => l.trim()).filter(Boolean);
+          lines.forEach((line, idx) => {
+            const parts = line.split('|').map((p) => p.trim());
+            if (parts.length >= 3) {
+              const start = parseFloat(parts[0]) || idx * 3;
+              const end = parseFloat(parts[1]) || start + 3;
+              const text = parts[2] || '';
+              const trans = parts[3] || '';
+              if (text) {
+                dialogues.push({
+                  id: `line_${idx + 1}`,
+                  character: 'Qahramon',
+                  characterAvatar: '🎬',
+                  startTime: start,
+                  endTime: end > start ? end : start + 3,
+                  text,
+                  translation: trans,
+                  textEn: text,
+                  textUz: trans,
+                });
+              }
+            } else if (parts.length === 2) {
+              dialogues.push({
+                id: `line_${idx + 1}`,
+                character: 'Qahramon',
+                characterAvatar: '🎬',
+                startTime: idx * 3,
+                endTime: idx * 3 + 3,
+                text: parts[0],
+                translation: parts[1],
+                textEn: parts[0],
+                textUz: parts[1],
+              });
+            } else if (line) {
+              dialogues.push({
+                id: `line_${idx + 1}`,
+                character: 'Qahramon',
+                characterAvatar: '🎬',
+                startTime: idx * 3,
+                endTime: idx * 3 + 3,
+                text: line,
+                translation: '',
+                textEn: line,
+                textUz: '',
+              });
+            }
+          });
+        }
+
+        if (dialogues.length === 0) {
+          dialogues.push({
+            id: 'line_1',
+            character: 'Qahramon',
+            characterAvatar: '🎬',
+            startTime: 0,
+            endTime: 5,
+            text: title,
+            translation: title,
+            textEn: title,
+            textUz: title,
+          });
+        }
+
+        const newScenePayload = {
+          id: `admin_scene_${Date.now()}`,
+          title,
+          category,
+          difficulty,
+          accent,
+          video_url: videoUrl,
+          poster_url: posterUrl,
+          dialogues,
+        };
+
+        if (saveBtn) {
+          saveBtn.disabled = true;
+          saveBtn.innerHTML = '<div class="admin-spinner-sm" style="display:inline-block; margin-right:6px; vertical-align:-2px;"></div> Saqlanmoqda...';
+        }
+
+        try {
+          const res = await apiService.adminCreateScene(newScenePayload);
+          if (res.success) {
+            this.closeSceneModal();
+            form.reset();
+            this.successMsg = `"${title}" darsi muvaffaqiyatli saqlandi va barcha o'quvchilar uchun chop etildi!`;
+            await this.loadAllData();
+            this.refreshActiveTabContent();
+          } else {
+            alert(res.error || 'Darsni saqlashda xatolik yuz berdi');
+          }
+        } catch (err: any) {
+          alert(err?.message || 'Tarmoq xatosi yuz berdi');
+        } finally {
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="ph ph-bold ph-check"></i> Darsni Saqlash';
+          }
+        }
+      });
+    }
   }
 }

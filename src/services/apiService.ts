@@ -1373,18 +1373,26 @@ class ApiService {
     return (data.scenes || []) as AdminSceneDto[];
   }
 
-  public async adminCreateScene(scene: Record<string, unknown>): Promise<boolean> {
-    const res = await fetch('/api/admin/scenes', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getCsrfHeaders(),
-        ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
-      },
-      credentials: 'include',
-      body: JSON.stringify(scene),
-    });
-    return res.ok;
+  public async adminCreateScene(scene: Record<string, unknown>): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await fetch('/api/admin/scenes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getCsrfHeaders(),
+          ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify(scene),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { success: false, error: data.error || `Server xatosi (${res.status})` };
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Tarmoq xatosi yuz berdi' };
+    }
   }
 
   public async adminDeleteScene(id: string): Promise<boolean> {

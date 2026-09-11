@@ -13464,8 +13464,7 @@ body:not(.in-admin-mode) .app-skeleton-box {
   display: flex;
   flex-direction: column;
   gap: 2.25rem;
-  animation: adminTabFadeSlideIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  will-change: transform, opacity;
+  animation: adminTabFadeSlideIn 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .admin-pane-header {
@@ -14186,11 +14185,18 @@ body:not(.in-admin-mode) .app-skeleton-box {
 .admin-modal {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
+  box-sizing: border-box;
   animation: adminModalFadeIn 0.25s ease-out;
 }
 
@@ -14200,29 +14206,39 @@ body:not(.in-admin-mode) .app-skeleton-box {
 }
 
 .admin-modal-backdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
   background: rgba(5, 7, 11, 0.85);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 1;
 }
 
 .admin-modal-content {
   position: relative;
   z-index: 10;
   width: 100%;
-  max-width: 620px;
-  max-height: 90vh;
+  max-width: 660px;
+  max-height: 88vh;
+  margin: auto;
   overflow-y: auto;
-  background: rgba(18, 22, 32, 0.95);
+  background: #10131B;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 24px;
-  padding: 2.25rem;
+  padding: 2rem 2.25rem;
   box-shadow: 
-    0 30px 60px -15px rgba(0, 0, 0, 0.9),
-    0 0 0 1px rgba(163, 230, 53, 0.2),
-    0 0 40px rgba(163, 230, 53, 0.1);
+    0 30px 60px -15px rgba(0, 0, 0, 0.95),
+    0 0 0 1px rgba(163, 230, 53, 0.25),
+    0 0 40px rgba(163, 230, 53, 0.12);
   backdrop-filter: blur(28px);
-  animation: adminModalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-backdrop-filter: blur(28px);
+  animation: adminModalSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes adminModalSlideUp {
@@ -14285,8 +14301,8 @@ body:not(.in-admin-mode) .app-skeleton-box {
 
 .admin-form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1.15rem;
 }
 
 .admin-modal-footer {

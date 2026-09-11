@@ -227,26 +227,81 @@ const adminUpdateUserHandler = (req: AdminRequest, res: Response) => {
 };
 
 // J. Manage Admin Scenes
-const httpsUrlSchema = z.string().trim().min(1).max(2000).url().refine((u) => u.startsWith('https://'), {
-  message: 'Video havolasi https URL bo‘lishi shart',
+const videoUrlSchema = z.string().trim().min(1, 'Video havolasi kiritilishi shart').max(2000).refine((u) => {
+  return u.startsWith('https://') || u.startsWith('http://localhost') || u.startsWith('r2:');
+}, {
+  message: 'Video havolasi https://, r2: yoki http://localhost bo‘lishi shart',
 });
-const optionalHttpsUrlSchema = z.string().trim().max(2000).optional().default('').refine((u) => !u || u.startsWith('https://') || u.startsWith('http://localhost'), {
-  message: 'Poster havolasi https URL bo‘lishi shart',
+
+const optionalHttpsUrlSchema = z.string().trim().max(2000).optional().default('').refine((u) => {
+  return !u || u.startsWith('https://') || u.startsWith('http://localhost') || u.startsWith('r2:');
+}, {
+  message: 'Poster havolasi https URL yoki r2: bo‘lishi shart',
 });
-const dialogueSchema = z.object({
-  character: z.string().trim().min(1).max(50),
-  textEn: z.string().trim().min(1).max(500),
-  textUz: z.string().trim().min(1).max(500),
-}).passthrough();
+
+const dialogueItemSchema = z.object({
+  id: z.string().optional(),
+  character: z.string().trim().max(100).optional().default('Qahramon'),
+  characterAvatar: z.string().optional().default('🎬'),
+  startTime: z.coerce.number().min(0).optional().default(0),
+  endTime: z.coerce.number().min(0).optional().default(5),
+  text: z.string().trim().max(1000).optional().default(''),
+  textEn: z.string().trim().max(1000).optional().default(''),
+  translation: z.string().trim().max(1000).optional().default(''),
+  textUz: z.string().trim().max(1000).optional().default(''),
+  uzbekTranslation: z.string().trim().max(1000).optional().default(''),
+}).passthrough().transform((d) => {
+  const text = (d.text || d.textEn || '').trim();
+  const translation = (d.translation || d.uzbekTranslation || d.textUz || '').trim();
+  const start = Number(d.startTime) || 0;
+  const end = Number(d.endTime) || (start + 3);
+  return {
+    id: d.id || `line_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    character: d.character || 'Qahramon',
+    characterAvatar: d.characterAvatar || '🎬',
+    startTime: start,
+    endTime: end > start ? end : start + 3,
+    text: text || '...',
+    cleanText: text.replace(/[^\w\s]/g, '').toLowerCase().trim(),
+    translation,
+    uzbekTranslation: translation,
+    textEn: text || '...',
+    textUz: translation,
+  };
+});
+
 const adminSceneSchema = z.object({
-  title: z.string().trim().min(2).max(100),
-  category: z.string().trim().min(1).max(50),
-  difficulty: z.string().trim().min(1).max(20),
-  accent: z.enum(['American', 'British', 'Neutral']).optional().default('American'),
-  video_url: httpsUrlSchema,
+  id: z.string().optional(),
+  title: z.string().trim().min(1, 'Dars sarlavhasi kiritilishi shart').max(200),
+  category: z.string().trim().min(1, 'Kategoriya tanlanishi shart').max(50),
+  difficulty: z.string().trim().min(1, 'Qiyinchilik darajasi tanlanishi shart').max(50),
+  accent: z.string().optional().default('American'),
+  video_url: videoUrlSchema,
   poster_url: optionalHttpsUrlSchema,
-  dialogues: z.array(dialogueSchema).min(1).max(50),
-}).passthrough();
+  dialogues: z.array(dialogueItemSchema).optional().default([]),
+}).passthrough().transform((s) => {
+  let dialogues = s.dialogues || [];
+  if (dialogues.length === 0) {
+    dialogues = [{
+      id: 'line_1',
+      character: 'Qahramon',
+      characterAvatar: '🎬',
+      startTime: 0,
+      endTime: 5,
+      text: s.title,
+      cleanText: s.title.replace(/[^\w\s]/g, '').toLowerCase().trim(),
+      translation: s.title,
+      uzbekTranslation: s.title,
+      textEn: s.title,
+      textUz: s.title,
+    }];
+  }
+  return {
+    ...s,
+    accent: (s.accent === 'British' ? 'British' : 'American') as 'American' | 'British',
+    dialogues,
+  };
+});
 
 const adminScenesListHandler = (_req: AdminRequest, res: Response) => {
   try {
@@ -276,7 +331,9 @@ const adminScenesCreateHandler = (req: AdminRequest, res: Response) => {
     }
     const { title, category, difficulty, accent, video_url, poster_url, dialogues: cleanDialogues } = validation.data as any;
 
-    const sceneId = randomUUID();
+    const sceneId = rawBody.id && typeof rawBody.id === 'string' && rawBody.id.startsWith('admin_scene_')
+      ? rawBody.id
+      : `admin_scene_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
     const dialoguesJson = JSON.stringify(cleanDialogues);
 
     const created = createAdminScene({
