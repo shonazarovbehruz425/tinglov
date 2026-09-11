@@ -20,6 +20,7 @@ import { FriendChallengeModal } from './components/FriendChallengeModal';
 import { AuthModal } from './components/AuthModal';
 import { AuthView } from './components/AuthView';
 import { apiService } from './services/apiService';
+import { youtubeService } from './services/youtubeService';
 import { i18n } from './services/i18nService';
 import { ProfileView } from './components/ProfileView';
 import { SettingsView } from './components/SettingsView';
@@ -616,7 +617,7 @@ class MovieListenApp implements RouterDelegate {
         serverScenes.forEach((s: any) => {
           try {
             const parsedDialogues = typeof s.dialogues_json === 'string' ? JSON.parse(s.dialogues_json) : (s.dialogues || []);
-            const dialogues: DialogueSentence[] = (Array.isArray(parsedDialogues) ? parsedDialogues : []).map((d: any, idx: number) => ({
+            let dialogues: DialogueSentence[] = (Array.isArray(parsedDialogues) ? parsedDialogues : []).map((d: any, idx: number) => ({
               id: d.id || `line_${idx + 1}`,
               character: d.character || 'Qahramon',
               characterAvatar: '🎬',
@@ -627,6 +628,67 @@ class MovieListenApp implements RouterDelegate {
               uzbekTranslation: d.uzbekTranslation || d.translation || '',
               wordDictionary: d.wordDictionary || {},
             }));
+
+            // Auto-repair corrupt / legacy scenes that have only 1 dummy title dialogue
+            const isDummySingleTitleDialogue =
+              dialogues.length <= 1 &&
+              (dialogues.length === 0 ||
+               (dialogues[0].text || '').trim().toLowerCase() === (s.title || '').trim().toLowerCase() ||
+               (dialogues[0].text || '').trim().length <= 2);
+
+            if (isDummySingleTitleDialogue) {
+              const ytId = youtubeService.extractVideoId(s.video_url || '');
+              if (ytId) {
+                dialogues = youtubeService.generateDialoguesForVideo(ytId, s.title, 'Qahramon');
+              } else {
+                dialogues = [
+                  {
+                    id: 'line_1',
+                    character: 'Qahramon',
+                    characterAvatar: '🎬',
+                    startTime: 0,
+                    endTime: 4.5,
+                    text: 'Welcome to this lesson, listen carefully!',
+                    cleanText: 'welcome to this lesson listen carefully',
+                    uzbekTranslation: 'Ushbu darsga xush kelibsiz, diqqat bilan tinglang!',
+                    wordDictionary: {},
+                  },
+                  {
+                    id: 'line_2',
+                    character: 'Qahramon',
+                    characterAvatar: '🎬',
+                    startTime: 4.6,
+                    endTime: 9.5,
+                    text: 'Pay attention to the dialogues and pronunciation.',
+                    cleanText: 'pay attention to the dialogues and pronunciation',
+                    uzbekTranslation: 'Dialoglar va talaffuzga diqqat qiling.',
+                    wordDictionary: {},
+                  },
+                  {
+                    id: 'line_3',
+                    character: 'Qahramon',
+                    characterAvatar: '🎬',
+                    startTime: 9.6,
+                    endTime: 15.0,
+                    text: 'Practice typing each sentence to learn faster.',
+                    cleanText: 'practice typing each sentence to learn faster',
+                    uzbekTranslation: 'Tezroq o\'rganish uchun har bir gapni yozib mashq qiling.',
+                    wordDictionary: {},
+                  },
+                  {
+                    id: 'line_4',
+                    character: 'Qahramon',
+                    characterAvatar: '🎬',
+                    startTime: 15.1,
+                    endTime: 20.0,
+                    text: 'Great effort, keep practicing every single day!',
+                    cleanText: 'great effort keep practicing every single day',
+                    uzbekTranslation: 'Ajoyib harakat, har kuni shug\'ullanishda davom eting!',
+                    wordDictionary: {},
+                  }
+                ];
+              }
+            }
 
             mappedScenes.push({
               id: s.id,

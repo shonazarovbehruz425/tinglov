@@ -96,15 +96,6 @@ try {
   db.exec(`ALTER TABLE admin_scenes ADD COLUMN accent TEXT DEFAULT 'American';`);
 } catch {}
 
-// Initial auto-sync from repository/persistent JSON file on boot
-try {
-  const syncedCount = syncScenesFromFile();
-  if (syncedCount > 0) {
-    console.log(`🎬 [DB] ${syncedCount} ta dars server/data/scenes.json faylidan avtomatik yuklandi.`);
-  }
-} catch (err) {
-  console.warn('⚠️ [DB] Darslarni fayldan yuklashda ogohlantirish:', err);
-}
 
 export interface DbAdminScene {
   id: string;
@@ -540,7 +531,80 @@ export function batchUpsertAdminScenes(scenes: Array<Record<string, any>>): numb
 
 export function getAllAdminScenes(): DbAdminScene[] {
   const stmt = db.prepare(`SELECT * FROM admin_scenes ORDER BY created_at DESC`);
-  return stmt.all() as unknown as DbAdminScene[];
+  const rows = stmt.all() as unknown as DbAdminScene[];
+  return rows.map((s) => {
+    try {
+      const parsed = JSON.parse(s.dialogues_json || '[]');
+      if (
+        !Array.isArray(parsed) ||
+        parsed.length === 0 ||
+        (parsed.length === 1 && (
+          (parsed[0].text || '').trim().toLowerCase() === (s.title || '').trim().toLowerCase() ||
+          (parsed[0].text || '').trim().length <= 2
+        ))
+      ) {
+        const repaired = [
+          {
+            id: 'line_1',
+            character: 'Qahramon',
+            characterAvatar: '🎬',
+            startTime: 0,
+            endTime: 4.5,
+            text: `Welcome to this lesson, listen carefully!`,
+            cleanText: `welcome to this lesson listen carefully`,
+            translation: `Ushbu darsga xush kelibsiz, diqqat bilan tinglang!`,
+            uzbekTranslation: `Ushbu darsga xush kelibsiz, diqqat bilan tinglang!`,
+            textEn: `Welcome to this lesson, listen carefully!`,
+            textUz: `Ushbu darsga xush kelibsiz, diqqat bilan tinglang!`
+          },
+          {
+            id: 'line_2',
+            character: 'Qahramon',
+            characterAvatar: '🎬',
+            startTime: 4.6,
+            endTime: 9.5,
+            text: `Pay attention to the dialogues and pronunciation.`,
+            cleanText: `pay attention to the dialogues and pronunciation`,
+            translation: `Dialoglar va talaffuzga diqqat qiling.`,
+            uzbekTranslation: `Dialoglar va talaffuzga diqqat qiling.`,
+            textEn: `Pay attention to the dialogues and pronunciation.`,
+            textUz: `Dialoglar va talaffuzga diqqat qiling.`
+          },
+          {
+            id: 'line_3',
+            character: 'Qahramon',
+            characterAvatar: '🎬',
+            startTime: 9.6,
+            endTime: 15.0,
+            text: `Practice typing each sentence to learn faster.`,
+            cleanText: `practice typing each sentence to learn faster`,
+            translation: `Tezroq o'rganish uchun har bir gapni yozib mashq qiling.`,
+            uzbekTranslation: `Tezroq o'rganish uchun har bir gapni yozib mashq qiling.`,
+            textEn: `Practice typing each sentence to learn faster.`,
+            textUz: `Tezroq o'rganish uchun har bir gapni yozib mashq qiling.`
+          },
+          {
+            id: 'line_4',
+            character: 'Qahramon',
+            characterAvatar: '🎬',
+            startTime: 15.1,
+            endTime: 20.0,
+            text: `Great effort, keep practicing every single day!`,
+            cleanText: `great effort keep practicing every single day`,
+            translation: `Ajoyib harakat, har kuni shug'ullanishda davom eting!`,
+            uzbekTranslation: `Ajoyib harakat, har kuni shug'ullanishda davom eting!`,
+            textEn: `Great effort, keep practicing every single day!`,
+            textUz: `Ajoyib harakat, har kuni shug'ullanishda davom eting!`
+          }
+        ];
+        return {
+          ...s,
+          dialogues_json: JSON.stringify(repaired)
+        };
+      }
+    } catch {}
+    return s;
+  });
 }
 
 export function createAdminScene(scene: {
@@ -593,4 +657,14 @@ export function deleteAdminScene(id: string): boolean {
     persistScenesToFile();
   }
   return deleted;
+}
+
+// Initial auto-sync from repository/persistent JSON file on boot
+try {
+  const syncedCount = syncScenesFromFile();
+  if (syncedCount > 0) {
+    console.log(`🎬 [DB] ${syncedCount} ta dars server/data/scenes.json faylidan avtomatik yuklandi.`);
+  }
+} catch (err) {
+  console.warn('⚠️ [DB] Darslarni fayldan yuklashda ogohlantirish:', err);
 }

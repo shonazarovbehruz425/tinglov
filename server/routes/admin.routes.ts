@@ -283,19 +283,60 @@ const adminSceneSchema = z.object({
 }).passthrough().transform((s) => {
   let dialogues = s.dialogues || [];
   if (dialogues.length === 0) {
-    dialogues = [{
-      id: 'line_1',
-      character: 'Qahramon',
-      characterAvatar: '🎬',
-      startTime: 0,
-      endTime: 5,
-      text: s.title,
-      cleanText: s.title.replace(/[^\w\s]/g, '').toLowerCase().trim(),
-      translation: s.title,
-      uzbekTranslation: s.title,
-      textEn: s.title,
-      textUz: s.title,
-    }];
+    dialogues = [
+      {
+        id: 'line_1',
+        character: 'Qahramon',
+        characterAvatar: '🎬',
+        startTime: 0,
+        endTime: 4.5,
+        text: 'Welcome to this lesson, listen carefully!',
+        cleanText: 'welcome to this lesson listen carefully',
+        translation: 'Ushbu darsga xush kelibsiz, diqqat bilan tinglang!',
+        uzbekTranslation: 'Ushbu darsga xush kelibsiz, diqqat bilan tinglang!',
+        textEn: 'Welcome to this lesson, listen carefully!',
+        textUz: 'Ushbu darsga xush kelibsiz, diqqat bilan tinglang!',
+      },
+      {
+        id: 'line_2',
+        character: 'Qahramon',
+        characterAvatar: '🎬',
+        startTime: 4.6,
+        endTime: 9.5,
+        text: 'Pay attention to the dialogues and pronunciation.',
+        cleanText: 'pay attention to the dialogues and pronunciation',
+        translation: 'Dialoglar va talaffuzga diqqat qiling.',
+        uzbekTranslation: 'Dialoglar va talaffuzga diqqat qiling.',
+        textEn: 'Pay attention to the dialogues and pronunciation.',
+        textUz: 'Dialoglar va talaffuzga diqqat qiling.',
+      },
+      {
+        id: 'line_3',
+        character: 'Qahramon',
+        characterAvatar: '🎬',
+        startTime: 9.6,
+        endTime: 15.0,
+        text: 'Practice typing each sentence to learn faster.',
+        cleanText: 'practice typing each sentence to learn faster',
+        translation: 'Tezroq o\'rganish uchun har bir gapni yozib mashq qiling.',
+        uzbekTranslation: 'Tezroq o\'rganish uchun har bir gapni yozib mashq qiling.',
+        textEn: 'Practice typing each sentence to learn faster.',
+        textUz: 'Tezroq o\'rganish uchun har bir gapni yozib mashq qiling.',
+      },
+      {
+        id: 'line_4',
+        character: 'Qahramon',
+        characterAvatar: '🎬',
+        startTime: 15.1,
+        endTime: 20.0,
+        text: 'Great effort, keep practicing every single day!',
+        cleanText: 'great effort keep practicing every single day',
+        translation: 'Ajoyib harakat, har kuni shug\'ullanishda davom eting!',
+        uzbekTranslation: 'Ajoyib harakat, har kuni shug\'ullanishda davom eting!',
+        textEn: 'Great effort, keep practicing every single day!',
+        textUz: 'Ajoyib harakat, har kuni shug\'ullanishda davom eting!',
+      },
+    ];
   }
   return {
     ...s,
