@@ -204,7 +204,6 @@ export class LandingView {
               <a href="#how-it-works" class="landing-nav-link"><i class="ph ph-steps"></i> Metodika</a>
               <a href="#comparison" class="landing-nav-link"><i class="ph ph-scales"></i> Nega Tinglov?</a>
               <a href="#catalog" class="landing-nav-link"><i class="ph ph-film-slate"></i> Filmlar</a>
-              <a href="#reviews" class="landing-nav-link"><i class="ph ph-star"></i> Natijalar</a>
               <a href="#faq" class="landing-nav-link"><i class="ph ph-question"></i> FAQ</a>
             </div>
 
@@ -845,68 +844,6 @@ export class LandingView {
           </div>
         </section>
 
-        <!-- Real Learner Reviews (Social Proof) Section -->
-        <section class="landing-section landing-reviews-section" id="reviews">
-          <div class="landing-section-header">
-            <div class="landing-chip"><i class="ph ph-chat-teardrop-quote-fill"></i> Foydalanuvchilar Natijalari</div>
-            <h2 class="landing-section-title">O'quvchilarimiz Tinglov haqida nima deyishadi?</h2>
-            <p class="landing-section-desc">
-              Minglab foydalanuvchilar har kuni Tinglov orqali o'z listening va talaffuzini yangi bosqichga olib chiqmoqda.
-            </p>
-          </div>
-
-          <div class="reviews-grid">
-            <div class="review-card">
-              <div class="review-stars">
-                <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
-              </div>
-              <p class="review-text">
-                "IELTS Listening 6.0 dan 8.0 ga chiqdim! Tinglovdagi harfma-harf diktant va aktyorlarning tez aytilgan qisqartmalarini ajrata olish imtihonda misli ko'rilmagan yordam berdi."
-              </p>
-              <div class="review-author">
-                <div class="author-avatar av-1">JR</div>
-                <div class="author-info">
-                  <h4 class="author-name">Jasur Rahmatov</h4>
-                  <span class="author-role">IELTS 8.0 Sohibi</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="review-card featured">
-              <div class="review-badge-top"><i class="ph-fill ph-fire"></i> Eng ko'p o'qilgan natija</div>
-              <div class="review-stars">
-                <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
-              </div>
-              <p class="review-text">
-                "IT sohasida xorijiy kompaniyada ishlayman. Daily standup va uchrashuvlarda amerikalik hamkasblarimning gaplarini 100% tushunishni aynan shu platformada mashq qilib erishdim. AI Shadowing esa talaffuzimni tozaladi."
-              </p>
-              <div class="review-author">
-                <div class="author-avatar av-2">MY</div>
-                <div class="author-info">
-                  <h4 class="author-name">Malika Yusupova</h4>
-                  <span class="author-role">Senior Software Engineer</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="review-card">
-              <div class="review-stars">
-                <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
-              </div>
-              <p class="review-text">
-                "Ilgari inglizcha kinolarni faqat subtitr bilan ko'ra olardim. Harfma-harf diktant orqali 3 haftada qulog'im tabiiy nutqqa o'rgandi. Hozir Netflix'da subtitrlarni o'chirib qo'yib bemalol tushunaman!"
-              </p>
-              <div class="review-author">
-                <div class="author-avatar av-3">SA</div>
-                <div class="author-info">
-                  <h4 class="author-name">Sardor Aliyev</h4>
-                  <span class="author-role">Talaba, Toshkent</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         <!-- FAQ Section -->
         <section class="landing-section" id="faq">
           <div class="landing-section-header">
@@ -1040,7 +977,6 @@ export class LandingView {
               <a href="#how-it-works" class="footer-link-anchor">Metodika</a>
               <a href="#comparison" class="footer-link-anchor">Nega Tinglov?</a>
               <a href="#catalog" class="footer-link-anchor">Filmlar</a>
-              <a href="#reviews" class="footer-link-anchor">Natijalar</a>
               <a href="#faq" class="footer-link-anchor">Savol-javob</a>
             </div>
 

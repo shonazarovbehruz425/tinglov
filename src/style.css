@@ -12215,109 +12215,7 @@ body.in-landing-mode #landingViewContainer {
   text-align: center;
 }
 
-/* 9. Real Learner Reviews (Social Proof) Section */
-.landing-reviews-section {
-  background: rgba(22, 25, 32, 0.4);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 28px;
-}
-
-.reviews-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-}
-
-.review-card {
-  background: var(--bg-canvas);
-  border: 1px solid var(--border-subtle);
-  border-radius: 20px;
-  padding: 1.85rem 1.65rem;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  box-shadow: var(--shadow-subtle);
-  transition: all 0.3s ease;
-}
-
-.review-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--accent-orange);
-  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.15);
-}
-
-.review-card.featured {
-  background: linear-gradient(135deg, rgba(255, 91, 55, 0.08), rgba(22, 25, 32, 0.95));
-  border-color: rgba(255, 91, 55, 0.35);
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25), 0 0 25px rgba(255, 91, 55, 0.1);
-}
-
-.review-badge-top {
-  position: absolute;
-  top: -10px;
-  left: 1.5rem;
-  font-size: 0.7rem;
-  font-weight: 800;
-  padding: 2px 9px;
-  border-radius: 9999px;
-  background: var(--accent-orange);
-  color: #fff;
-  box-shadow: 0 4px 15px rgba(255, 91, 55, 0.4);
-}
-
-.review-stars {
-  color: #F59E0B;
-  font-size: 1rem;
-  display: flex;
-  gap: 3px;
-  margin-bottom: 1rem;
-}
-
-.review-text {
-  font-size: 0.94rem;
-  color: var(--text-secondary);
-  line-height: 1.55;
-  margin: 0 0 1.25rem 0;
-  font-style: italic;
-}
-
-.review-author {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.author-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 0.88rem;
-  color: #fff;
-}
-
-.author-avatar.av-1 { background: linear-gradient(135deg, #3B82F6, #1D4ED8); }
-.author-avatar.av-2 { background: linear-gradient(135deg, #FF5B37, #E64A19); }
-.author-avatar.av-3 { background: linear-gradient(135deg, #10B981, #047857); }
-
-.author-name {
-  font-size: 0.92rem;
-  font-weight: 750;
-  color: var(--text-heading);
-  margin: 0 0 0.15rem 0;
-}
-
-.author-role {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-
-/* 10. FAQ Accordion */
+/* 9. FAQ Accordion */
 .landing-faq-accordion {
   max-width: 840px;
   margin: 0 auto;
@@ -12566,9 +12464,6 @@ body.in-landing-mode #landingViewContainer {
   }
   .landing-catalog-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-  .reviews-grid {
-    grid-template-columns: 1fr;
   }
   .comparison-grid {
     grid-template-columns: 1fr;
