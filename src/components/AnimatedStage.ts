@@ -85,7 +85,14 @@ export class AnimatedStage {
     this.isSubtitleRevealed = false;
     this.isSentenceCompleted = false;
     this.isManualPaused = false;
-    this.isFreePlayMode = false;
+
+    // Auto-enable free play for suspiciously short segments (≤5s).
+    // These almost certainly have wrong timing (e.g. the old hardcoded 4s default).
+    // In free play mode the video plays straight through so the user can hear
+    // where the dialogue actually starts, then use the timing bar to fix it.
+    const segmentDuration = sentence.endTime - sentence.startTime;
+    this.isFreePlayMode = segmentDuration <= 5;
+
     this.clearLoopTimer();
     this.stopVideoTracking();
     this.render();
@@ -812,10 +819,14 @@ export class AnimatedStage {
           </div>
         </div>
 
-        ${(this.currentSentence.endTime - this.currentSentence.startTime) <= 4.5 ? `
+        ${this.isFreePlayMode ? `
           <div class="yt-timing-hint-banner">
-            <i class="ph ph-info"></i>
-            <span>Gap hali boshlanmadimi? <strong>"Erkin ijro"</strong> tugmasini bosing yoki <strong>"+2s uzaytirish"</strong> orqali qahramon ovozi eshitiladigan joygacha cho'zing.</span>
+            <i class="ph ph-warning-circle"></i>
+            <span>
+              <strong>⏩ Erkin ijro rejimi yoqilgan</strong> — replika vaqti juda qisqa (${(this.currentSentence.endTime - this.currentSentence.startTime).toFixed(1)}s).
+              Video to'xtovsiz o'ynaydi. Qahramon gapira boshlaganda <strong>"📍 Boshlanish"</strong> tugmasini,
+              gapirub bo'lganda <strong>"🏁 Tugash"</strong> tugmasini bosing. Shunda replika to'g'ri takrorlanadi.
+            </span>
           </div>
         ` : ''}
 
