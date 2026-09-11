@@ -166,6 +166,7 @@ export class LevelSelector {
             <div class="filter-subgroup">
               <span class="filter-label">Daraja:</span>
               <div class="filter-pill-box" id="levelDifficultyFilters">
+                <div class="filter-pill-glider" id="difficultyPillGlider"></div>
                 <button class="filter-btn-pill ${this.selectedDifficulty === 'all' ? 'active' : ''}" data-difficulty="all">Barchasi</button>
                 <button class="filter-btn-pill ${this.selectedDifficulty === 'beginner' ? 'active' : ''}" data-difficulty="beginner">A1-A2</button>
                 <button class="filter-btn-pill ${this.selectedDifficulty === 'intermediate' ? 'active' : ''}" data-difficulty="intermediate">B1-B2</button>
@@ -179,6 +180,7 @@ export class LevelSelector {
             <div class="filter-subgroup">
               <span class="filter-label">Talaffuz:</span>
               <div class="filter-pill-box" id="levelAccentFilters">
+                <div class="filter-pill-glider" id="accentPillGlider"></div>
                 <button class="filter-btn-pill ${this.selectedAccent === 'American' ? 'active' : ''}" data-accent="American">
                   <img src="/flags/us.png" alt="US" class="flag-icon-img" width="16" height="16" />
                   <span>American</span>
@@ -212,9 +214,9 @@ export class LevelSelector {
 
     this.bindEvents(allScenes);
 
-    // Initialize glider position smoothly after DOM layout
+    // Initialize all glider positions smoothly after DOM layout
     requestAnimationFrame(() => {
-      this.updateGliderPosition(false);
+      this.updateAllGliders(false);
     });
   }
 
@@ -355,19 +357,24 @@ export class LevelSelector {
   }
 
   private handleResize = () => {
-    this.updateGliderPosition(false);
+    this.updateAllGliders(false);
   };
 
-  private updateGliderPosition(animate: boolean = true): void {
-    const glider = this.container.querySelector('#categoryPillGlider') as HTMLElement;
-    const activeBtn = this.container.querySelector('#categoryFilters .category-pill.active') as HTMLElement;
+  private updateGliderFor(boxSelector: string, gliderSelector: string, activeBtnSelector: string, animate: boolean = true): void {
+    const box = this.container.querySelector(boxSelector) as HTMLElement | null;
+    const glider = this.container.querySelector(gliderSelector) as HTMLElement | null;
+    if (!box || !glider) return;
 
-    if (!glider || !activeBtn) return;
+    const activeBtn = box.querySelector(activeBtnSelector) as HTMLElement | null;
+    if (!activeBtn) {
+      glider.style.opacity = '0';
+      return;
+    }
 
     if (!animate) {
       glider.style.transition = 'none';
     } else {
-      glider.style.transition = 'transform 0.36s cubic-bezier(0.16, 1, 0.3, 1), width 0.36s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease';
+      glider.style.transition = 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), width 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease';
     }
 
     const left = activeBtn.offsetLeft;
@@ -381,6 +388,24 @@ export class LevelSelector {
       void glider.offsetWidth;
       glider.style.transition = '';
     }
+  }
+
+  private updateGliderPosition(animate: boolean = true): void {
+    this.updateGliderFor('#categoryFilters', '#categoryPillGlider', '.category-pill.active', animate);
+  }
+
+  private updateDifficultyGlider(animate: boolean = true): void {
+    this.updateGliderFor('#levelDifficultyFilters', '#difficultyPillGlider', '.filter-btn-pill.active', animate);
+  }
+
+  private updateAccentGlider(animate: boolean = true): void {
+    this.updateGliderFor('#levelAccentFilters', '#accentPillGlider', '.filter-btn-pill.active', animate);
+  }
+
+  private updateAllGliders(animate: boolean = true): void {
+    this.updateGliderPosition(animate);
+    this.updateDifficultyGlider(animate);
+    this.updateAccentGlider(animate);
   }
 
   private renderWordDialogueMatchesHtml(matches: DialogueMatch[]): string {
@@ -445,8 +470,7 @@ export class LevelSelector {
     const wordResultsContainer = this.container.querySelector('#catalogWordResultsContainer') as HTMLElement;
     if (!grid) return;
 
-    // Show skeleton cards during transition
-    grid.innerHTML = this.renderCourseSkeletonCards(6);
+    // Smooth transition during filter changes
     grid.classList.add('filter-animating');
 
     setTimeout(() => {
@@ -538,6 +562,7 @@ export class LevelSelector {
         this.selectedDifficulty = diff;
         difficultyBtns.forEach(b => b.classList.remove('active'));
         clicked.classList.add('active');
+        this.updateDifficultyGlider(true);
         this.updateFilteredGrid(allScenes);
       });
     });
@@ -556,6 +581,7 @@ export class LevelSelector {
           accentBtns.forEach(b => b.classList.remove('active'));
           clicked.classList.add('active');
         }
+        this.updateAccentGlider(true);
         this.updateFilteredGrid(allScenes);
       });
     });
@@ -582,7 +608,6 @@ export class LevelSelector {
           b.classList.remove('active');
         }
       });
-      this.updateGliderPosition(true);
 
       // Reset difficulty pills
       const diffBtns = this.container.querySelectorAll('#levelDifficultyFilters .filter-btn-pill');
@@ -598,6 +623,7 @@ export class LevelSelector {
       const accBtns = this.container.querySelectorAll('#levelAccentFilters .filter-btn-pill');
       accBtns.forEach(b => b.classList.remove('active'));
 
+      this.updateAllGliders(true);
       this.updateFilteredGrid(allScenes);
     });
 

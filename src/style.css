@@ -1837,6 +1837,7 @@ body {
 }
 
 .filter-pill-box {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.15rem;
@@ -1844,9 +1845,27 @@ body {
   background: var(--bg-canvas);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-pill);
+  user-select: none;
+}
+
+.filter-pill-glider {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  height: calc(100% - 4px);
+  border-radius: var(--radius-pill);
+  background: var(--accent-black, #1A1D1F);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), width 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  will-change: transform, width;
 }
 
 .filter-btn-pill {
+  position: relative;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -1859,7 +1878,7 @@ body {
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: color 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s ease;
   outline: none;
   user-select: none;
   white-space: nowrap;
@@ -1868,14 +1887,18 @@ body {
 
 .filter-btn-pill:hover {
   color: var(--text-heading);
-  background: rgba(0, 0, 0, 0.04);
+}
+
+.filter-btn-pill:active {
+  transform: scale(0.96);
 }
 
 .filter-btn-pill.active {
-  background: var(--accent-black, #1A1D1F);
-  border-color: var(--accent-black, #1A1D1F);
-  color: #FFFFFF;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #FFFFFF !important;
+  font-weight: 700;
+  box-shadow: none !important;
 }
 
 .flag-icon-img {
@@ -2003,26 +2026,39 @@ body {
   border-color: #1F2327;
 }
 
+[data-theme="dark"] .filter-pill-glider {
+  background: #272B30;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="oled"] .filter-pill-glider {
+  background: #1F2327;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
 [data-theme="dark"] .filter-btn-pill {
   color: #9A9FA5;
 }
 
 [data-theme="dark"] .filter-btn-pill:hover {
   color: #FCFCFC;
-  background: rgba(255, 255, 255, 0.05);
+  background: transparent;
 }
 
 [data-theme="dark"] .filter-btn-pill.active {
-  background: #272B30;
-  border-color: rgba(255, 255, 255, 0.12);
-  color: #FCFCFC;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #FCFCFC !important;
+  box-shadow: none !important;
 }
 
 [data-theme="oled"] .filter-btn-pill.active {
-  background: #1F2327;
-  border-color: rgba(255, 255, 255, 0.16);
-  color: #FFFFFF;
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #FFFFFF !important;
+  box-shadow: none !important;
 }
 
 [data-theme="dark"] .filter-btn-pill .flag-tag {
