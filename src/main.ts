@@ -687,11 +687,16 @@ class MovieListenApp implements RouterDelegate {
     // 2. Himoyalangan yo'llar (/dashboard, /library, /practice, /profile, /settings):
     // Serverdan eng so'nggi ma'lumotlar olinayotganda toza skeleton ko'rsatamiz:
     if (rawPath === '/dashboard' || rawPath === '/library' || rawHash === 'dashboard' || rawHash === 'library') {
-      this.switchView('library');
+      this.switchView('library', true);
       this.setLibraryBusyState(true);
+      this.statsHeader.renderSkeleton();
       this.levelSelector.renderSkeleton();
     } else if (rawPath === '/profile' || rawHash === 'profile') {
-      this.switchView('profile');
+      this.switchView('profile', true);
+      this.statsHeader.renderSkeleton();
+    } else if (rawPath === '/settings' || rawHash === 'settings') {
+      this.switchView('settings', true);
+      this.statsHeader.renderSkeleton();
     }
 
     try {
@@ -842,7 +847,7 @@ class MovieListenApp implements RouterDelegate {
     }
   }
 
-  private switchView(view: AppViewMode): void {
+  private switchView(view: AppViewMode, skipHeaderUpdate: boolean = false): void {
     this.currentView = view;
     speechService.stop();
     if (view !== 'practice') {
@@ -873,7 +878,7 @@ class MovieListenApp implements RouterDelegate {
     document.body.classList.toggle('in-auth-mode', view === 'auth');
     document.body.classList.toggle('in-admin-mode', view === 'admin');
 
-    if (view !== 'auth' && view !== 'landing' && view !== 'admin') {
+    if (!skipHeaderUpdate && view !== 'auth' && view !== 'landing' && view !== 'admin') {
       this.statsHeader.update();
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });

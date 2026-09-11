@@ -60,6 +60,77 @@ export class StatsHeader {
     this.onSignOutCallback = callbacks.onSignOut || null;
   }
 
+  public renderSkeleton(): void {
+    const t = i18n.t();
+    this.container.innerHTML = `
+      <header class="app-header header-skeleton-pulse" aria-busy="true">
+        <!-- Left: Logo & Home -->
+        <div class="header-left">
+          <div class="app-logo" id="logoClickBtn" style="cursor: pointer;">
+            <img src="/logo.png" alt="Tinglov Logo" class="app-logo-img" />
+            <span class="logo-brand-text">Ting<span>lov</span></span>
+          </div>
+
+          <button class="nav-library-btn" id="navLibraryBtn">
+            <i class="ph ph-squares-four"></i> ${t.library}
+          </button>
+        </div>
+
+        <!-- Center: Search Bar -->
+        <div class="header-center-search" id="headerCenterSearch">
+          <div class="header-search-box">
+            <input
+              type="text"
+              class="header-search-input"
+              id="topHeaderSearchInput"
+              placeholder="${t.searchPlaceholder}"
+              autocomplete="off"
+              disabled
+            />
+            <button class="header-search-btn" id="topHeaderSearchBtn" title="${t.searchPlaceholder}" disabled>
+              <i class="ph ph-magnifying-glass"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Stats & Profile Skeleton -->
+        <div class="header-right">
+          <!-- Combined Compact Streak & XP Pill Skeleton -->
+          <div class="header-combined-stat-pill header-skel-pill skeleton-shimmer"></div>
+
+          <!-- Saved Words Button Skeleton -->
+          <div class="header-action-pill header-skel-vocab skeleton-shimmer"></div>
+
+          <!-- Quick Tools Skeleton Group -->
+          <div class="header-tools-cluster">
+            <div class="header-icon-round header-skel-round skeleton-shimmer"></div>
+            <div class="header-icon-round header-skel-round skeleton-shimmer"></div>
+            <div class="header-icon-round header-skel-round skeleton-shimmer"></div>
+          </div>
+
+          <!-- User Profile Skeleton -->
+          <div class="user-profile-summary header-skel-user">
+            <div class="user-avatar-circle header-skel-avatar skeleton-shimmer" style="border: none;"></div>
+            <div class="user-names header-skel-names">
+              <div class="header-skel-name-line skeleton-shimmer"></div>
+              <div class="header-skel-handle-line skeleton-shimmer"></div>
+            </div>
+            <i class="ph ph-caret-down user-dropdown-caret" style="opacity: 0.25;"></i>
+          </div>
+        </div>
+      </header>
+    `;
+
+    const logoBtn = this.container.querySelector('#logoClickBtn');
+    logoBtn?.addEventListener('click', () => {
+      this.onOpenLibraryCallback?.();
+    });
+    const navLibBtn = this.container.querySelector('#navLibraryBtn');
+    navLibBtn?.addEventListener('click', () => {
+      this.onOpenLibraryCallback?.();
+    });
+  }
+
   public update(): void {
     // Re-read the theme on every update — Settings changes it via localStorage
     // and the header must not keep showing a stale theme state/icon.

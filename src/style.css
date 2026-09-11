@@ -12834,6 +12834,91 @@ body:not(.in-admin-mode) .app-skeleton-box {
   background-size: 200% 100% !important;
 }
 
+/* Header Skeleton Loading Elements */
+.header-skeleton-pulse {
+  pointer-events: none;
+}
+
+.header-skeleton-pulse .header-left {
+  pointer-events: auto;
+}
+
+.header-skel-pill {
+  width: 124px !important;
+  height: 38px !important;
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  flex-shrink: 0;
+}
+
+[data-theme="light"] .header-skel-pill {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.header-skel-vocab {
+  width: 104px !important;
+  height: 38px !important;
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  flex-shrink: 0;
+}
+
+[data-theme="light"] .header-skel-vocab {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.header-skel-round {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  flex-shrink: 0;
+}
+
+[data-theme="light"] .header-skel-round {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.header-skel-user {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.55rem !important;
+  padding: 0.25rem 0.65rem 0.25rem 0.3rem !important;
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  pointer-events: none !important;
+}
+
+[data-theme="light"] .header-skel-user {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.header-skel-avatar {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0;
+}
+
+.header-skel-names {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  justify-content: center !important;
+}
+
+.header-skel-name-line {
+  width: 110px !important;
+  height: 12px !important;
+  border-radius: 4px !important;
+}
+
+.header-skel-handle-line {
+  width: 75px !important;
+  height: 9px !important;
+  border-radius: 4px !important;
+}
+
 .skeleton-dashboard-wrapper,
 .skeleton-practice-wrapper {
   width: 100%;
