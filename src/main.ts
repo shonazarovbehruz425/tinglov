@@ -20,6 +20,7 @@ import { FriendChallengeModal } from './components/FriendChallengeModal';
 import { AuthModal } from './components/AuthModal';
 import { AuthView } from './components/AuthView';
 import { apiService } from './services/apiService';
+import { i18n } from './services/i18nService';
 import { ProfileView } from './components/ProfileView';
 import { SettingsView } from './components/SettingsView';
 import { LandingView } from './components/LandingView';
@@ -40,6 +41,8 @@ class MovieListenApp {
   private isAuthReady: boolean = false;
   private advanceTimeoutId: number | null = null;
   private autoPlayTimeoutId: number | null = null;
+  /** Element that had focus before a modal opened — restored on close (a11y). */
+  private modalTriggerFocus: HTMLElement | null = null;
 
   // UI Components
   private statsHeader!: StatsHeader;
@@ -65,6 +68,7 @@ class MovieListenApp {
     this.initComponents();
     this.bindKeyboardShortcuts();
     this.initRouter();
+    this.initA11yEnhancements();
 
     // Initialize cursor-position tracking glow for CTA buttons
     initCursorGlow();
@@ -179,7 +183,7 @@ class MovieListenApp {
     // 1. Stats Header
     this.statsHeader = new StatsHeader(headerContainer);
     this.statsHeader.setCallbacks({
-      onOpenVocab: () => this.vocabModal.open(),
+      onOpenVocab: () => { this.captureModalTrigger(); this.vocabModal.open(); },
       onOpenLibrary: () => this.showLibrary(),
       onOpenProfile: () => this.showProfilePage(),
       onOpenSettings: () => this.showSettingsPage(),
@@ -212,11 +216,13 @@ class MovieListenApp {
       },
       onAddCustomScene: () => {
         if (this.checkAndEnforceAuth()) {
+          this.captureModalTrigger();
           this.customSceneModal.open();
         }
       },
       onOpenYouTubeImport: () => {
         if (this.checkAndEnforceAuth()) {
+          this.captureModalTrigger();
           this.youtubeImportModal.open();
         }
       },
@@ -241,6 +247,7 @@ class MovieListenApp {
           const highscores = storageService.getSceneHighScores(this.currentScene.id);
           const topAccuracy = highscores.length > 0 ? highscores[0].accuracy : 98;
           const topWpm = highscores.length > 0 ? highscores[0].wpm : 55;
+          this.captureModalTrigger();
           this.friendChallengeModal.open(this.currentScene, topAccuracy, topWpm);
         }
       }
@@ -278,7 +285,7 @@ class MovieListenApp {
     this.profileView.setCallbacks({
       onBackToLibrary: () => this.showLibrary(),
       onOpenSettings: () => this.showSettingsPage(),
-      onOpenVocab: () => this.vocabModal.open()
+      onOpenVocab: () => { this.captureModalTrigger(); this.vocabModal.open(); }
     });
 
     // 6. Dedicated Settings Page View
@@ -292,19 +299,19 @@ class MovieListenApp {
 
     // 7. Vocabulary Modal
     this.vocabModal = new VocabularyModal(vocabContainer);
-    this.vocabModal.setOnClose(() => this.statsHeader.update());
+    this.vocabModal.setOnClose(() => { this.statsHeader.update(); this.restoreModalFocus('#openVocabBtn'); });
 
     // 8. Custom Scene Modal
     this.customSceneModal = new CustomSceneModal(customContainer);
     this.customSceneModal.setCallbacks({
-      onClose: () => this.statsHeader.update(),
+      onClose: () => { this.statsHeader.update(); this.restoreModalFocus(); },
       onCreated: (newScene) => this.startScene(newScene)
     });
 
     // 9. YouTube Import Modal
     this.youtubeImportModal = new YouTubeImportModal(youtubeContainer);
     this.youtubeImportModal.setCallbacks({
-      onClose: () => this.statsHeader.update(),
+      onClose: () => { this.statsHeader.update(); this.restoreModalFocus(); },
       onLessonCreated: (newScene) => this.startScene(newScene)
     });
 
@@ -315,6 +322,7 @@ class MovieListenApp {
       onRestartScene: () => this.startScene(this.currentScene!),
       onLibrary: () => this.showLibrary(),
       onChallengeFriend: (scene, stats) => {
+        this.captureModalTrigger();
         this.friendChallengeModal.open(scene, stats.accuracy, stats.wpm);
       }
     });
@@ -323,7 +331,7 @@ class MovieListenApp {
     this.shadowingModal = new ShadowingModal(shadowingContainer);
     this.shadowingModal.setCallbacks({
       onClose: () => {
-        this.dictationInput.focusInput();
+        this.restoreModalFocus('#dictationInput');
       },
       onPassed: (score) => {
         const bonusXp = Math.round(score / 5);
@@ -335,7 +343,7 @@ class MovieListenApp {
     // 11. User Profile Modal
     this.profileModal = new ProfileModal(profileContainer);
     this.profileModal.setCallbacks({
-      onOpenVocab: () => this.vocabModal.open(),
+      onOpenVocab: () => { this.captureModalTrigger(); this.vocabModal.open(); },
       onProfileUpdated: () => this.handleLanguageChanged()
     });
 
@@ -469,6 +477,12 @@ class MovieListenApp {
   }
 
   private handleLanguageChanged(skipSettingsRender: boolean = false): void {
+    // Keep <html lang> in sync with i18n so screen readers pick correct voice.
+    try {
+      document.documentElement.lang = i18n.getLanguage();
+    } catch {
+      // Ignore (non-DOM environment)
+    }
     this.statsHeader.update();
     if (this.currentView === 'library') {
       this.levelSelector.render();
@@ -480,6 +494,120 @@ class MovieListenApp {
       }
     } else if (this.currentScene) {
       this.loadCurrentSentence();
+    }
+  }
+
+  /** Captures the element that triggered a modal so focus can be restored on close. */
+  private captureModalTrigger(): void {
+    try {
+      const active = document.activeElement as HTMLElement | null;
+      this.modalTriggerFocus = active && typeof active.focus === 'function' ? active : null;
+    } catch {
+      this.modalTriggerFocus = null;
+    }
+  }
+
+  /** Returns focus to the modal trigger (or a sensible fallback). */
+  private restoreModalFocus(fallbackSelector?: string): void {
+    try {
+      const target = this.modalTriggerFocus && document.contains(this.modalTriggerFocus)
+        ? this.modalTriggerFocus
+        : (fallbackSelector ? document.querySelector<HTMLElement>(fallbackSelector) : null);
+      target?.focus({ preventScroll: true });
+    } catch {
+      // Ignore focus errors
+    } finally {
+      this.modalTriggerFocus = null;
+    }
+  }
+
+  /**
+   * Central a11y wiring: <html lang> sync, skip link, mobile search toggle,
+   * and polite live-region defaults for toasts.
+   */
+  private initA11yEnhancements(): void {
+    // 1. Initial <html lang> sync + keep it updated on language switches.
+    try {
+      document.documentElement.lang = i18n.getLanguage();
+    } catch {
+      // Ignore
+    }
+    try {
+      i18n.subscribe((lang) => {
+        try {
+          document.documentElement.lang = lang;
+        } catch {
+          // Ignore
+        }
+      });
+    } catch {
+      // Ignore
+    }
+
+    // 2. Skip link for keyboard / screen-reader users.
+    try {
+      if (!document.getElementById('skipToContent')) {
+        const skip = document.createElement('a');
+        skip.id = 'skipToContent';
+        skip.href = '#libraryViewContainer';
+        skip.className = 'skip-link';
+        skip.textContent = 'Asosiy kontentga o‘tish';
+        document.body.prepend(skip);
+      }
+    } catch {
+      // Ignore
+    }
+
+    // 3. Expandable mobile search toggle (<768px CSS reveals overlay row).
+    // StatsHeader markup itself is untouched; this button only toggles classes.
+    try {
+      const header = document.querySelector('.app-header');
+      const searchWrap = document.getElementById('headerCenterSearch');
+      if (header && searchWrap && !document.getElementById('mobileSearchToggle')) {
+        header.classList.add('search-collapsed');
+        const toggle = document.createElement('button');
+        toggle.id = 'mobileSearchToggle';
+        toggle.type = 'button';
+        toggle.className = 'mobile-search-toggle header-icon-round';
+        toggle.setAttribute('aria-label', 'Qidiruvni ochish');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-controls', 'headerCenterSearch');
+        toggle.innerHTML = '<i class="ph ph-magnifying-glass" aria-hidden="true"></i>';
+        toggle.addEventListener('click', () => {
+          const isOpen = header.classList.toggle('search-open');
+          toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+          toggle.setAttribute('aria-label', isOpen ? 'Qidiruvni yopish' : 'Qidiruvni ochish');
+          if (isOpen) {
+            document.getElementById('topHeaderSearchInput')?.focus();
+          }
+        });
+        const rightCluster = header.querySelector('.header-right');
+        if (rightCluster) {
+          rightCluster.prepend(toggle);
+        } else {
+          header.appendChild(toggle);
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  /** Marks the library container as busy while the skeleton preview shows. */
+  private setLibraryBusyState(isBusy: boolean): void {
+    try {
+      const lib = document.getElementById('libraryViewContainer');
+      if (!lib) return;
+      lib.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+      if (isBusy) {
+        lib.setAttribute('role', 'status');
+        lib.setAttribute('aria-live', 'polite');
+        lib.setAttribute('aria-label', 'Darslar yuklanmoqda');
+      } else {
+        lib.removeAttribute('aria-label');
+      }
+    } catch {
+      // Ignore
     }
   }
 
@@ -548,6 +676,7 @@ class MovieListenApp {
     // Otherwise, show skeleton preview while awaiting server network authentication
     if (rawPath === '/dashboard' || rawPath === '/library') {
       this.switchView('library');
+      this.setLibraryBusyState(true);
       this.levelSelector.renderSkeleton();
     }
 
@@ -784,6 +913,7 @@ class MovieListenApp {
     if (!this.checkAndEnforceAuth()) return;
     this.switchView('library');
     this.levelSelector.render();
+    this.setLibraryBusyState(false);
     const targetUrl = '/dashboard';
     if (pushHistory) {
       this.updateUrl(targetUrl, 'Dashboard — Tinglov');
@@ -1049,6 +1179,8 @@ class MovieListenApp {
       toast = document.createElement('div');
       toast.id = 'speedToast';
       toast.className = 'speed-toast-indicator';
+      toast.setAttribute('role', 'status');
+      toast.setAttribute('aria-live', 'polite');
       document.body.appendChild(toast);
     }
     toast.innerHTML = `<span class="toast-icon">${icon}</span> <span class="toast-label">${escapeHtml(message)}</span>`;
@@ -1065,6 +1197,8 @@ class MovieListenApp {
       toast = document.createElement('div');
       toast.id = 'speedToast';
       toast.className = 'speed-toast-indicator';
+      toast.setAttribute('role', 'status');
+      toast.setAttribute('aria-live', 'polite');
       document.body.appendChild(toast);
     }
     const icon = speed < 1.0 ? '🐢' : '⚡';
@@ -1087,6 +1221,7 @@ class MovieListenApp {
         this.customSceneModal.close();
         this.youtubeImportModal.close();
         this.completionModal.hide();
+        this.restoreModalFocus();
         return;
       }
 
@@ -1103,9 +1238,23 @@ class MovieListenApp {
         }
       }
 
-      // Tab: Replay current dialogue without losing typing focus!
+      // Tab: Replay current dialogue WITHOUT hijacking focus while the user is
+      // typing in the practice textarea. DictationInput owns Tab when the caret
+      // is inside #dictationInput (it replays without blurring). The global
+      // handler below therefore fires only when focus is elsewhere, so keyboard
+      // users keep a working Tab order (WCAG 2.1.1 / 2.4.3).
       if (e.key === 'Tab' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-        if (this.currentScene && !isModalOpen) {
+        const active = document.activeElement as HTMLElement | null;
+        const isTypingInPractice = !!active && (
+          active.id === 'dictationInput' ||
+          active.tagName === 'TEXTAREA' ||
+          active.tagName === 'INPUT' ||
+          active.isContentEditable === true
+        );
+        if (isTypingInPractice) {
+          return;
+        }
+        if (this.currentScene && this.currentView === 'practice' && !isModalOpen) {
           e.preventDefault();
           this.playCurrentDialogue();
           this.dictationInput.focusInput();

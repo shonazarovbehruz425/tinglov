@@ -1,6 +1,7 @@
 import { apiService } from '../services/apiService';
 import { storageService } from '../services/storageService';
 import { Scene } from '../types/index';
+import { escapeHtml, sanitizeUrl } from '../utils/sanitize';
 
 export interface LandingViewCallbacks {
   onOpenDashboard: () => void;
@@ -28,28 +29,82 @@ export class LandingView {
     const featuredScenes = allScenes.slice(0, 6);
 
     const displayName = currentUser?.full_name || currentUser?.username || 'Foydalanuvchi';
-    const userInitial = displayName[0].toUpperCase();
-    const userName = displayName;
+    const safeDisplayName = escapeHtml(displayName);
+    const userInitial = escapeHtml((displayName[0] || 'F').toUpperCase());
+    const userName = safeDisplayName;
+
+    // Real "continue learning" hero: lastPositions'dagi eng oldinda turgan dars
+    // + real progress (fake allScenes[0] + 35% o'rniga).
+    const stats = storageService.getStats();
+    const lastPositions = stats.lastPositions || {};
+    let continueScene: Scene | null = null;
+    let continueIndex = 0;
+    let continuePct = 0;
+    for (const scene of allScenes) {
+      const pos = lastPositions[scene.id];
+      if (typeof pos === 'number' && scene.dialogues.length > 0) {
+        const pct = Math.min(100, Math.round(((pos + 1) / scene.dialogues.length) * 100));
+        if (!continueScene || pct > continuePct) {
+          continueScene = scene;
+          continueIndex = pos;
+          continuePct = stats.completedScenes.includes(scene.id) ? 100 : pct;
+        }
+      }
+    }
+
+    const continueCardHtml = continueScene ? `
+      <div class="landing-continue-card" role="region" aria-label="Davom etayotgan dars">
+        <div class="landing-continue-info">
+          <span class="landing-continue-kicker">Davom etish</span>
+          <h3 class="landing-continue-title">${escapeHtml(continueScene.title)}</h3>
+          <p class="landing-continue-sub">${escapeHtml(continueScene.movieName)} • Replika ${continueIndex + 1}/${continueScene.dialogues.length}</p>
+        </div>
+        <div class="landing-continue-progress">
+          <div class="landing-continue-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${continuePct}" aria-label="${escapeHtml(continueScene.title)} progress">
+            <div class="landing-continue-progress-fill" style="width: ${continuePct}%"></div>
+          </div>
+          <span class="landing-continue-progress-label">${continuePct}% yakunlangan</span>
+        </div>
+        <button class="landing-btn landing-btn-primary" data-continue-scene-id="${escapeHtml(continueScene.id)}">
+          <i class="ph ph-play" aria-hidden="true"></i> Davom etish
+        </button>
+      </div>
+    ` : '';
 
     const featuredScenesHtml = featuredScenes.map((scene: Scene) => {
-      const poster = scene.coverImage || '/logo.png';
+      const rawPoster = scene.coverImage || '/logo.png';
+      const poster = sanitizeUrl(rawPoster) || '/logo.png';
+      const safeTitle = escapeHtml(scene.title);
+      const safeMovieName = escapeHtml(scene.movieName);
+      const safeDifficulty = escapeHtml(scene.difficulty);
+      const safeDuration = escapeHtml(scene.duration);
+      const pos = lastPositions[scene.id];
+      const isDone = stats.completedScenes.includes(scene.id);
+      const realPct = isDone ? 100
+        : (typeof pos === 'number' && scene.dialogues.length > 0
+          ? Math.min(100, Math.round(((pos + 1) / scene.dialogues.length) * 100))
+          : 0);
       return `
-        <div class="landing-movie-card" data-scene-id="${scene.id}">
+        <div class="landing-movie-card" data-scene-id="${escapeHtml(scene.id)}">
           <div class="movie-card-thumb-wrap">
-            <img src="${poster}" alt="${scene.title}" class="movie-card-thumb" loading="lazy" />
-            <span class="movie-level-badge level-${scene.difficulty.toLowerCase()}">${scene.difficulty}</span>
-            <div class="movie-card-play-hover">
+            <img src="${poster}" alt="${safeTitle} posteri" class="movie-card-thumb" loading="lazy" />
+            <span class="movie-level-badge level-${safeDifficulty.toLowerCase()}">${safeDifficulty}</span>
+            <div class="movie-card-play-hover" aria-hidden="true">
               <i class="ph ph-play-fill"></i>
             </div>
           </div>
           <div class="movie-card-meta">
-            <h4 class="movie-card-title">${scene.title}</h4>
+            <h4 class="movie-card-title">${safeTitle}</h4>
             <div class="movie-card-info">
-              <span><i class="ph ph-chat-circle-dots"></i> ${scene.dialogues.length} ta dialog</span>
-              <span><i class="ph ph-clock"></i> ${scene.duration}</span>
+              <span><i class="ph ph-chat-circle-dots" aria-hidden="true"></i> ${scene.dialogues.length} ta dialog</span>
+              <span><i class="ph ph-clock" aria-hidden="true"></i> ${safeDuration}</span>
             </div>
-            <button class="movie-card-btn" data-scene-id="${scene.id}">
-              <i class="ph ph-play"></i> Mashq qilish
+            <div class="landing-movie-card-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${realPct}" aria-label="${safeTitle} progress">
+              <div class="landing-movie-card-progress-fill" style="width: ${realPct}%"></div>
+            </div>
+            <span class="landing-continue-progress-label">${realPct}% • ${safeMovieName}</span>
+            <button class="movie-card-btn" data-scene-id="${escapeHtml(scene.id)}" aria-label="${safeTitle} darsini mashq qilish">
+              <i class="ph ph-play" aria-hidden="true"></i> Mashq qilish
             </button>
           </div>
         </div>
@@ -368,6 +423,12 @@ export class LandingView {
             ${featuredScenesHtml}
           </div>
 
+          ${continueCardHtml ? `
+          <div style="margin-top: 1.75rem;">
+            ${continueCardHtml}
+          </div>
+          ` : ''}
+
           <div class="landing-catalog-cta">
             <button class="landing-btn-large landing-btn-secondary" id="landingCatalogAllBtn">
               <i class="ph ph-squares-four"></i> Barcha 100+ lavhalarni ko'rish (Dashboard)
@@ -387,9 +448,9 @@ export class LandingView {
 
           <div class="landing-faq-accordion">
             <div class="faq-item active">
-              <button class="faq-question">
+              <button class="faq-question" aria-expanded="true">
                 <span>Tinglov orqali ingliz tilini o'rganish qanchalik samarali?</span>
-                <i class="ph ph-caret-down faq-caret"></i>
+                <i class="ph ph-caret-down faq-caret" aria-hidden="true"></i>
               </button>
               <div class="faq-answer">
                 <p>
@@ -399,9 +460,9 @@ export class LandingView {
             </div>
 
             <div class="faq-item">
-              <button class="faq-question">
+              <button class="faq-question" aria-expanded="false">
                 <span>Platformadan foydalanish bepulmi?</span>
-                <i class="ph ph-caret-down faq-caret"></i>
+                <i class="ph ph-caret-down faq-caret" aria-hidden="true"></i>
               </button>
               <div class="faq-answer">
                 <p>
@@ -411,9 +472,9 @@ export class LandingView {
             </div>
 
             <div class="faq-item">
-              <button class="faq-question">
+              <button class="faq-question" aria-expanded="false">
                 <span>Boshlang'ich (A1-A2) darajadagilar ham foydalana oladimi?</span>
-                <i class="ph ph-caret-down faq-caret"></i>
+                <i class="ph ph-caret-down faq-caret" aria-hidden="true"></i>
               </button>
               <div class="faq-answer">
                 <p>
@@ -423,9 +484,9 @@ export class LandingView {
             </div>
 
             <div class="faq-item">
-              <button class="faq-question">
+              <button class="faq-question" aria-expanded="false">
                 <span>Smartfon yoki planshetda ham ishlaydimi?</span>
-                <i class="ph ph-caret-down faq-caret"></i>
+                <i class="ph ph-caret-down faq-caret" aria-hidden="true"></i>
               </button>
               <div class="faq-answer">
                 <p>
@@ -435,9 +496,9 @@ export class LandingView {
             </div>
 
             <div class="faq-item">
-              <button class="faq-question">
+              <button class="faq-question" aria-expanded="false">
                 <span>Qanday qilib mashq qilishni boshlayman?</span>
-                <i class="ph ph-caret-down faq-caret"></i>
+                <i class="ph ph-caret-down faq-caret" aria-hidden="true"></i>
               </button>
               <div class="faq-answer">
                 <p>
@@ -486,9 +547,9 @@ export class LandingView {
                 Kino va multfilmlar orqali ingliz tilini eshitib tushunishni o'rgatuvchi zamonaviy interaktiv platforma.
               </p>
               <div class="footer-socials">
-                <a href="https://t.me/tinglov" target="_blank" class="social-link" title="Telegram"><i class="ph ph-telegram-logo"></i></a>
-                <a href="https://instagram.com" target="_blank" class="social-link" title="Instagram"><i class="ph ph-instagram-logo"></i></a>
-                <a href="https://youtube.com" target="_blank" class="social-link" title="YouTube"><i class="ph ph-youtube-logo"></i></a>
+                <a href="https://t.me/tinglov" target="_blank" rel="noopener" class="social-link" title="Telegram" aria-label="Telegram kanalimiz"><i class="ph ph-telegram-logo" aria-hidden="true"></i></a>
+                <a href="https://instagram.com" target="_blank" rel="noopener" class="social-link" title="Instagram" aria-label="Instagram sahifamiz"><i class="ph ph-instagram-logo" aria-hidden="true"></i></a>
+                <a href="https://youtube.com" target="_blank" rel="noopener" class="social-link" title="YouTube" aria-label="YouTube kanalimiz"><i class="ph ph-youtube-logo" aria-hidden="true"></i></a>
               </div>
             </div>
 
@@ -577,15 +638,30 @@ export class LandingView {
       });
     });
 
-    // FAQ Accordion toggles
+    // Continue-learning hero card (real progress from lastPositions)
+    this.container.querySelectorAll<HTMLElement>('[data-continue-scene-id]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const sceneId = btn.dataset.continueSceneId;
+        if (sceneId) {
+          this.callbacks?.onOpenPractice(sceneId);
+        }
+      });
+    });
+
+    // FAQ Accordion toggles (keeps aria-expanded in sync for SR users)
     const faqItems = this.container.querySelectorAll<HTMLElement>('.faq-item');
     faqItems.forEach((item) => {
-      const questionBtn = item.querySelector('.faq-question');
+      const questionBtn = item.querySelector<HTMLElement>('.faq-question');
       questionBtn?.addEventListener('click', () => {
         const isActive = item.classList.contains('active');
-        faqItems.forEach(f => f.classList.remove('active'));
+        faqItems.forEach(f => {
+          f.classList.remove('active');
+          f.querySelector('.faq-question')?.setAttribute('aria-expanded', 'false');
+        });
         if (!isActive) {
           item.classList.add('active');
+          questionBtn.setAttribute('aria-expanded', 'true');
         }
       });
     });

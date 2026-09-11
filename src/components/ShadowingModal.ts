@@ -1,21 +1,65 @@
+// internal
 import { DialogueSentence, Scene } from '../types';
+import { BaseModal } from './BaseModal';
 import { speechService } from '../services/speechService';
 import { soundEffects } from '../services/soundEffects';
 import { evaluatePronunciation, PronunciationAssessment } from '../services/pronunciationService';
 import { escapeHtml } from '../utils/sanitize';
 
-// Browser Web Speech Recognition interface polyfill
-interface IWindow extends Window {
-  webkitSpeechRecognition?: any;
-  SpeechRecognition?: any;
+// Browser Web Speech Recognition interfaces (lib.dom'da hozircha yo'q —
+// minimal lokal tip berish, `any` ishlatmasdan).
+interface SpeechRecognitionAlternativeLike {
+  transcript: string;
+  confidence: number;
 }
 
-export class ShadowingModal {
-  private container: HTMLElement;
+interface SpeechRecognitionResultLike {
+  readonly length: number;
+  readonly isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternativeLike;
+}
+
+interface SpeechRecognitionResultListLike {
+  readonly length: number;
+  [index: number]: SpeechRecognitionResultLike;
+}
+
+interface SpeechRecognitionEventLike {
+  resultIndex: number;
+  results: SpeechRecognitionResultListLike;
+}
+
+interface SpeechRecognitionErrorEventLike {
+  error: string;
+  message?: string;
+}
+
+interface SpeechRecognitionLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+interface IWindow extends Window {
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  SpeechRecognition?: SpeechRecognitionConstructor;
+}
+
+export class ShadowingModal extends BaseModal {
   private currentScene: Scene | null = null;
   private currentSentence: DialogueSentence | null = null;
   private sentenceIndex: number = 0;
-  private recognition: any = null;
+  private recognition: SpeechRecognitionLike | null = null;
   private isListening: boolean = false;
   private recordingStartTime: number = 0;
   private transcript: string = '';
@@ -24,7 +68,7 @@ export class ShadowingModal {
   private onPassedCallback: ((score: number) => void) | null = null;
 
   constructor(container: HTMLElement) {
-    this.container = container;
+    super(container);
     this.initSpeechRecognition();
   }
 
@@ -61,22 +105,17 @@ export class ShadowingModal {
     this.sentenceIndex = index;
     this.transcript = '';
     this.isListening = false;
+    this.markOpened();
     this.render();
   }
 
-  public close(): void {
+  public override close(): void {
     this.stopListening();
-    const backdrop = this.container.querySelector('.modal-backdrop');
-    if (backdrop) {
-      backdrop.classList.add('modal-closing');
-      setTimeout(() => {
-        this.container.innerHTML = '';
-        this.onCloseCallback?.();
-      }, 260);
-    } else {
-      this.container.innerHTML = '';
-      this.onCloseCallback?.();
-    }
+    super.close();
+  }
+
+  protected override onAfterClose(): void {
+    this.onCloseCallback?.();
   }
 
   private startListening(): void {
@@ -94,7 +133,7 @@ export class ShadowingModal {
       this.updateMicUiState('recording');
     };
 
-    this.recognition.onresult = (event: any) => {
+    this.recognition.onresult = (event: SpeechRecognitionEventLike) => {
       let finalTranscript = '';
       let interimTranscript = '';
 
@@ -111,7 +150,7 @@ export class ShadowingModal {
       this.updateLiveTranscription(activeText);
     };
 
-    this.recognition.onerror = (event: any) => {
+    this.recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
       this.isListening = false;
       this.updateMicUiState('idle');
       
@@ -154,9 +193,10 @@ export class ShadowingModal {
       this.recognition.start();
     } catch {
       // In case already started, restart
+      const rec = this.recognition;
       try {
-        this.recognition.stop();
-        setTimeout(() => this.recognition.start(), 150);
+        rec.stop();
+        setTimeout(() => rec.start(), 150);
       } catch {
         this.isListening = false;
       }
@@ -435,11 +475,7 @@ export class ShadowingModal {
   }
 
   private bindEvents(): void {
-    this.container.querySelector('#shadowingModalBackdrop')?.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).id === 'shadowingModalBackdrop') {
-        this.close();
-      }
-    });
+    this.bindBackdropClose('shadowingModalBackdrop');
 
     this.container.querySelector('#closeShadowingModalBtn')?.addEventListener('click', () => this.close());
     this.container.querySelector('#shadowingSkipSentenceBtn')?.addEventListener('click', () => this.close());

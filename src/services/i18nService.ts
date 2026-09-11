@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import { APP_LANGUAGE_KEY as LANG_STORAGE_KEY } from './storageKeys';
 
 export type AppLanguage = 'uz' | 'en' | 'ru';
 
@@ -577,8 +578,6 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationDictionary> = {
     shareViaTelegram: 'Отправить в Telegram'
   }
 };
-
-const LANG_STORAGE_KEY = 'movielisten_app_language';
 
 class I18nService {
   private currentLang: AppLanguage = 'uz';

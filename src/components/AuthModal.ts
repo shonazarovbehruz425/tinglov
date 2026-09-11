@@ -1,29 +1,27 @@
+// internal
 import { apiService, AuthUser } from '../services/apiService';
 import { soundEffects } from '../services/soundEffects';
-import { storageService } from '../services/storageService';
-import { escapeHtml } from '../utils/sanitize';
-import { safeValidate, registerSchema, loginSchema } from '../utils/validation';
-import { getCsrfToken, validateCsrfToken } from '../utils/csrf';
-import {
-  getClientAuthStatus,
-  recordClientAuthFailure,
-  resetClientAuthFailures,
-  getCaptchaChallenge,
-  verifyCaptchaClient,
-  CaptchaData
-} from '../utils/rateLimiter';
+import { getCsrfToken } from '../utils/csrf';
+import { BaseModal } from './BaseModal';
+import { AuthFormHelper, AUTH_CAPTCHA_ERROR } from './auth/authFormLogic';
 
-export class AuthModal {
-  private container: HTMLElement;
-  private isOpen: boolean = false;
+export class AuthModal extends BaseModal {
   private activeTab: 'login' | 'register' = 'login';
   private isMandatory: boolean = true;
   private onAuthSuccessCallback: ((user: AuthUser) => void) | null = null;
-  private currentCaptcha: CaptchaData | null = null;
-  private cooldownInterval: number | null = null;
+  private form: AuthFormHelper;
 
   constructor(container: HTMLElement) {
-    this.container = container;
+    super(container);
+    this.backdropSelector = '.auth-modal-backdrop';
+    this.form = new AuthFormHelper(container, {
+      alertBoxId: 'authAlertBox',
+      captchaGroupId: 'loginCaptchaGroup',
+      captchaQuestionId: 'loginCaptchaQuestion',
+      captchaAnswerId: 'loginCaptchaAnswer',
+      errorIconClass: 'ph-warning-circle',
+      successIconClass: 'ph-check-circle-fill',
+    });
   }
 
   public setOnAuthSuccess(callback: (user: AuthUser) => void): void {
@@ -31,32 +29,20 @@ export class AuthModal {
   }
 
   public open(initialTab: 'login' | 'register' = 'login', mandatory: boolean = true): void {
-    this.isOpen = true;
+    this.markOpened();
     this.activeTab = initialTab;
     this.isMandatory = mandatory;
     this.render();
     soundEffects.playKeyClick();
   }
 
-  public close(force: boolean = false): void {
+  public override close(force: boolean = false): void {
     if (this.isMandatory && !apiService.isAuthenticated() && !force) {
       soundEffects.triggerErrorFeedback();
       return;
     }
-    if (this.cooldownInterval) {
-      window.clearInterval(this.cooldownInterval);
-      this.cooldownInterval = null;
-    }
-    this.isOpen = false;
-    const backdrop = this.container.querySelector('.auth-modal-backdrop');
-    if (backdrop) {
-      backdrop.classList.add('modal-closing');
-      setTimeout(() => {
-        this.container.innerHTML = '';
-      }, 260);
-    } else {
-      this.container.innerHTML = '';
-    }
+    this.form.dispose();
+    super.close();
   }
 
   private switchTab(tab: 'login' | 'register'): void {
@@ -280,85 +266,8 @@ export class AuthModal {
     `;
   }
 
-  private showAlert(message: string, type: 'error' | 'success'): void {
-    const alertBox = this.container.querySelector<HTMLElement>('#authAlertBox');
-    if (!alertBox) return;
-
-    alertBox.className = `auth-alert-box ${type}`;
-    alertBox.style.display = 'flex';
-    alertBox.innerHTML = `
-      <i class="ph ph-${type === 'error' ? 'warning-circle' : 'check-circle-fill'}"></i>
-      <span>${escapeHtml(message)}</span>
-    `;
-  }
-
-  private clearAlert(): void {
-    const alertBox = this.container.querySelector<HTMLElement>('#authAlertBox');
-    if (alertBox) {
-      alertBox.style.display = 'none';
-      alertBox.innerHTML = '';
-    }
-  }
-
-  private setBtnLoading(btn: HTMLButtonElement | null, isLoading: boolean, defaultText: string): void {
-    if (!btn) return;
-    btn.disabled = isLoading;
-    if (isLoading) {
-      btn.innerHTML = `<i class="ph ph-spinner-gap auth-spinner"></i> <span>Iltimos, kuting...</span>`;
-    } else {
-      btn.innerHTML = `<span class="btn-text">${defaultText}</span> <i class="ph ph-arrow-right"></i>`;
-    }
-  }
-
-  private async loadCaptcha(): Promise<void> {
-    const group = this.container.querySelector<HTMLElement>('#loginCaptchaGroup');
-    const questionEl = this.container.querySelector<HTMLElement>('#loginCaptchaQuestion');
-    const answerInput = this.container.querySelector<HTMLInputElement>('#loginCaptchaAnswer');
-    if (!group || !questionEl) return;
-
-    this.currentCaptcha = await getCaptchaChallenge();
-    questionEl.textContent = this.currentCaptcha.question;
-    group.style.display = 'block';
-    if (answerInput) {
-      answerInput.value = '';
-    }
-  }
-
-  private startCooldown(btn: HTMLButtonElement | null, seconds: number, defaultText: string): void {
-    if (!btn || seconds <= 0) return;
-    if (this.cooldownInterval) {
-      window.clearInterval(this.cooldownInterval);
-      this.cooldownInterval = null;
-    }
-
-    let remaining = seconds;
-    btn.disabled = true;
-    btn.innerHTML = `<i class="ph ph-hourglass-simple"></i> <span>Kuting: ${remaining}s</span>`;
-
-    this.cooldownInterval = window.setInterval(() => {
-      remaining--;
-      if (remaining <= 0) {
-        if (this.cooldownInterval) {
-          window.clearInterval(this.cooldownInterval);
-          this.cooldownInterval = null;
-        }
-        btn.disabled = false;
-        btn.innerHTML = `<span class="btn-text">${defaultText}</span> <i class="ph ph-arrow-right"></i>`;
-      } else {
-        btn.innerHTML = `<i class="ph ph-hourglass-simple"></i> <span>Kuting: ${remaining}s</span>`;
-      }
-    }, 1000);
-  }
-
   private bindEvents(): void {
-    // Backdrop click to close
-    this.container.querySelector('#authModalBackdrop')?.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).id === 'authModalBackdrop') {
-        if (!this.isMandatory || apiService.isAuthenticated()) {
-          this.close();
-        }
-      }
-    });
+    this.bindBackdropClose('authModalBackdrop', () => !this.isMandatory || apiService.isAuthenticated());
 
     // Close button
     this.container.querySelector('#authModalCloseBtn')?.addEventListener('click', () => {
@@ -385,34 +294,28 @@ export class AuthModal {
     });
 
     // Password visibility toggle
-    this.setupPasswordToggle('loginPassword', 'loginPwToggle');
-    this.setupPasswordToggle('registerPassword', 'registerPwToggle');
+    this.form.setupPasswordToggle('loginPassword', 'loginPwToggle');
+    this.form.setupPasswordToggle('registerPassword', 'registerPwToggle');
 
     // Captcha refresh button
     this.container.querySelector('#loginCaptchaRefreshBtn')?.addEventListener('click', () => {
-      this.loadCaptcha();
+      void this.form.loadCaptcha();
     });
 
     // Check initial rate limit status
     const submitBtn = this.container.querySelector<HTMLButtonElement>('#loginSubmitBtn');
-    const initialStatus = getClientAuthStatus();
-    if (initialStatus.requiresCaptcha) {
-      this.loadCaptcha();
-    }
-    if (initialStatus.cooldownRemainingSec > 0) {
-      this.startCooldown(submitBtn, initialStatus.cooldownRemainingSec, 'Kirish');
-    }
+    this.form.applyInitialAuthStatus(submitBtn, 'Kirish');
 
     // Login submit
     const loginForm = this.container.querySelector<HTMLFormElement>('#loginForm');
     loginForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      this.clearAlert();
+      this.form.clearAlert();
 
-      const status = getClientAuthStatus();
-      if (status.cooldownRemainingSec > 0) {
+      const cooldown = this.form.checkCooldown();
+      if (cooldown.blocked) {
         soundEffects.triggerErrorFeedback();
-        this.showAlert(`Iltimos, qayta urinishdan oldin ${status.cooldownRemainingSec} soniya kuting.`, 'error');
+        this.form.showAlert(cooldown.message, 'error');
         return;
       }
 
@@ -422,61 +325,52 @@ export class AuthModal {
       if (!idInput || !pwInput) return;
 
       const captchaInput = this.container.querySelector<HTMLInputElement>('#loginCaptchaAnswer');
-      if (status.requiresCaptcha || this.currentCaptcha) {
-        const captchaAnswer = captchaInput?.value?.trim() || '';
-        if (!this.currentCaptcha || !verifyCaptchaClient(this.currentCaptcha, captchaAnswer)) {
-          soundEffects.triggerErrorFeedback();
-          this.showAlert('Xavfsizlik kodi (CAPTCHA) noto‘g‘ri yoki kiritilmadi. Qaytadan yeching.', 'error');
-          await this.loadCaptcha();
-          return;
-        }
+      const captchaResult = await this.form.runCaptchaFlow(
+        captchaInput?.value?.trim() || '',
+        cooldown.status,
+      );
+      if (!captchaResult.ok) {
+        soundEffects.triggerErrorFeedback();
+        this.form.showAlert(captchaResult.error || AUTH_CAPTCHA_ERROR, 'error');
+        return;
       }
 
-      const validation = safeValidate(loginSchema, {
-        identifier: idInput.value,
-        password: pwInput.value,
-      });
+      const validation = this.form.validateLoginInput(idInput.value, pwInput.value);
 
       if (!validation.success) {
         soundEffects.triggerErrorFeedback();
-        this.showAlert(validation.error, 'error');
+        this.form.showAlert(validation.error, 'error');
         return;
       }
 
       const csrfInput = this.container.querySelector<HTMLInputElement>('#loginCsrfToken');
-      if (!validateCsrfToken(csrfInput?.value)) {
+      if (!this.form.validateCsrfTokenValue(csrfInput?.value)) {
         soundEffects.triggerErrorFeedback();
-        this.showAlert('CSRF xavfsizlik tokeni tasdiqlanmadi. Iltimos, sahifani yangilang.', 'error');
+        this.form.showAlert('CSRF xavfsizlik tokeni tasdiqlanmadi. Iltimos, sahifani yangilang.', 'error');
         return;
       }
 
-      this.setBtnLoading(submitBtn, true, 'Kirish');
+      this.form.setButtonLoading(submitBtn, true, 'Kirish');
       const result = await apiService.login({
         identifier: idInput.value,
         password: pwInput.value,
         csrfToken: csrfInput?.value,
-        captchaToken: this.currentCaptcha?.token,
+        captchaToken: this.form.captcha?.token,
         captchaAnswer: captchaInput?.value?.trim(),
       });
-      this.setBtnLoading(submitBtn, false, 'Kirish');
+      this.form.setButtonLoading(submitBtn, false, 'Kirish');
 
       if (result.error) {
         soundEffects.triggerErrorFeedback();
-        const updatedStatus = recordClientAuthFailure(result.retryAfter);
-        if (updatedStatus.requiresCaptcha || result.requiresCaptcha) {
-          await this.loadCaptcha();
-        }
-        if (updatedStatus.cooldownRemainingSec > 0) {
-          this.startCooldown(submitBtn, updatedStatus.cooldownRemainingSec, 'Kirish');
-        }
-        this.showAlert(result.error, 'error');
+        await this.form.applyLoginFailure(result, submitBtn, 'Kirish');
+        this.form.showAlert(result.error, 'error');
       } else if (result.user) {
-        resetClientAuthFailures();
+        this.form.resetAuthFailures();
         soundEffects.playLevelUp();
-        this.showAlert('Muvaffaqiyatli kirdingiz! Ma‘lumotlar yuklanmoqda...', 'success');
+        this.form.showAlert('Muvaffaqiyatli kirdingiz! Ma‘lumotlar yuklanmoqda...', 'success');
 
         // Sync local stats with cloud
-        this.syncUserOnAuth(result.user);
+        this.form.syncUserOnAuth(result.user);
 
         setTimeout(() => {
           this.close(true);
@@ -489,7 +383,7 @@ export class AuthModal {
     const registerForm = this.container.querySelector<HTMLFormElement>('#registerForm');
     registerForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      this.clearAlert();
+      this.form.clearAlert();
 
       const nameInput = this.container.querySelector<HTMLInputElement>('#registerFullName');
       const userInput = this.container.querySelector<HTMLInputElement>('#registerUsername');
@@ -499,27 +393,27 @@ export class AuthModal {
 
       if (!userInput || !emailInput || !pwInput) return;
 
-      const validation = safeValidate(registerSchema, {
-        fullName: nameInput?.value,
-        username: userInput.value,
-        email: emailInput.value,
-        password: pwInput.value,
-      });
+      const validation = this.form.validateRegisterInput(
+        nameInput?.value,
+        userInput.value,
+        emailInput.value,
+        pwInput.value,
+      );
 
       if (!validation.success) {
         soundEffects.triggerErrorFeedback();
-        this.showAlert(validation.error, 'error');
+        this.form.showAlert(validation.error, 'error');
         return;
       }
 
       const csrfInput = this.container.querySelector<HTMLInputElement>('#registerCsrfToken');
-      if (!validateCsrfToken(csrfInput?.value)) {
+      if (!this.form.validateCsrfTokenValue(csrfInput?.value)) {
         soundEffects.triggerErrorFeedback();
-        this.showAlert('CSRF xavfsizlik tokeni tasdiqlanmadi. Iltimos, sahifani yangilang.', 'error');
+        this.form.showAlert('CSRF xavfsizlik tokeni tasdiqlanmadi. Iltimos, sahifani yangilang.', 'error');
         return;
       }
 
-      this.setBtnLoading(submitBtn, true, 'Akkaunt yaratish');
+      this.form.setButtonLoading(submitBtn, true, 'Akkaunt yaratish');
       const result = await apiService.register({
         fullName: nameInput?.value,
         username: userInput.value,
@@ -527,54 +421,22 @@ export class AuthModal {
         password: pwInput.value,
         csrfToken: csrfInput?.value,
       });
-      this.setBtnLoading(submitBtn, false, 'Akkaunt yaratish');
+      this.form.setButtonLoading(submitBtn, false, 'Akkaunt yaratish');
 
       if (result.error) {
         soundEffects.triggerErrorFeedback();
-        this.showAlert(result.error, 'error');
+        this.form.showAlert(result.error, 'error');
       } else if (result.user) {
         soundEffects.playLevelUp();
-        this.showAlert('Tabriklaymiz! Akkauntingiz muvaffaqiyatli yaratildi.', 'success');
+        this.form.showAlert('Tabriklaymiz! Akkauntingiz muvaffaqiyatli yaratildi.', 'success');
 
-        this.syncUserOnAuth(result.user);
+        this.form.syncUserOnAuth(result.user);
 
         setTimeout(() => {
           this.close(true);
           this.onAuthSuccessCallback?.(result.user!);
         }, 700);
       }
-    });
-  }
-
-  private setupPasswordToggle(inputId: string, btnId: string): void {
-    const input = this.container.querySelector<HTMLInputElement>(`#${inputId}`);
-    const btn = this.container.querySelector<HTMLButtonElement>(`#${btnId}`);
-    if (!input || !btn) return;
-
-    btn.addEventListener('click', () => {
-      const isPw = input.type === 'password';
-      input.type = isPw ? 'text' : 'password';
-      btn.innerHTML = `<i class="ph ph-${isPw ? 'eye-slash' : 'eye'}"></i>`;
-    });
-  }
-
-  private syncUserOnAuth(user: AuthUser): void {
-    apiService.getMe().then((data) => {
-      if (data) {
-        storageService.syncWithServer(data);
-      } else {
-        storageService.syncWithServer({
-          user,
-          savedWords: [],
-          completedScenes: [],
-        });
-      }
-    }).catch(() => {
-      storageService.syncWithServer({
-        user,
-        savedWords: [],
-        completedScenes: [],
-      });
     });
   }
 }

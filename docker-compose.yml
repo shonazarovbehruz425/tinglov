@@ -1,0 +1,61 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tinglov-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DATABASE_PATH: /data/tinglov.db
+      ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_at_least_32_chars_long_for_local}
+      CAPTCHA_SECRET: ${CAPTCHA_SECRET:-dev_captcha_secret_16_chars}
+      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+      VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
+      ADMIN_PATH: ${ADMIN_PATH:-/admin}
+      VITE_ADMIN_PATH: ${VITE_ADMIN_PATH:-/admin}
+      CLOUDFLARE_R2_URL: ${CLOUDFLARE_R2_URL:-}
+      RENDER_EXTERNAL_URL: ${RENDER_EXTERNAL_URL:-http://localhost:3000}
+    volumes:
+      - tinglov-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/health || wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - tinglov-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: tinglov-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - tinglov-net
+
+volumes:
+  tinglov-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  tinglov-net:
+    driver: bridge

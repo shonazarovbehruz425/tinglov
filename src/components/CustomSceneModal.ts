@@ -1,17 +1,17 @@
+// internal
 import { Scene, DialogueSentence, Difficulty } from '../types';
+import { BaseModal } from './BaseModal';
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
 import { sanitizeUrl } from '../utils/sanitize';
 import { safeValidate, customSceneSchema } from '../utils/validation';
 
-export class CustomSceneModal {
-  private container: HTMLElement;
+export class CustomSceneModal extends BaseModal {
   private onCloseCallback: (() => void) | null = null;
   private onCreatedCallback: ((scene: Scene) => void) | null = null;
-  private isClosing = false;
 
   constructor(container: HTMLElement) {
-    this.container = container;
+    super(container);
   }
 
   public setCallbacks(callbacks: {
@@ -26,24 +26,13 @@ export class CustomSceneModal {
     // Ignore clicks while the closing animation is still pending — the deferred
     // cleanup below would otherwise wipe a freshly rendered modal.
     if (this.isClosing) return;
+    this.markOpened();
+    this.enableEscapeClose();
     this.render();
   }
 
-  public close(): void {
-    if (this.isClosing) return;
-    const backdrop = this.container.querySelector('.modal-backdrop');
-    if (backdrop) {
-      this.isClosing = true;
-      backdrop.classList.add('modal-closing');
-      setTimeout(() => {
-        this.container.innerHTML = '';
-        this.isClosing = false;
-        this.onCloseCallback?.();
-      }, 260);
-    } else {
-      this.container.innerHTML = '';
-      this.onCloseCallback?.();
-    }
+  protected override onAfterClose(): void {
+    this.onCloseCallback?.();
   }
 
   private render(): void {
@@ -127,11 +116,7 @@ export class CustomSceneModal {
   }
 
   private bindEvents(): void {
-    this.container.querySelector('#customSceneModalBackdrop')?.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).id === 'customSceneModalBackdrop') {
-        this.close();
-      }
-    });
+    this.bindBackdropClose('customSceneModalBackdrop');
 
     this.container.querySelector('#closeCustomModalBtn')?.addEventListener('click', () => this.close());
     this.container.querySelector('#cancelCustomSceneBtn')?.addEventListener('click', () => this.close());
@@ -262,7 +247,7 @@ export class CustomSceneModal {
         movieName,
         coverEmoji: '🎬',
         difficulty: 'beginner' as Difficulty,
-        category: validatedData.category as any,
+        category: validatedData.category as Scene['category'],
         duration: `${Math.ceil((dialogues.length * 4) / 60)} min`,
         accent: 'American',
         videoUrl: resolvedVideoUrl,

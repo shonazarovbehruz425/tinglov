@@ -1,11 +1,8 @@
+// internal
 import { UserStats, SavedWord, Scene, HighScoreRecord, ChallengePayload, getLevelProgress } from '../types';
 import { INITIAL_SCENES } from '../data/scenes';
-import { apiService, MeResponse } from './apiService';
-
-const STATS_KEY = 'lingua_movie_user_stats';
-const CUSTOM_SCENES_KEY = 'lingua_movie_custom_scenes';
-const HIGH_SCORES_KEY = 'lingua_movie_scene_highscores';
-const PENDING_SYNC_KEY = 'lingua_movie_pending_sync';
+import { apiService, MeResponse, SyncProgressPayload } from './apiService';
+import { STATS_KEY, CUSTOM_SCENES_KEY, HIGH_SCORES_KEY, PENDING_SYNC_KEY } from './storageKeys';
 
 /**
  * Decodes legacy HTML-escaped values. Older builds stored userName/userHandle
@@ -26,7 +23,7 @@ export class StorageService {
   private stats: UserStats;
   private customScenes: Scene[];
   private highScores: Record<string, HighScoreRecord[]>; // sceneId -> HighScoreRecord[]
-  private syncDebounceTimer: any = null;
+  private syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private isSyncing = false;
 
   constructor() {
@@ -62,7 +59,7 @@ export class StorageService {
     try {
       const data = localStorage.getItem(STATS_KEY);
       if (data) {
-        const parsed = JSON.parse(data);
+        const parsed = JSON.parse(data) as Partial<UserStats>;
         // Normalize legacy/partial records so missing fields can never crash
         const merged: UserStats = {
           ...defaults,
@@ -460,7 +457,7 @@ export class StorageService {
 
     // 2. Merge completed scenes
     const serverSceneIds: string[] = serverData.completedSceneIds ||
-      (Array.isArray(serverData.completedScenes) ? serverData.completedScenes.map((s: any) => s.scene_id) : []);
+      (Array.isArray(serverData.completedScenes) ? serverData.completedScenes.map((s) => s.scene_id) : []);
 
     const mergedScenes = Array.from(new Set([...this.stats.completedScenes, ...serverSceneIds]));
     this.stats.completedScenes = mergedScenes;
@@ -468,7 +465,7 @@ export class StorageService {
 
     // 2.1 Merge last-viewed replica positions: local value wins when present
     // (it reflects the most recent activity), server fills in missing scenes.
-    const serverPositions = (serverData as any).lastPositions;
+    const serverPositions = serverData.lastPositions;
     if (serverPositions && typeof serverPositions === 'object' && !Array.isArray(serverPositions)) {
       if (!this.stats.lastPositions) {
         this.stats.lastPositions = {};
@@ -569,7 +566,7 @@ export class StorageService {
     }
   }
 
-  private savePendingSync(payload: any): void {
+  private savePendingSync(payload: SyncProgressPayload): void {
     try {
       localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(payload));
     } catch {}
@@ -585,7 +582,7 @@ export class StorageService {
     try {
       const raw = localStorage.getItem(PENDING_SYNC_KEY);
       if (!raw) return;
-      const payload = JSON.parse(raw);
+      const payload = JSON.parse(raw) as SyncProgressPayload;
       if (payload) {
         await apiService.syncProgress(payload);
         this.clearPendingSync();
@@ -601,7 +598,15 @@ export class StorageService {
 
     const lastDate = new Date(this.stats.lastActiveDate);
     const currentDate = new Date(today);
-    const diffTime = Math.abs(currentDate.getTime() - lastDate.getTime());
+
+    // Handle future dates: if lastActiveDate is in the future, don't increment streak
+    if (lastDate > currentDate) {
+      this.stats.lastActiveDate = today;
+      this.saveStats();
+      return;
+    }
+
+    const diffTime = currentDate.getTime() - lastDate.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays === 1) {

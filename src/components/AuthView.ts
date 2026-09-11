@@ -1,27 +1,23 @@
+// internal
 import { apiService, AuthUser } from '../services/apiService';
 import { soundEffects } from '../services/soundEffects';
-import { storageService } from '../services/storageService';
-import { escapeHtml } from '../utils/sanitize';
-import { safeValidate, registerSchema, loginSchema } from '../utils/validation';
-import { getCsrfToken, validateCsrfToken } from '../utils/csrf';
-import {
-  getClientAuthStatus,
-  recordClientAuthFailure,
-  resetClientAuthFailures,
-  getCaptchaChallenge,
-  verifyCaptchaClient,
-  CaptchaData
-} from '../utils/rateLimiter';
+import { getCsrfToken } from '../utils/csrf';
+import { AuthFormHelper, AUTH_CAPTCHA_ERROR } from './auth/authFormLogic';
 
 export class AuthView {
   private container: HTMLElement;
   private activeTab: 'login' | 'register' = 'login';
   private onAuthSuccessCallback: ((user: AuthUser) => void) | null = null;
-  private currentCaptcha: CaptchaData | null = null;
-  private cooldownInterval: number | null = null;
+  private form: AuthFormHelper;
 
   constructor(container: HTMLElement) {
     this.container = container;
+    this.form = new AuthFormHelper(container, {
+      alertBoxId: 'pageAuthAlertBox',
+      captchaGroupId: 'pageLoginCaptchaGroup',
+      captchaQuestionId: 'pageLoginCaptchaQuestion',
+      captchaAnswerId: 'pageLoginCaptchaAnswer',
+    });
   }
 
   public setOnAuthSuccess(callback: (user: AuthUser) => void): void {
@@ -308,72 +304,11 @@ export class AuthView {
   }
 
   public showAlert(msg: string, type: 'error' | 'success'): void {
-    const alertBox = this.container.querySelector<HTMLElement>('#pageAuthAlertBox');
-    if (!alertBox) return;
-    alertBox.className = `auth-page-alert ${type}`;
-    alertBox.innerHTML = `
-      <i class="ph ph-${type === 'error' ? 'warning-circle' : 'check-circle'}"></i>
-      <span>${escapeHtml(msg)}</span>
-    `;
-    alertBox.style.display = 'flex';
+    this.form.showAlert(msg, type);
   }
 
   private clearAlert(): void {
-    const alertBox = this.container.querySelector<HTMLElement>('#pageAuthAlertBox');
-    if (alertBox) {
-      alertBox.style.display = 'none';
-      alertBox.innerHTML = '';
-    }
-  }
-
-  private setBtnLoading(btn: HTMLButtonElement | null, isLoading: boolean, defaultText: string): void {
-    if (!btn) return;
-    btn.disabled = isLoading;
-    if (isLoading) {
-      btn.innerHTML = `<i class="ph ph-spinner-gap auth-spinner"></i> <span>Iltimos, kuting...</span>`;
-    } else {
-      btn.innerHTML = `<span class="btn-text">${defaultText}</span> <i class="ph ph-arrow-right"></i>`;
-    }
-  }
-
-  private async loadCaptcha(): Promise<void> {
-    const group = this.container.querySelector<HTMLElement>('#pageLoginCaptchaGroup');
-    const questionEl = this.container.querySelector<HTMLElement>('#pageLoginCaptchaQuestion');
-    const answerInput = this.container.querySelector<HTMLInputElement>('#pageLoginCaptchaAnswer');
-    if (!group || !questionEl) return;
-
-    this.currentCaptcha = await getCaptchaChallenge();
-    questionEl.textContent = this.currentCaptcha.question;
-    group.style.display = 'block';
-    if (answerInput) {
-      answerInput.value = '';
-    }
-  }
-
-  private startCooldown(btn: HTMLButtonElement | null, seconds: number, defaultText: string): void {
-    if (!btn || seconds <= 0) return;
-    if (this.cooldownInterval) {
-      window.clearInterval(this.cooldownInterval);
-      this.cooldownInterval = null;
-    }
-
-    let remaining = seconds;
-    btn.disabled = true;
-    btn.innerHTML = `<i class="ph ph-hourglass-simple"></i> <span>Kuting: ${remaining}s</span>`;
-
-    this.cooldownInterval = window.setInterval(() => {
-      remaining--;
-      if (remaining <= 0) {
-        if (this.cooldownInterval) {
-          window.clearInterval(this.cooldownInterval);
-          this.cooldownInterval = null;
-        }
-        btn.disabled = false;
-        btn.innerHTML = `<span class="btn-text">${defaultText}</span> <i class="ph ph-arrow-right"></i>`;
-      } else {
-        btn.innerHTML = `<i class="ph ph-hourglass-simple"></i> <span>Kuting: ${remaining}s</span>`;
-      }
-    }, 1000);
+    this.form.clearAlert();
   }
 
   public switchTab(tab: 'login' | 'register'): void {
@@ -481,23 +416,17 @@ export class AuthView {
     });
 
     // Password toggles
-    this.setupPasswordToggle('pageLoginPw', 'pageLoginPwToggle');
-    this.setupPasswordToggle('pageRegPw', 'pageRegPwToggle');
+    this.form.setupPasswordToggle('pageLoginPw', 'pageLoginPwToggle');
+    this.form.setupPasswordToggle('pageRegPw', 'pageRegPwToggle');
 
     // Captcha refresh button
     this.container.querySelector('#pageCaptchaRefreshBtn')?.addEventListener('click', () => {
-      this.loadCaptcha();
+      void this.form.loadCaptcha();
     });
 
     // Check initial rate limit status
     const submitBtn = this.container.querySelector<HTMLButtonElement>('#pageLoginSubmitBtn');
-    const initialStatus = getClientAuthStatus();
-    if (initialStatus.requiresCaptcha) {
-      this.loadCaptcha();
-    }
-    if (initialStatus.cooldownRemainingSec > 0) {
-      this.startCooldown(submitBtn, initialStatus.cooldownRemainingSec, 'Kirish');
-    }
+    this.form.applyInitialAuthStatus(submitBtn, 'Kirish');
 
     // Login submit
     const loginForm = this.container.querySelector<HTMLFormElement>('#pageLoginForm');
@@ -505,10 +434,10 @@ export class AuthView {
       e.preventDefault();
       this.clearAlert();
 
-      const status = getClientAuthStatus();
-      if (status.cooldownRemainingSec > 0) {
+      const cooldown = this.form.checkCooldown();
+      if (cooldown.blocked) {
         soundEffects.triggerErrorFeedback();
-        this.showAlert(`Iltimos, qayta urinishdan oldin ${status.cooldownRemainingSec} soniya kuting.`, 'error');
+        this.showAlert(cooldown.message, 'error');
         return;
       }
 
@@ -518,28 +447,25 @@ export class AuthView {
       if (!idInput || !pwInput) return;
 
       const captchaInput = this.container.querySelector<HTMLInputElement>('#pageLoginCaptchaAnswer');
-      if (status.requiresCaptcha || this.currentCaptcha) {
-        const captchaAnswer = captchaInput?.value?.trim() || '';
-        if (!this.currentCaptcha || !verifyCaptchaClient(this.currentCaptcha, captchaAnswer)) {
-          soundEffects.triggerErrorFeedback();
-          this.showAlert('Xavfsizlik kodi (CAPTCHA) noto‘g‘ri yoki kiritilmadi. Qaytadan yeching.', 'error');
-          await this.loadCaptcha();
-          return;
-        }
+      const captchaResult = await this.form.runCaptchaFlow(
+        captchaInput?.value?.trim() || '',
+        cooldown.status,
+      );
+      if (!captchaResult.ok) {
+        soundEffects.triggerErrorFeedback();
+        this.showAlert(captchaResult.error || AUTH_CAPTCHA_ERROR, 'error');
+        return;
       }
 
       const csrfInput = this.container.querySelector<HTMLInputElement>('#pageLoginCsrfToken');
       const csrfToken = csrfInput?.value || getCsrfToken();
-      if (!validateCsrfToken(csrfToken)) {
+      if (!this.form.validateCsrfTokenValue(csrfToken)) {
         soundEffects.triggerErrorFeedback();
         this.showAlert("Xavfsizlik tekshiruvidan o'tilmadi (CSRF token yaroqsiz). Iltimos, sahifani yangilang.", 'error');
         return;
       }
 
-      const validation = safeValidate(loginSchema, {
-        identifier: idInput.value,
-        password: pwInput.value,
-      });
+      const validation = this.form.validateLoginInput(idInput.value, pwInput.value);
 
       if (!validation.success) {
         soundEffects.triggerErrorFeedback();
@@ -547,31 +473,25 @@ export class AuthView {
         return;
       }
 
-      this.setBtnLoading(submitBtn, true, 'Kirish');
+      this.form.setButtonLoading(submitBtn, true, 'Kirish');
       const result = await apiService.login({
         identifier: idInput.value,
         password: pwInput.value,
         csrfToken,
-        captchaToken: this.currentCaptcha?.token,
+        captchaToken: this.form.captcha?.token,
         captchaAnswer: captchaInput?.value?.trim(),
       });
-      this.setBtnLoading(submitBtn, false, 'Kirish');
+      this.form.setButtonLoading(submitBtn, false, 'Kirish');
 
       if (result.error) {
         soundEffects.triggerErrorFeedback();
-        const updatedStatus = recordClientAuthFailure(result.retryAfter);
-        if (updatedStatus.requiresCaptcha || result.requiresCaptcha) {
-          await this.loadCaptcha();
-        }
-        if (updatedStatus.cooldownRemainingSec > 0) {
-          this.startCooldown(submitBtn, updatedStatus.cooldownRemainingSec, 'Kirish');
-        }
+        await this.form.applyLoginFailure(result, submitBtn, 'Kirish');
         this.showAlert(result.error, 'error');
       } else if (result.user) {
-        resetClientAuthFailures();
+        this.form.resetAuthFailures();
         soundEffects.playLevelUp();
         this.showAlert('Muvaffaqiyatli kirdingiz! Darslar ochilmoqda...', 'success');
-        this.syncUserOnAuth(result.user);
+        this.form.syncUserOnAuth(result.user);
 
         setTimeout(() => {
           this.onAuthSuccessCallback?.(result.user!);
@@ -595,18 +515,18 @@ export class AuthView {
 
       const csrfInput = this.container.querySelector<HTMLInputElement>('#pageRegisterCsrfToken');
       const csrfToken = csrfInput?.value || getCsrfToken();
-      if (!validateCsrfToken(csrfToken)) {
+      if (!this.form.validateCsrfTokenValue(csrfToken)) {
         soundEffects.triggerErrorFeedback();
         this.showAlert("Xavfsizlik tekshiruvidan o'tilmadi (CSRF token yaroqsiz). Iltimos, sahifani yangilang.", 'error');
         return;
       }
 
-      const validation = safeValidate(registerSchema, {
-        fullName: nameInput?.value,
-        username: userInput.value,
-        email: emailInput.value,
-        password: pwInput.value,
-      });
+      const validation = this.form.validateRegisterInput(
+        nameInput?.value,
+        userInput.value,
+        emailInput.value,
+        pwInput.value,
+      );
 
       if (!validation.success) {
         soundEffects.triggerErrorFeedback();
@@ -614,7 +534,7 @@ export class AuthView {
         return;
       }
 
-      this.setBtnLoading(submitBtn, true, 'Ro‘yxatdan o‘tish');
+      this.form.setButtonLoading(submitBtn, true, 'Ro‘yxatdan o‘tish');
       const result = await apiService.register({
         fullName: nameInput?.value,
         username: userInput.value,
@@ -622,7 +542,7 @@ export class AuthView {
         password: pwInput.value,
         csrfToken,
       });
-      this.setBtnLoading(submitBtn, false, 'Ro‘yxatdan o‘tish');
+      this.form.setButtonLoading(submitBtn, false, 'Ro‘yxatdan o‘tish');
 
       if (result.error) {
         soundEffects.triggerErrorFeedback();
@@ -630,44 +550,12 @@ export class AuthView {
       } else if (result.user) {
         soundEffects.playLevelUp();
         this.showAlert('Tabriklaymiz! Hisobingiz yaratildi.', 'success');
-        this.syncUserOnAuth(result.user);
+        this.form.syncUserOnAuth(result.user);
 
         setTimeout(() => {
           this.onAuthSuccessCallback?.(result.user!);
         }, 500);
       }
-    });
-  }
-
-  private setupPasswordToggle(inputId: string, btnId: string): void {
-    const input = this.container.querySelector<HTMLInputElement>(`#${inputId}`);
-    const btn = this.container.querySelector<HTMLButtonElement>(`#${btnId}`);
-    if (!input || !btn) return;
-
-    btn.addEventListener('click', () => {
-      const isPw = input.type === 'password';
-      input.type = isPw ? 'text' : 'password';
-      btn.innerHTML = `<i class="ph ph-${isPw ? 'eye-slash' : 'eye'}"></i>`;
-    });
-  }
-
-  private syncUserOnAuth(user: AuthUser): void {
-    apiService.getMe().then((data) => {
-      if (data) {
-        storageService.syncWithServer(data);
-      } else {
-        storageService.syncWithServer({
-          user,
-          savedWords: [],
-          completedScenes: [],
-        });
-      }
-    }).catch(() => {
-      storageService.syncWithServer({
-        user,
-        savedWords: [],
-        completedScenes: [],
-      });
     });
   }
 }

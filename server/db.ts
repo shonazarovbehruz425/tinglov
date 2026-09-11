@@ -6,6 +6,8 @@ export const db = new DatabaseSync(dbPath);
 
 // Enable WAL mode for better concurrency performance
 db.exec(`PRAGMA journal_mode = WAL;`);
+// Enforce foreign-key constraints (CASCADE deletes, referential integrity)
+db.exec(`PRAGMA foreign_keys = ON;`);
 
 // Create tables
 db.exec(`
@@ -59,6 +61,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_saved_words_user ON saved_words(user_id);
   CREATE INDEX IF NOT EXISTS idx_completed_scenes_user ON completed_scenes(user_id);
   CREATE INDEX IF NOT EXISTS idx_admin_scenes_created ON admin_scenes(created_at DESC);
+  -- Prevent XP farming via duplicate scene completions (one row per user+scene)
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_completed_scenes_user_scene ON completed_scenes(user_id, scene_id);
 `);
 
 // Safe migrations for auth_provider, uuid and last_positions
@@ -85,7 +89,10 @@ export interface DbUser {
   level: number;
   last_active_date: string | null;
   auth_provider?: 'google' | 'email';
-  last_positions?: string | null;
+  // After the `ALTER TABLE ... ADD COLUMN last_positions` migration every
+  // `SELECT *` row contains this column (SQL NULL is surfaced as `null`), so
+  // `undefined` is not a real state for rows read from the database.
+  last_positions: string | null;
   created_at: string;
 }
 
@@ -221,20 +228,29 @@ export function deleteUserWord(userId: number, word: string): void {
 
 export function getUserSavedWords(userId: number): DbSavedWord[] {
   const stmt = db.prepare(`SELECT * FROM saved_words WHERE user_id = ? ORDER BY created_at DESC`);
-  return stmt.all(userId) as DbSavedWord[];
+  return stmt.all(userId) as unknown as DbSavedWord[];
 }
 
 export function recordUserCompletedScene(userId: number, sceneId: string, accuracy: number, wpm: number): void {
+  const cleanAccuracy = Math.max(0, Math.min(100, Math.floor(Number(accuracy) || 0)));
+  const cleanWpm = Math.max(0, Math.min(300, Math.floor(Number(wpm) || 0)));
+  const cleanSceneId = String(sceneId || '').trim().slice(0, 120);
+  if (!cleanSceneId) return;
+  // UNIQUE(user_id, scene_id): keep best accuracy, latest wpm — no duplicate rows for XP farming
   const stmt = db.prepare(`
     INSERT INTO completed_scenes (user_id, scene_id, accuracy, wpm)
     VALUES (?, ?, ?, ?)
+    ON CONFLICT(user_id, scene_id) DO UPDATE SET
+      accuracy = MAX(completed_scenes.accuracy, excluded.accuracy),
+      wpm = excluded.wpm,
+      completed_at = CURRENT_TIMESTAMP
   `);
-  stmt.run(userId, sceneId, accuracy, wpm);
+  stmt.run(userId, cleanSceneId, cleanAccuracy, cleanWpm);
 }
 
 export function getUserCompletedScenes(userId: number): DbCompletedScene[] {
   const stmt = db.prepare(`SELECT * FROM completed_scenes WHERE user_id = ? ORDER BY completed_at DESC`);
-  return stmt.all(userId) as DbCompletedScene[];
+  return stmt.all(userId) as unknown as DbCompletedScene[];
 }
 
 export function getGlobalLeaderboard(limit = 10): Array<{
@@ -274,7 +290,9 @@ export interface DbAdminScene {
   created_at: string;
 }
 
-export function getAllUsers(search?: string): Array<Omit<DbUser, 'password_hash'>> {
+export function getAllUsers(search?: string, limit = 50, offset = 0): Array<Omit<DbUser, 'password_hash'>> {
+  const safeLimit = Math.max(1, Math.min(50, Math.floor(Number(limit) || 50)));
+  const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   if (search && search.trim()) {
     const term = `%${search.trim().toLowerCase()}%`;
     const stmt = db.prepare(`
@@ -282,15 +300,17 @@ export function getAllUsers(search?: string): Array<Omit<DbUser, 'password_hash'
       FROM users
       WHERE username LIKE ? OR email LIKE ? OR full_name LIKE ?
       ORDER BY id DESC
+      LIMIT ? OFFSET ?
     `);
-    return stmt.all(term, term, term) as Array<Omit<DbUser, 'password_hash'>>;
+    return stmt.all(term, term, term, safeLimit, safeOffset) as Array<Omit<DbUser, 'password_hash'>>;
   }
   const stmt = db.prepare(`
     SELECT id, uuid, username, email, full_name, avatar_color, xp, streak, level, last_active_date, auth_provider, created_at
     FROM users
     ORDER BY id DESC
+    LIMIT ? OFFSET ?
   `);
-  return stmt.all() as Array<Omit<DbUser, 'password_hash'>>;
+  return stmt.all(safeLimit, safeOffset) as Array<Omit<DbUser, 'password_hash'>>;
 }
 
 export function deleteUserById(id: number): boolean {
@@ -309,6 +329,22 @@ export function updateUserStatsAdmin(id: number, updates: { xp?: number; streak?
   stmt.run(xp, streak, level, id);
 }
 
+// In-memory cache for admin dashboard stats (TTL 30s)
+let cachedAdminStats: {
+  totalUsers: number;
+  usersToday: number;
+  totalSavedWords: number;
+  totalCompletedScenes: number;
+  totalCustomScenes: number;
+} | null = null;
+let cachedAdminStatsAt = 0;
+const ADMIN_STATS_TTL_MS = 30 * 1000;
+
+export function invalidateAdminStatsCache(): void {
+  cachedAdminStats = null;
+  cachedAdminStatsAt = 0;
+}
+
 export function getAdminStats(): {
   totalUsers: number;
   usersToday: number;
@@ -316,24 +352,31 @@ export function getAdminStats(): {
   totalCompletedScenes: number;
   totalCustomScenes: number;
 } {
+  const now = Date.now();
+  // Short TTL cache (30s) to avoid 5x COUNT(*) on every admin dashboard poll
+  if (cachedAdminStats && now - cachedAdminStatsAt < ADMIN_STATS_TTL_MS) {
+    return cachedAdminStats;
+  }
   const totalUsersRow = db.prepare(`SELECT COUNT(*) as count FROM users`).get() as { count: number };
   const usersTodayRow = db.prepare(`SELECT COUNT(*) as count FROM users WHERE date(created_at) = date('now')`).get() as { count: number };
   const savedWordsRow = db.prepare(`SELECT COUNT(*) as count FROM saved_words`).get() as { count: number };
   const completedScenesRow = db.prepare(`SELECT COUNT(*) as count FROM completed_scenes`).get() as { count: number };
   const customScenesRow = db.prepare(`SELECT COUNT(*) as count FROM admin_scenes`).get() as { count: number };
 
-  return {
+  cachedAdminStats = {
     totalUsers: totalUsersRow?.count || 0,
     usersToday: usersTodayRow?.count || 0,
     totalSavedWords: savedWordsRow?.count || 0,
     totalCompletedScenes: completedScenesRow?.count || 0,
     totalCustomScenes: customScenesRow?.count || 0,
   };
+  cachedAdminStatsAt = now;
+  return cachedAdminStats;
 }
 
 export function getAllAdminScenes(): DbAdminScene[] {
   const stmt = db.prepare(`SELECT * FROM admin_scenes ORDER BY created_at DESC`);
-  return stmt.all() as DbAdminScene[];
+  return stmt.all() as unknown as DbAdminScene[];
 }
 
 export function createAdminScene(scene: {
@@ -367,7 +410,7 @@ export function createAdminScene(scene: {
   );
 
   const getStmt = db.prepare(`SELECT * FROM admin_scenes WHERE id = ? LIMIT 1`);
-  return getStmt.get(scene.id) as DbAdminScene;
+  return (getStmt.get(scene.id) as DbAdminScene | undefined)!;
 }
 
 export function deleteAdminScene(id: string): boolean {

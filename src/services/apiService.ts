@@ -1,7 +1,14 @@
+// internal
 import { supabase } from './supabaseClient';
 import { safeValidate, registerSchema, loginSchema } from '../utils/validation';
 import { getCsrfHeaders, syncCsrfWithBackend, validateCsrfToken } from '../utils/csrf';
 import { videoStreamService } from './videoStreamService';
+import {
+  AUTH_TOKEN_KEY,
+  LEGACY_TOKEN_KEY,
+  USER_SESSION_KEY,
+  ADMIN_JWT_KEY,
+} from './storageKeys';
 
 export interface AuthUser {
   id: string | number;
@@ -34,7 +41,150 @@ export interface MeResponse {
   lastPositions?: Record<string, number>;
 }
 
-const TOKEN_KEY = 'tinglov_auth_token';
+export interface AdminUserDto {
+  id: string | number;
+  username: string;
+  email: string;
+  full_name: string;
+  avatar_color: string;
+  xp: number;
+  streak: number;
+  level: number;
+  created_at: string;
+  /** Supabase profiles saqtagan yangilanish vaqti (SQLite foydalanuvchilarida yo'q). */
+  updated_at?: string | null;
+  auth_provider?: 'google' | 'email';
+}
+
+export interface SupabaseIdentity {
+  provider?: string;
+}
+
+export interface SupabaseAuthUser {
+  /** Supabase UUID; qisman shakllarda (masalan, register oqimi) bo'lmasligi mumkin. */
+  id?: string;
+  email?: string | null;
+  created_at?: string;
+  app_metadata?: { provider?: string; [key: string]: unknown };
+  user_metadata?: {
+    username?: string;
+    full_name?: string;
+    avatar_color?: string;
+    [key: string]: unknown;
+  };
+  identities?: SupabaseIdentity[] | null;
+  access_token?: string;
+}
+
+export interface SavedWordRow {
+  id: string | number;
+  word: string;
+  translation: string | null;
+  scene_title: string | null;
+  [key: string]: unknown;
+}
+
+export interface CompletedSceneRow {
+  id: string | number;
+  scene_id: string;
+  accuracy: number;
+  wpm: number;
+  [key: string]: unknown;
+}
+
+export interface SupabaseProfileRow {
+  id: string;
+  username?: string | null;
+  email?: string | null;
+  full_name?: string | null;
+  avatar_color?: string | null;
+  xp?: number;
+  streak?: number;
+  level?: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+  raw_app_meta_data?: { provider?: string } | null;
+  identities?: SupabaseIdentity[] | null;
+  [key: string]: unknown;
+}
+
+export interface LeaderboardEntry {
+  id: string | number;
+  username: string;
+  full_name: string;
+  avatar_color: string;
+  xp: number;
+  streak: number;
+  level: number;
+}
+
+export interface SyncProgressResult {
+  success: boolean;
+  [key: string]: unknown;
+}
+
+/** `/api/user/sync` va offline pending-sync payload shakli. */
+export interface SyncProgressPayload {
+  xp?: number;
+  streak?: number;
+  level?: number;
+  lastActiveDate?: string;
+  savedWords?: Array<{ word: string; translation?: string; sceneTitle?: string }>;
+  completedScene?: { sceneId: string; accuracy?: number; wpm?: number };
+  completedScenes?: string[];
+  lastPositions?: Record<string, number>;
+  wordsCount?: number;
+}
+
+export interface AdminSystemInfo {
+  adminPath: string;
+  nodeVersion: string;
+  uptimeSeconds: number;
+  memoryRssMb: number;
+  memoryHeapUsedMb: number;
+  redisConfigured: boolean;
+  csrfProtection: boolean;
+  hstsProtection: boolean;
+  healthEndpoint: string;
+  keepAliveActive: boolean;
+}
+
+export interface AdminStatsResult {
+  success: boolean;
+  stats: {
+    totalUsers: number;
+    usersToday: number;
+    totalSavedWords: number;
+    totalCompletedScenes: number;
+    totalCustomScenes: number;
+  };
+  system: AdminSystemInfo;
+}
+
+/**
+ * `/api/admin/scenes` qaytaradigan SQLite `admin_scenes` satriga mos DTO.
+ * (server/db.ts: id/title/category/difficulty/video_url/poster_url/dialogues_json)
+ */
+export interface AdminSceneDto {
+  id: string;
+  title: string;
+  category?: string | null;
+  difficulty?: string | null;
+  video_url?: string | null;
+  poster_url?: string | null;
+  dialogues_json?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+/** `catch (e: unknown)` bloklari uchun xavfsiz xabar ajratish (logic bir xil). */
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'string' && error) return error;
+  return fallback;
+}
+
+
 
 class ApiService {
   private token: string | null = null;
@@ -74,13 +224,11 @@ class ApiService {
     return this.authReadyPromise;
   }
 
-  private static readonly USER_SESSION_KEY = 'tinglov_user_session';
-
   // Restore session from localStorage synchronously on startup
   private restoreCachedUser(): void {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
-        const raw = localStorage.getItem(ApiService.USER_SESSION_KEY);
+        const raw = localStorage.getItem(USER_SESSION_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed && parsed.id) {
@@ -99,9 +247,9 @@ class ApiService {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         if (user) {
-          localStorage.setItem(ApiService.USER_SESSION_KEY, JSON.stringify(user));
+          localStorage.setItem(USER_SESSION_KEY, JSON.stringify(user));
         } else {
-          localStorage.removeItem(ApiService.USER_SESSION_KEY);
+          localStorage.removeItem(USER_SESSION_KEY);
         }
       }
     } catch {
@@ -114,12 +262,13 @@ class ApiService {
     try {
       if (typeof window !== 'undefined') {
         if (window.sessionStorage) {
-          sessionStorage.removeItem(TOKEN_KEY);
-          sessionStorage.removeItem('tinglov_token');
+          sessionStorage.removeItem(AUTH_TOKEN_KEY);
+          sessionStorage.removeItem(LEGACY_TOKEN_KEY);
+          sessionStorage.removeItem(ADMIN_JWT_KEY);
         }
         if (window.localStorage) {
-          localStorage.removeItem(TOKEN_KEY);
-          localStorage.removeItem('tinglov_token');
+          localStorage.removeItem(AUTH_TOKEN_KEY);
+          localStorage.removeItem(LEGACY_TOKEN_KEY);
         }
       }
     } catch {
@@ -133,10 +282,10 @@ class ApiService {
   }
 
   // Synchronize authenticated session to backend to set secure HttpOnly cookie
-  private async syncBackendSession(user: any, supabaseAccessToken?: string): Promise<void> {
+  private async syncBackendSession(user: SupabaseAuthUser, supabaseAccessToken?: string): Promise<void> {
     try {
       const isGoogle = user.app_metadata?.provider === 'google'
-        || (Array.isArray(user.identities) && user.identities.some((i: any) => i.provider === 'google'));
+        || (Array.isArray(user.identities) && user.identities.some((i: SupabaseIdentity) => i.provider === 'google'));
       const provider: 'google' | 'email' = isGoogle ? 'google' : 'email';
 
       // Resolve a Supabase access token so the backend can VERIFY our identity
@@ -201,7 +350,7 @@ class ApiService {
     this.onAuthChangeCallbacks.forEach(cb => cb(this.currentUser));
   }
 
-  private async loadUserProfile(supabaseUser: any): Promise<AuthUser | null> {
+  private async loadUserProfile(supabaseUser: SupabaseAuthUser): Promise<AuthUser | null> {
     try {
       const { data: profile } = await supabase
         .from('profiles')
@@ -210,11 +359,11 @@ class ApiService {
         .maybeSingle();
 
       const isGoogle = supabaseUser.app_metadata?.provider === 'google'
-        || (Array.isArray(supabaseUser.identities) && supabaseUser.identities.some((i: any) => i.provider === 'google'));
+        || (Array.isArray(supabaseUser.identities) && supabaseUser.identities.some((i: SupabaseIdentity) => i.provider === 'google'));
       const provider: 'google' | 'email' = isGoogle ? 'google' : 'email';
 
       const user: AuthUser = {
-        id: supabaseUser.id,
+        id: supabaseUser.id ?? '',
         username: profile?.username || supabaseUser.user_metadata?.username || (supabaseUser.email ? supabaseUser.email.split('@')[0] : 'foydalanuvchi'),
         email: supabaseUser.email || '',
         full_name: profile?.full_name || supabaseUser.user_metadata?.full_name || '',
@@ -234,10 +383,10 @@ class ApiService {
     } catch {
       try {
         const isGoogle = supabaseUser.app_metadata?.provider === 'google'
-          || (Array.isArray(supabaseUser.identities) && supabaseUser.identities.some((i: any) => i.provider === 'google'));
+          || (Array.isArray(supabaseUser.identities) && supabaseUser.identities.some((i: SupabaseIdentity) => i.provider === 'google'));
         const provider: 'google' | 'email' = isGoogle ? 'google' : 'email';
         const fallbackUser: AuthUser = {
-          id: supabaseUser.id,
+          id: supabaseUser.id ?? '',
           username: supabaseUser.user_metadata?.username || (supabaseUser.email ? supabaseUser.email.split('@')[0] : 'foydalanuvchi'),
           email: supabaseUser.email || '',
           full_name: supabaseUser.user_metadata?.full_name || '',
@@ -355,8 +504,8 @@ class ApiService {
       }
 
       return { error: 'Ro‘yxatdan o‘tishda xatolik yuz berdi' };
-    } catch (e: any) {
-      return { error: e.message || 'Server bilan bog‘lanishda xatolik yuz berdi' };
+    } catch (e: unknown) {
+      return { error: getErrorMessage(e, 'Server bilan bog‘lanishda xatolik yuz berdi') };
     }
   }
 
@@ -438,8 +587,8 @@ class ApiService {
             .eq('username', email)
             .maybeSingle();
 
-          if (profile && (profile as any).email) {
-            email = (profile as any).email;
+          if (profile && typeof (profile as { email?: unknown } | null)?.email === 'string') {
+            email = (profile as { email: string }).email;
           } else {
             return { error: 'Bunday foydalanuvchi topilmadi yoki parol noto‘g‘ri' };
           }
@@ -491,8 +640,8 @@ class ApiService {
       }
 
       return { error: 'Kirishda xatolik yuz berdi' };
-    } catch (e: any) {
-      return { error: e.message || 'Server bilan bog‘lanishda xatolik yuz berdi' };
+    } catch (e: unknown) {
+      return { error: getErrorMessage(e, 'Server bilan bog‘lanishda xatolik yuz berdi') };
     }
   }
 
@@ -509,8 +658,8 @@ class ApiService {
         return { error: error.message };
       }
       return {};
-    } catch (e: any) {
-      return { error: e.message || 'Google orqali kirishda xatolik yuz berdi' };
+    } catch (e: unknown) {
+      return { error: getErrorMessage(e, 'Google orqali kirishda xatolik yuz berdi') };
     }
   }
 
@@ -536,7 +685,7 @@ class ApiService {
           this.setToken('httponly_session');
           savedWords = data.savedWords || [];
           completedScenes = data.completedScenes || [];
-          completedSceneIds = data.completedSceneIds || completedScenes.map((s: any) => s.scene_id);
+          completedSceneIds = data.completedSceneIds || completedScenes.map((s) => s.scene_id);
           if (data.lastPositions && typeof data.lastPositions === 'object') {
             lastPositions = data.lastPositions;
           }
@@ -578,7 +727,7 @@ class ApiService {
 
           if (Array.isArray(words) && words.length > 0) {
             const existingWordSet = new Set(savedWords.map(w => w.word.toLowerCase()));
-            words.forEach((w: any) => {
+            (words as SavedWordRow[]).forEach((w: SavedWordRow) => {
               if (w.word && !existingWordSet.has(w.word.toLowerCase())) {
                 savedWords.push(w);
                 existingWordSet.add(w.word.toLowerCase());
@@ -588,7 +737,7 @@ class ApiService {
 
           if (Array.isArray(scenes) && scenes.length > 0) {
             const existingSceneSet = new Set(completedSceneIds);
-            scenes.forEach((s: any) => {
+            (scenes as CompletedSceneRow[]).forEach((s: CompletedSceneRow) => {
               if (s.scene_id && !existingSceneSet.has(s.scene_id)) {
                 completedScenes.push(s);
                 completedSceneIds.push(s.scene_id);
@@ -616,24 +765,14 @@ class ApiService {
     return null;
   }
 
-  public async syncProgress(payload: {
-    xp?: number;
-    streak?: number;
-    level?: number;
-    lastActiveDate?: string;
-    savedWords?: Array<{ word: string; translation?: string; sceneTitle?: string }>;
-    completedScene?: { sceneId: string; accuracy?: number; wpm?: number };
-    completedScenes?: string[];
-    lastPositions?: Record<string, number>;
-    wordsCount?: number;
-  }): Promise<any> {
+  public async syncProgress(payload: SyncProgressPayload): Promise<SyncProgressResult | null> {
     if (!this.currentUser) return null;
 
     if (typeof payload.xp === 'number') this.currentUser.xp = Math.max(this.currentUser.xp, payload.xp);
     if (typeof payload.streak === 'number') this.currentUser.streak = Math.max(this.currentUser.streak, payload.streak);
     if (typeof payload.level === 'number') this.currentUser.level = Math.max(this.currentUser.level, payload.level);
 
-    let backendResult: any = null;
+    let backendResult: SyncProgressResult | null = null;
 
     // 1. Send to Backend SQLite API (/api/user/sync)
     try {
@@ -661,7 +800,7 @@ class ApiService {
 
     // 2. Also sync to Supabase if connected
     try {
-      const updates: any = {
+      const updates: Record<string, string | number> = {
         updated_at: new Date().toISOString(),
       };
       if (typeof payload.xp === 'number') updates.xp = payload.xp;
@@ -779,15 +918,7 @@ class ApiService {
     }
   }
 
-  public async getLeaderboard(): Promise<Array<{
-    id: string | number;
-    username: string;
-    full_name: string;
-    avatar_color: string;
-    xp: number;
-    streak: number;
-    level: number;
-  }>> {
+  public async getLeaderboard(): Promise<LeaderboardEntry[]> {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -796,7 +927,7 @@ class ApiService {
         .limit(25);
 
       if (error || !data) return [];
-      return data as any;
+      return data as LeaderboardEntry[];
     } catch {
       return [];
     }
@@ -833,7 +964,8 @@ class ApiService {
 
   public getAdminRoutePath(): string {
     if (this.cachedAdminPath) return this.cachedAdminPath;
-    const globalPath = (window as any)?.__ADMIN_PATH__;
+    const globalWindow = window as unknown as { __ADMIN_PATH__?: string };
+    const globalPath = globalWindow?.__ADMIN_PATH__;
     const envPath = (import.meta.env.VITE_ADMIN_PATH as string);
     let p = (globalPath || envPath || '/admin').trim();
     if (!p.startsWith('/')) p = '/' + p;
@@ -868,7 +1000,7 @@ class ApiService {
     return Boolean(this.adminToken);
   }
 
-  public async adminLogin(username: string, password: string): Promise<{ success: boolean; error?: string; admin?: any }> {
+  public async adminLogin(username: string, password: string): Promise<{ success: boolean; error?: string; admin?: AdminUserDto }> {
     try {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
@@ -884,11 +1016,6 @@ class ApiService {
         return { success: false, error: data.error || 'Admin login muvaffaqiyatsiz bo‘ldi' };
       }
       this.adminToken = data.token || 'authenticated';
-      if (typeof sessionStorage !== 'undefined' && data.token) {
-        try {
-          sessionStorage.setItem('tinglov_admin_jwt', data.token);
-        } catch {}
-      }
       return { success: true, admin: data.admin };
     } catch {
       return { success: false, error: 'Server bilan bog‘lanishda xatolik yuz berdi' };
@@ -897,11 +1024,6 @@ class ApiService {
 
   public async adminLogout(): Promise<void> {
     this.adminToken = null;
-    if (typeof sessionStorage !== 'undefined') {
-      try {
-        sessionStorage.removeItem('tinglov_admin_jwt');
-      } catch {}
-    }
     try {
       await fetch('/api/admin/logout', {
         method: 'POST',
@@ -917,9 +1039,6 @@ class ApiService {
 
   public async adminCheckAuth(): Promise<boolean> {
     try {
-      if (!this.adminToken && typeof sessionStorage !== 'undefined') {
-        this.adminToken = sessionStorage.getItem('tinglov_admin_jwt');
-      }
       const res = await fetch('/api/admin/check', {
         method: 'GET',
         headers: {
@@ -932,11 +1051,6 @@ class ApiService {
         const data = await res.json().catch(() => ({}));
         if (data.token) {
           this.adminToken = data.token;
-          if (typeof sessionStorage !== 'undefined') {
-            try {
-              sessionStorage.setItem('tinglov_admin_jwt', data.token);
-            } catch {}
-          }
         } else {
           this.adminToken = this.adminToken || 'authenticated';
         }
@@ -946,15 +1060,10 @@ class ApiService {
       // Ignore
     }
     this.adminToken = null;
-    if (typeof sessionStorage !== 'undefined') {
-      try {
-        sessionStorage.removeItem('tinglov_admin_jwt');
-      } catch {}
-    }
     return false;
   }
 
-  public async adminGetStats(): Promise<any> {
+  public async adminGetStats(): Promise<AdminStatsResult> {
     // 1. Fetch backend stats (SQLite + process info)
     const backendPromise = (async () => {
       try {
@@ -1035,13 +1144,25 @@ class ApiService {
       totalCustomScenes: bStats.totalCustomScenes || 0,
     };
 
+    // Fetch real uptime from /api/health
+    let realUptimeSeconds = 0;
+    try {
+      const healthRes = await fetch('/api/health', { method: 'GET', credentials: 'include' });
+      if (healthRes.ok) {
+        const healthData = await healthRes.json();
+        realUptimeSeconds = healthData.uptimeSeconds || 0;
+      }
+    } catch {
+      // Fallback to 0 if health endpoint is unreachable
+    }
+
     return {
       success: true,
       stats: mergedStats,
       system: backendData?.system || {
         adminPath: this.getAdminRoutePath(),
         nodeVersion: 'v22.x',
-        uptimeSeconds: Math.floor(performance.now() / 1000),
+        uptimeSeconds: realUptimeSeconds,
         memoryRssMb: 48,
         memoryHeapUsedMb: 26,
         redisConfigured: false,
@@ -1053,7 +1174,7 @@ class ApiService {
     };
   }
 
-  public async adminGetUsers(search?: string): Promise<any[]> {
+  public async adminGetUsers(search?: string): Promise<AdminUserDto[]> {
     // 1. Fetch from backend SQLite
     const backendPromise = (async () => {
       try {
@@ -1084,20 +1205,20 @@ class ApiService {
         const { data, error } = await query;
         if (error || !data) return [];
 
-        let currentAuthUser: any = null;
+        let currentAuthUser: SupabaseAuthUser | null = null;
         try {
           const sessRes = await supabase.auth.getSession();
-          currentAuthUser = sessRes?.data?.session?.user;
+          currentAuthUser = (sessRes?.data?.session?.user ?? null) as SupabaseAuthUser | null;
         } catch {}
 
-        return data.map((p: any) => {
+        return (data as SupabaseProfileRow[]).map((p: SupabaseProfileRow): AdminUserDto => {
           let userEmail = (p.email || '').trim();
           let provider: 'google' | 'email' = 'email';
 
           if (currentAuthUser && (currentAuthUser.id === p.id || currentAuthUser.email?.split('@')[0] === p.username)) {
             userEmail = currentAuthUser.email || userEmail;
             const isGoogle = currentAuthUser.app_metadata?.provider === 'google'
-              || (Array.isArray(currentAuthUser.identities) && currentAuthUser.identities.some((i: any) => i.provider === 'google'));
+              || (Array.isArray(currentAuthUser.identities) && currentAuthUser.identities.some((i: SupabaseIdentity) => i.provider === 'google'));
             provider = isGoogle ? 'google' : 'email';
           } else {
             // Detect provider strictly from stored metadata. Do NOT infer Google
@@ -1105,7 +1226,7 @@ class ApiService {
             // to every new user) and never fabricate placeholder emails.
             const isGoogle = Boolean(
               p.raw_app_meta_data?.provider === 'google'
-              || (Array.isArray(p.identities) && p.identities.some((i: any) => i.provider === 'google'))
+              || (Array.isArray(p.identities) && p.identities.some((i: SupabaseIdentity) => i.provider === 'google'))
             );
             provider = isGoogle ? 'google' : 'email';
             userEmail = userEmail || '';
@@ -1132,7 +1253,7 @@ class ApiService {
     const [backendUsers, supabaseUsers] = await Promise.all([backendPromise, supabasePromise]);
 
     // Merge users by username / email / id to avoid duplicates
-    const mergedMap = new Map<string, any>();
+    const mergedMap = new Map<string, AdminUserDto>();
 
     for (const u of backendUsers) {
       const key = (u.email || u.username || String(u.id)).toLowerCase();
@@ -1141,8 +1262,8 @@ class ApiService {
 
     for (const u of supabaseUsers) {
       const key = (u.email || u.username || String(u.id)).toLowerCase();
-      if (mergedMap.has(key)) {
-        const existing = mergedMap.get(key);
+      const existing = mergedMap.get(key);
+      if (existing) {
         mergedMap.set(key, {
           ...existing,
           ...u,
@@ -1228,7 +1349,7 @@ class ApiService {
     }
   }
 
-  public async adminGetScenes(): Promise<any[]> {
+  public async adminGetScenes(): Promise<AdminSceneDto[]> {
     const res = await fetch('/api/admin/scenes', {
       headers: {
         ...getCsrfHeaders(),
@@ -1238,10 +1359,10 @@ class ApiService {
     });
     if (!res.ok) throw new Error('Darslar yuklanmadi');
     const data = await res.json();
-    return data.scenes || [];
+    return (data.scenes || []) as AdminSceneDto[];
   }
 
-  public async adminCreateScene(scene: any): Promise<boolean> {
+  public async adminCreateScene(scene: Record<string, unknown>): Promise<boolean> {
     const res = await fetch('/api/admin/scenes', {
       method: 'POST',
       headers: {
@@ -1267,12 +1388,12 @@ class ApiService {
     return res.ok;
   }
 
-  public async getPublicScenes(): Promise<any[]> {
+  public async getPublicScenes(): Promise<AdminSceneDto[]> {
     try {
       const res = await fetch('/api/scenes');
       if (!res.ok) return [];
       const data = await res.json();
-      return data.scenes || [];
+      return (data.scenes || []) as AdminSceneDto[];
     } catch {
       return [];
     }

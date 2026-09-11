@@ -168,15 +168,28 @@ export type ValidationResult<T> =
   | { success: true; data: T }
   | { success: false; error: string };
 
+/** Zod xatolik obyekti bilan strukturaviy mos minimal shakl. */
+interface SchemaIssueLike {
+  message?: string;
+}
+
+interface SchemaErrorLike {
+  issues?: SchemaIssueLike[];
+}
+
 export function safeValidate<T>(
-  schema: { safeParse: (data: unknown) => { success: true; data: T } | { success: false; error: any } },
+  schema: {
+    safeParse: (data: unknown) =>
+      | { success: true; data: T }
+      | { success: false; error: SchemaErrorLike };
+  },
   data: unknown
 ): ValidationResult<T> {
   const result = schema.safeParse(data);
   if (result.success) {
     return { success: true, data: result.data };
   }
-  const firstIssue = (result.error as any)?.issues?.[0];
-  const errorMessage = firstIssue ? firstIssue.message : 'Kiritilgan ma‘lumotlar yaroqsiz';
+  const firstIssue = result.error?.issues?.[0];
+  const errorMessage = firstIssue?.message || 'Kiritilgan ma‘lumotlar yaroqsiz';
   return { success: false, error: errorMessage };
 }

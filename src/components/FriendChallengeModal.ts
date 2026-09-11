@@ -1,16 +1,17 @@
+// internal
 import { Scene, ChallengePayload } from '../types';
+import { BaseModal } from './BaseModal';
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
 import { i18n } from '../services/i18nService';
 import { escapeHtml } from '../utils/sanitize';
 
-export class FriendChallengeModal {
-  private container: HTMLElement;
+export class FriendChallengeModal extends BaseModal {
   private currentPayload: ChallengePayload | null = null;
   private currentScene: Scene | null = null;
 
   constructor(container: HTMLElement) {
-    this.container = container;
+    super(container);
   }
 
   public open(scene: Scene, accuracy: number, wpm: number): void {
@@ -25,19 +26,8 @@ export class FriendChallengeModal {
 
     this.currentScene = scene;
     this.currentPayload = payload;
+    this.markOpened();
     this.render();
-  }
-
-  public hide(): void {
-    const backdrop = this.container.querySelector('.modal-backdrop');
-    if (backdrop) {
-      backdrop.classList.add('modal-closing');
-      setTimeout(() => {
-        this.container.innerHTML = '';
-      }, 260);
-    } else {
-      this.container.innerHTML = '';
-    }
   }
 
   private render(): void {

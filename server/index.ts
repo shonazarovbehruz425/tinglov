@@ -24,9 +24,11 @@ import {
   getAdminStats,
   getAllAdminScenes,
   createAdminScene,
-  deleteAdminScene
+  deleteAdminScene,
+  invalidateAdminStatsCache
 } from './db';
-import crypto from 'node:crypto';
+import crypto, { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import {
   hashPassword,
   comparePassword,
@@ -35,8 +37,9 @@ import {
   AuthenticatedRequest,
   generateAdminToken,
   requireAdminAuth,
-  extractAdminToken,
-  AdminRequest
+  AdminRequest,
+  safeEqual,
+  compareAdminPassword
 } from './auth';
 import { safeValidate, registerSchema, loginSchema } from '../src/utils/validation';
 import {
@@ -56,12 +59,30 @@ const PORT = process.env.PORT || 3000;
 
 app.set('trust proxy', 1);
 
+// Request ID for tracing (returned in 404/500 + X-Request-Id header)
+app.use((req, res, next) => {
+  const requestId = randomUUID();
+  (req as any).requestId = requestId;
+  res.setHeader('X-Request-Id', requestId);
+  next();
+});
+
+// CORS allowlist from ALLOWED_ORIGINS (comma-separated), credentials enabled.
+// origin:true (reflect any origin) + credentials is unsafe — only listed origins allowed.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
 app.use(cors({
-  origin: true,
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // same-origin / curl / mobile
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    return callback(null, false);
+  },
   credentials: true,
 }));
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
 
 // Security Headers (HSTS, Anti-Clickjacking, XSS Protection & Content Security Policy)
 app.use((_req, res, next) => {
@@ -208,8 +229,98 @@ const COOKIE_OPTIONS = {
   secure: process.env.NODE_ENV === 'production' || process.env.RENDER === 'true',
   sameSite: 'lax' as const,
   path: '/',
-  maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days — aligned with JWT 7d expiry
 };
+
+const ADMIN_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production' || process.env.RENDER === 'true',
+  sameSite: 'strict' as const,
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days — aligned with admin JWT 7d expiry
+};
+
+// --------------------------------------------------------------------------
+// Server-side Zod schemas (anti-cheat / injection guards)
+// --------------------------------------------------------------------------
+const accuracySchema = z.coerce.number().int().min(0).max(100);
+const wpmSchema = z.coerce.number().int().min(0).max(300);
+const wordSchema = z.string().trim().min(1).max(100);
+const translationSchema = z.string().trim().max(500).optional().default('');
+const sceneTitleSchema = z.string().trim().max(200).optional().default('');
+const sceneIdSchema = z.string().trim().min(1).max(120);
+const httpsUrlSchema = z.string().trim().min(1).max(2000).url().refine((u) => u.startsWith('https://'), {
+  message: 'Video havolasi https URL bo‘lishi shart',
+});
+const optionalHttpsUrlSchema = z.string().trim().max(2000).optional().default('').refine((u) => !u || u.startsWith('https://') || u.startsWith('http://localhost'), {
+  message: 'Poster havolasi https URL bo‘lishi shart',
+});
+
+const dialogueSchema = z.object({
+  character: z.string().trim().min(1).max(50),
+  textEn: z.string().trim().min(1).max(500),
+  textUz: z.string().trim().min(1).max(500),
+}).passthrough();
+
+const savedWordInputSchema = z.object({
+  word: wordSchema,
+  translation: translationSchema,
+  sceneTitle: sceneTitleSchema,
+});
+
+const userSyncSchema = z.object({
+  xp: z.coerce.number().int().min(0).max(1000000).optional(),
+  streak: z.coerce.number().int().min(1).max(3650).optional(),
+  level: z.coerce.number().int().min(1).max(100).optional(),
+  lastActiveDate: z.string().trim().max(20).optional(),
+  savedWords: z.array(savedWordInputSchema).max(100).optional().default([]),
+  completedScene: z.object({
+    sceneId: sceneIdSchema,
+    accuracy: accuracySchema.optional().default(100),
+    wpm: wpmSchema.optional().default(0),
+  }).optional(),
+  completedScenes: z.array(sceneIdSchema).max(50).optional().default([]),
+  lastPositions: z.record(z.string().max(120), z.coerce.number().int().min(0).max(1000000)).optional(),
+}).passthrough();
+
+const authSessionSchema = z.object({
+  email: z.string().trim().toLowerCase().max(255).optional(),
+  username: z.string().trim().min(1).max(30).optional(),
+  fullName: z.string().trim().max(60).optional(),
+  avatarColor: z.string().trim().max(20).optional(),
+  authProvider: z.enum(['google', 'email']).optional().default('email'),
+  uuid: z.string().trim().max(100).optional(),
+  supabaseAccessToken: z.string().min(1).max(5000).optional(),
+}).passthrough();
+
+const userWordsSchema = z.object({
+  action: z.enum(['save', 'delete']).optional().default('save'),
+  word: wordSchema,
+  translation: translationSchema,
+  sceneTitle: sceneTitleSchema,
+}).passthrough();
+
+const adminSceneSchema = z.object({
+  title: z.string().trim().min(2).max(100),
+  category: z.string().trim().min(1).max(50),
+  difficulty: z.string().trim().min(1).max(20),
+  video_url: httpsUrlSchema,
+  poster_url: optionalHttpsUrlSchema,
+  dialogues: z.array(dialogueSchema).min(1).max(50),
+}).passthrough();
+
+// XP anti-cheat: client xp is NEVER trusted — fixed server-side reward per new scene, clamped
+const XP_MAX = 1000000;
+const MAX_REWARD_PER_SYNC = 50;
+function xpRewardForScene(accuracy: number, wpm: number): number {
+  const a = Math.max(0, Math.min(100, Math.floor(accuracy)));
+  const w = Math.max(0, Math.min(300, Math.floor(wpm)));
+  const reward = 10 + Math.round(a * 0.3) + Math.min(10, Math.floor(w / 30));
+  return Math.max(0, Math.min(MAX_REWARD_PER_SYNC, reward));
+}
+function levelForXp(xp: number): number {
+  return Math.max(1, Math.min(100, Math.floor(xp / 500) + 1));
+}
 
 const AVATAR_COLORS = ['#A3E635', '#FF5B37', '#38BDF8', '#F59E0B', '#EC4899', '#8B5CF6', '#10B981'];
 
@@ -227,6 +338,7 @@ async function verifySupabaseIdentity(accessToken: unknown): Promise<{ id: strin
         Authorization: `Bearer ${token}`,
         apikey: SUPABASE_ANON_KEY,
       },
+      signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) return null;
     const data: any = await res.json();
@@ -296,12 +408,11 @@ app.post('/api/auth/register', registerLimiter, requireCsrf, async (req, res) =>
 
     const token = generateToken(user);
 
-    // Set secure HttpOnly cookie
+    // Set secure HttpOnly cookie (cookie-only auth — token never exposed in body)
     res.cookie('token', token, COOKIE_OPTIONS);
 
     res.status(201).json({
       message: 'Muvaffaqiyatli ro‘yxatdan o‘tdingiz!',
-      token,
       user: sanitizeUser(user)
     });
   } catch (err: any) {
@@ -345,14 +456,26 @@ app.post('/api/auth/login', checkAuthRateLimit, requireCsrf, async (req, res) =>
       const ipFail = await recordAuthFailure(ipKey);
       const userFail = await recordAuthFailure(userKey);
       const maxFail = Math.max(ipFail.failures, userFail.failures);
+      const retryAfter = Math.max(ipFail.retryAfterSec, userFail.retryAfterSec);
+      const isLocked = ipFail.isLocked || userFail.isLocked;
+      if (isLocked) {
+        res.setHeader('Retry-After', retryAfter);
+        res.status(429).json({
+          error: 'Juda ko‘p muvaffaqiyatsiz urinish. Iltimos, birozdan so‘ng qayta urinib ko‘ring.',
+          requiresCaptcha: true,
+          retryAfter,
+        });
+        return;
+      }
       const maxDelay = Math.max(ipFail.delayMs, userFail.delayMs);
       if (maxDelay > 0 && maxDelay <= 8000) {
+        // Non-blocking delay (setTimeout — event loop bloklanmaydi, faqat javob kechiktiriladi)
         await new Promise(r => setTimeout(r, maxDelay));
       }
       res.status(401).json({
         error: 'Bunday foydalanuvchi topilmadi yoki parol noto‘g‘ri',
         requiresCaptcha: maxFail >= 3,
-        retryAfter: Math.max(ipFail.retryAfterSec, userFail.retryAfterSec),
+        retryAfter,
       });
       return;
     }
@@ -362,14 +485,26 @@ app.post('/api/auth/login', checkAuthRateLimit, requireCsrf, async (req, res) =>
       const ipFail = await recordAuthFailure(ipKey);
       const userFail = await recordAuthFailure(userKey);
       const maxFail = Math.max(ipFail.failures, userFail.failures);
+      const retryAfter = Math.max(ipFail.retryAfterSec, userFail.retryAfterSec);
+      const isLocked = ipFail.isLocked || userFail.isLocked;
+      if (isLocked) {
+        res.setHeader('Retry-After', retryAfter);
+        res.status(429).json({
+          error: 'Juda ko‘p muvaffaqiyatsiz urinish. Iltimos, birozdan so‘ng qayta urinib ko‘ring.',
+          requiresCaptcha: true,
+          retryAfter,
+        });
+        return;
+      }
       const maxDelay = Math.max(ipFail.delayMs, userFail.delayMs);
       if (maxDelay > 0 && maxDelay <= 8000) {
+        // Non-blocking delay (setTimeout — event loop bloklanmaydi, faqat javob kechiktiriladi)
         await new Promise(r => setTimeout(r, maxDelay));
       }
       res.status(401).json({
         error: 'Bunday foydalanuvchi topilmadi yoki parol noto‘g‘ri',
         requiresCaptcha: maxFail >= 3,
-        retryAfter: Math.max(ipFail.retryAfterSec, userFail.retryAfterSec),
+        retryAfter,
       });
       return;
     }
@@ -380,12 +515,11 @@ app.post('/api/auth/login', checkAuthRateLimit, requireCsrf, async (req, res) =>
 
     const token = generateToken(user);
 
-    // Set secure HttpOnly cookie
+    // Set secure HttpOnly cookie (cookie-only auth — token never exposed in body)
     res.cookie('token', token, COOKIE_OPTIONS);
 
     res.json({
       message: 'Xush kelibsiz!',
-      token,
       user: sanitizeUser(user)
     });
   } catch (err: any) {
@@ -399,9 +533,14 @@ app.post('/api/auth/login', checkAuthRateLimit, requireCsrf, async (req, res) =>
 // ownership of the matching Supabase identity (valid access token whose
 // uuid/email matches) before a session token is issued for that account.
 // Unverified requests may only CREATE a brand-new account.
-app.post('/api/auth/session', requireCsrf, async (req, res) => {
+app.post('/api/auth/session', apiLimiter, requireCsrf, async (req, res) => {
   try {
-    const { email, username, fullName, avatarColor, authProvider, uuid, supabaseAccessToken } = req.body;
+    const validation = safeValidate(authSessionSchema, req.body);
+    if (!validation.success) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+    const { email, username, fullName, avatarColor, authProvider, uuid, supabaseAccessToken } = validation.data as any;
     if (!email && !username) {
       res.status(400).json({ error: 'Foydalanuvchi ma’lumotlari yetarli emas' });
       return;
@@ -501,27 +640,68 @@ app.get('/api/auth/me', requireAuth, (req: AuthenticatedRequest, res) => {
 app.post('/api/user/sync', requireAuth, requireCsrf, (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const { xp, streak, level, lastActiveDate, savedWords, completedScene, completedScenes, lastPositions: lastPositionsRaw } = req.body;
+    const validation = safeValidate(userSyncSchema, req.body);
+    if (!validation.success) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+    const { streak, lastActiveDate, savedWords, completedScene, completedScenes, lastPositions: lastPositionsRaw } = validation.data as any;
 
-    const newXp = Math.max(user.xp, Number(xp) || 0);
-    // Streak is client-authoritative: the client owns the reset logic (inactivity
-    // breaks the streak), so a LOWER value sent by the client must be accepted —
-    // Math.max here previously made streaks permanently frozen.
+    // ANTI-CHEAT: client xp/level ignored — XP only from server-side scene rewards, clamped
+    let rewardTotal = 0;
+    const existingScenes = new Set(getUserCompletedScenes(user.id).map(s => s.scene_id));
+
+    // Single completed scene: validate + record (upsert), reward only if first completion
+    let singleAccuracy = 100;
+    let singleWpm = 0;
+    let singleSceneId: string | null = null;
+    if (completedScene && completedScene.sceneId) {
+      singleSceneId = String(completedScene.sceneId).trim().slice(0, 120);
+      singleAccuracy = Math.max(0, Math.min(100, Math.floor(Number(completedScene.accuracy) || 0)));
+      singleWpm = Math.max(0, Math.min(300, Math.floor(Number(completedScene.wpm) || 0)));
+      if (singleSceneId) {
+        const isNew = !existingScenes.has(singleSceneId);
+        recordUserCompletedScene(user.id, singleSceneId, singleAccuracy, singleWpm);
+        if (isNew) {
+          rewardTotal += xpRewardForScene(singleAccuracy, singleWpm);
+          existingScenes.add(singleSceneId);
+        }
+      }
+    }
+
+    // Record bulk completed scene IDs if passed (e.g. on client merge) — +10 XP each, capped
+    if (Array.isArray(completedScenes) && completedScenes.length > 0) {
+      for (const rawId of completedScenes.slice(0, 50)) {
+        const cleanId = String(rawId || '').trim().slice(0, 120);
+        if (cleanId && !existingScenes.has(cleanId)) {
+          recordUserCompletedScene(user.id, cleanId, 100, 0);
+          existingScenes.add(cleanId);
+          rewardTotal += 10;
+        }
+        if (rewardTotal >= MAX_REWARD_PER_SYNC) break;
+      }
+    }
+    rewardTotal = Math.max(0, Math.min(MAX_REWARD_PER_SYNC, rewardTotal));
+    const newXp = Math.max(0, Math.min(XP_MAX, user.xp + rewardTotal));
+    const newLevel = levelForXp(newXp);
+    // Streak is client-authoritative (lower accepted on inactivity), clamped 1..3650
     const parsedStreak = Number(streak);
     const newStreak = streak !== undefined && Number.isFinite(parsedStreak)
-      ? Math.max(1, Math.floor(parsedStreak))
+      ? Math.max(1, Math.min(3650, Math.floor(parsedStreak)))
       : user.streak;
-    const newLevel = Math.max(user.level, Number(level) || 1);
+    const cleanDate = typeof lastActiveDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(lastActiveDate)
+      ? lastActiveDate
+      : new Date().toISOString().split('T')[0];
 
     updateUserStats(user.id, {
       xp: newXp,
       streak: newStreak,
       level: newLevel,
-      last_active_date: lastActiveDate || new Date().toISOString().split('T')[0],
+      last_active_date: cleanDate,
       last_positions: sanitizeLastPositions(lastPositionsRaw)
     });
 
-    // Save words if passed
+    // Save words if passed (already Zod-validated: word<=100, translation<=500)
     if (Array.isArray(savedWords)) {
       savedWords.forEach((item: any) => {
         if (item && item.word) {
@@ -530,27 +710,7 @@ app.post('/api/user/sync', requireAuth, requireCsrf, (req: AuthenticatedRequest,
       });
     }
 
-    // Record completed scene if passed
-    if (completedScene && completedScene.sceneId) {
-      recordUserCompletedScene(
-        user.id,
-        completedScene.sceneId,
-        Number(completedScene.accuracy) || 100,
-        Number(completedScene.wpm) || 0
-      );
-    }
-
-    // Record bulk completed scene IDs if passed (e.g. on client merge)
-    if (Array.isArray(completedScenes) && completedScenes.length > 0) {
-      const existingScenes = new Set(getUserCompletedScenes(user.id).map(s => s.scene_id));
-      completedScenes.forEach((sceneId: any) => {
-        const cleanId = String(sceneId || '').trim();
-        if (cleanId && !existingScenes.has(cleanId)) {
-          recordUserCompletedScene(user.id, cleanId, 100, 0);
-          existingScenes.add(cleanId);
-        }
-      });
-    }
+    invalidateAdminStatsCache();
 
     const updatedUser = findUserById(user.id)!;
     const allCompleted = getUserCompletedScenes(user.id);
@@ -580,12 +740,12 @@ app.post('/api/user/sync', requireAuth, requireCsrf, (req: AuthenticatedRequest,
 // 5. Save / Remove Word
 app.post('/api/user/words', requireAuth, requireCsrf, (req: AuthenticatedRequest, res) => {
   const user = req.user!;
-  const { action, word, translation, sceneTitle } = req.body;
-
-  if (!word) {
-    res.status(400).json({ error: 'So‘z ko‘rsatilmadi' });
+  const validation = safeValidate(userWordsSchema, req.body);
+  if (!validation.success) {
+    res.status(400).json({ error: validation.error });
     return;
   }
+  const { action, word, translation, sceneTitle } = validation.data as any;
 
   if (action === 'delete') {
     deleteUserWord(user.id, word);
@@ -593,6 +753,7 @@ app.post('/api/user/words', requireAuth, requireCsrf, (req: AuthenticatedRequest
     saveUserWord(user.id, word, translation, sceneTitle);
   }
 
+  invalidateAdminStatsCache();
   res.json({ success: true, savedWords: getUserSavedWords(user.id) });
 });
 
@@ -616,7 +777,8 @@ function normalizeRoutePath(rawPath: string | undefined): string {
 
 const ADMIN_PATH = normalizeRoutePath(process.env.ADMIN_PATH || process.env.VITE_ADMIN_PATH || '/admin');
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'tinglov_admin_2026';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
 const CLOUDFLARE_R2_URL = (process.env.CLOUDFLARE_R2_URL || process.env.VITE_CLOUDFLARE_R2_URL || '').trim().replace(/\/+$/, '');
 
 // A. Public endpoint to check active admin path and R2 streaming config
@@ -645,39 +807,38 @@ const adminLoginLimiter = createRateLimiter({
   message: 'Admin kirish urinishlari soni me‘yordan oshdi. Iltimos, 15 daqiqadan so‘ng qayta urinib ko‘ring.'
 });
 
-app.post('/api/admin/login', adminLoginLimiter, (req, res) => {
+app.post('/api/admin/login', adminLoginLimiter, requireCsrf, async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
     res.status(400).json({ error: 'Login va parol kiritilishi shart' });
     return;
   }
 
-  const trimmedUser = String(username).trim();
-  const trimmedPass = String(password).trim();
+  const trimmedUser = String(username).trim().slice(0, 100);
+  const trimmedPass = String(password).trim().slice(0, 200);
 
-  if (trimmedUser !== ADMIN_USERNAME || trimmedPass !== ADMIN_PASSWORD) {
+  // Timing-safe username check + bcrypt (or timing-safe) password check
+  const userOk = safeEqual(trimmedUser, ADMIN_USERNAME);
+  const passOk = await compareAdminPassword(trimmedPass, ADMIN_PASSWORD, ADMIN_PASSWORD_HASH);
+
+  if (!userOk || !passOk) {
     res.status(401).json({ error: 'Noto‘g‘ri admin login yoki parol' });
     return;
   }
 
   const token = generateAdminToken(ADMIN_USERNAME);
-  res.cookie('admin_token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  });
+  res.cookie('admin_token', token, ADMIN_COOKIE_OPTIONS);
 
+  // Cookie-only auth — token never exposed in response body
   res.json({
     success: true,
-    token,
     admin: { username: ADMIN_USERNAME, role: 'admin' },
     adminPath: ADMIN_PATH
   });
 });
 
 // D. Admin Logout
-app.post('/api/admin/logout', (_req, res) => {
+app.post('/api/admin/logout', requireCsrf, (_req, res) => {
   res.clearCookie('admin_token', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -686,19 +847,17 @@ app.post('/api/admin/logout', (_req, res) => {
   res.json({ success: true, message: 'Admin tizimidan muvaffaqiyatli chiqildi' });
 });
 
-// E. Check Admin Session
-app.get('/api/admin/check', requireAdminAuth, (req: AdminRequest, res) => {
-  const token = extractAdminToken(req);
+// E. Check Admin Session (cookie-only — token never exposed in body)
+app.get('/api/admin/check', requireAdminAuth, requireCsrf, (req: AdminRequest, res) => {
   res.json({
     authenticated: true,
     admin: req.admin,
-    adminPath: ADMIN_PATH,
-    token: token || undefined
+    adminPath: ADMIN_PATH
   });
 });
 
 // F. Admin Dashboard Stats
-app.get('/api/admin/stats', requireAdminAuth, (_req: AdminRequest, res) => {
+app.get('/api/admin/stats', requireAdminAuth, requireCsrf, (_req: AdminRequest, res) => {
   try {
     const dbStats = getAdminStats();
     const mem = process.memoryUsage();
@@ -724,19 +883,21 @@ app.get('/api/admin/stats', requireAdminAuth, (_req: AdminRequest, res) => {
   }
 });
 
-// G. List Users (Search & Filter)
-app.get('/api/admin/users', requireAdminAuth, (req: AdminRequest, res) => {
+// G. List Users (Search & Filter, paginated LIMIT 50 + OFFSET)
+app.get('/api/admin/users', requireAdminAuth, requireCsrf, (req: AdminRequest, res) => {
   try {
-    const searchQuery = typeof req.query.search === 'string' ? req.query.search : undefined;
-    const users = getAllUsers(searchQuery);
-    res.json({ success: true, users, count: users.length });
+    const searchQuery = typeof req.query.search === 'string' ? req.query.search.slice(0, 100) : undefined;
+    const limit = Math.max(1, Math.min(50, Number(req.query.limit) || 50));
+    const offset = Math.max(0, Number(req.query.offset) || 0);
+    const users = getAllUsers(searchQuery, limit, offset);
+    res.json({ success: true, users, count: users.length, limit, offset });
   } catch (err: any) {
     res.status(500).json({ error: 'Foydalanuvchilarni yuklashda xatolik yuz berdi' });
   }
 });
 
 // H. Delete User
-app.delete('/api/admin/users/:id', requireAdminAuth, (req: AdminRequest, res) => {
+app.delete('/api/admin/users/:id', requireAdminAuth, requireCsrf, (req: AdminRequest, res) => {
   try {
     const userId = Number(req.params.id);
     if (!userId || isNaN(userId)) {
@@ -748,6 +909,7 @@ app.delete('/api/admin/users/:id', requireAdminAuth, (req: AdminRequest, res) =>
       res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
       return;
     }
+    invalidateAdminStatsCache();
     res.json({ success: true, message: 'Foydalanuvchi muvaffaqiyatli o‘chirildi' });
   } catch (err: any) {
     res.status(500).json({ error: 'Foydalanuvchini o‘chirishda xatolik yuz berdi' });
@@ -755,15 +917,26 @@ app.delete('/api/admin/users/:id', requireAdminAuth, (req: AdminRequest, res) =>
 });
 
 // I. Update User Stats (XP, Streak, Level)
-app.post('/api/admin/users/:id/update', requireAdminAuth, (req: AdminRequest, res) => {
+app.post('/api/admin/users/:id/update', requireAdminAuth, requireCsrf, (req: AdminRequest, res) => {
   try {
     const userId = Number(req.params.id);
-    const { xp, streak, level } = req.body;
+    const schema = z.object({
+      xp: z.coerce.number().int().min(0).max(1000000).optional(),
+      streak: z.coerce.number().int().min(1).max(3650).optional(),
+      level: z.coerce.number().int().min(1).max(100).optional(),
+    }).passthrough();
+    const validation = safeValidate(schema, req.body);
+    if (!validation.success) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+    const { xp, streak, level } = validation.data as any;
     updateUserStatsAdmin(userId, {
       xp: xp !== undefined ? Number(xp) : undefined,
       streak: streak !== undefined ? Number(streak) : undefined,
       level: level !== undefined ? Number(level) : undefined
     });
+    invalidateAdminStatsCache();
     res.json({ success: true, message: 'Foydalanuvchi ma‘lumotlari yangilandi' });
   } catch (err: any) {
     res.status(500).json({ error: 'Foydalanuvchini yangilashda xatolik yuz berdi' });
@@ -771,7 +944,7 @@ app.post('/api/admin/users/:id/update', requireAdminAuth, (req: AdminRequest, re
 });
 
 // J. Manage Admin Scenes
-app.get('/api/admin/scenes', requireAdminAuth, (_req: AdminRequest, res) => {
+app.get('/api/admin/scenes', requireAdminAuth, requireCsrf, (_req: AdminRequest, res) => {
   try {
     const scenes = getAllAdminScenes();
     res.json({ success: true, scenes });
@@ -780,31 +953,29 @@ app.get('/api/admin/scenes', requireAdminAuth, (_req: AdminRequest, res) => {
   }
 });
 
-app.post('/api/admin/scenes', requireAdminAuth, (req: AdminRequest, res) => {
+app.post('/api/admin/scenes', requireAdminAuth, requireCsrf, (req: AdminRequest, res) => {
   try {
-    const { id, title, category, difficulty, video_url, poster_url, dialogues } = req.body;
-    if (!title || !category || !difficulty || !video_url) {
-      res.status(400).json({ error: 'Sarlavha, kategoriya, qiyinchilik va video havolasi talab qilinadi' });
-      return;
-    }
-
-    // A scene without dialogues is unplayable and instantly awards completion XP
-    let parsedDialogues: unknown = dialogues || [];
-    if (typeof parsedDialogues === 'string') {
+    // Client id is ignored — server generates randomUUID() to prevent ID collision/forgery
+    let rawBody: any = req.body || {};
+    let dialogues = rawBody.dialogues;
+    if (typeof dialogues === 'string') {
       try {
-        parsedDialogues = JSON.parse(parsedDialogues);
+        dialogues = JSON.parse(dialogues);
       } catch {
         res.status(400).json({ error: 'Dialoglar formati noto‘g‘ri (JSON parse xatosi)' });
         return;
       }
     }
-    if (!Array.isArray(parsedDialogues) || parsedDialogues.length === 0) {
-      res.status(400).json({ error: 'Kamida bitta replika (dialog) kiritilishi shart' });
+    const validation = safeValidate(adminSceneSchema, { ...rawBody, dialogues });
+    if (!validation.success) {
+      res.status(400).json({ error: validation.error });
       return;
     }
+    const { title, category, difficulty, video_url, poster_url, dialogues: cleanDialogues } = validation.data as any;
 
-    const sceneId = id || `custom_admin_${Date.now()}`;
-    const dialoguesJson = JSON.stringify(parsedDialogues);
+    // Server-generated scene ID (client cannot choose/forgery-proof)
+    const sceneId = randomUUID();
+    const dialoguesJson = JSON.stringify(cleanDialogues);
 
     const created = createAdminScene({
       id: sceneId,
@@ -816,6 +987,7 @@ app.post('/api/admin/scenes', requireAdminAuth, (req: AdminRequest, res) => {
       dialogues_json: dialoguesJson
     });
 
+    invalidateAdminStatsCache();
     res.json({ success: true, scene: created });
   } catch (err: any) {
     console.error('Admin create scene error:', err);
@@ -823,18 +995,40 @@ app.post('/api/admin/scenes', requireAdminAuth, (req: AdminRequest, res) => {
   }
 });
 
-app.delete('/api/admin/scenes/:id', requireAdminAuth, (req: AdminRequest, res) => {
+app.delete('/api/admin/scenes/:id', requireAdminAuth, requireCsrf, (req: AdminRequest, res) => {
   try {
-    const sceneId = req.params.id;
+    const sceneId = String(req.params.id || '').slice(0, 200);
     const deleted = deleteAdminScene(sceneId);
     if (!deleted) {
       res.status(404).json({ error: 'Dars topilmadi' });
       return;
     }
+    invalidateAdminStatsCache();
     res.json({ success: true, message: 'Dars muvaffaqiyatli o‘chirildi' });
   } catch (err: any) {
     res.status(500).json({ error: 'Darsni o‘chirishda xatolik yuz berdi' });
   }
+});
+
+// --------------------------------------------------------------------------
+// Global 404 (JSON) + Central Error Handler (with requestId tracing)
+// --------------------------------------------------------------------------
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'So‘ralgan manzil topilmadi',
+    path: req.path,
+    requestId: (req as any).requestId || res.getHeader('X-Request-Id'),
+  });
+});
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(`[${(req as any).requestId || '-'}] Unhandled error:`, err?.message || err);
+  const status = err?.status && Number.isInteger(err.status) ? err.status : 500;
+  res.status(status).json({
+    error: status === 500 ? 'Serverda ichki xatolik yuz berdi' : (err?.message || 'So‘rovni bajarishda xatolik'),
+    requestId: (req as any).requestId || res.getHeader('X-Request-Id'),
+  });
 });
 
 // --------------------------------------------------------------------------
@@ -914,6 +1108,16 @@ function startKeepAliveHeartbeat(): void {
   } else {
     console.log('ℹ️ RENDER_EXTERNAL_URL topilmadi. UptimeRobot orqali https://<sizning-service>.onrender.com/health ga so‘rov yuboring.');
   }
+}
+
+// --------------------------------------------------------------------------
+// Boot-time admin credential validation (no hardcoded fallbacks)
+// --------------------------------------------------------------------------
+if (!ADMIN_PASSWORD && !ADMIN_PASSWORD_HASH) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('ADMIN_PASSWORD yoki ADMIN_PASSWORD_HASH sozlanmagan');
+  }
+  console.warn('⚠️ ADMIN_PASSWORD yoki ADMIN_PASSWORD_HASH sozlanmagan — admin login development mode’da o‘chirilgan (fail-closed).');
 }
 
 app.listen(PORT, () => {

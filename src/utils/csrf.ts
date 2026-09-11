@@ -3,7 +3,8 @@
  * Provides secure token management, verification, and SameSite cookie synchronization.
  */
 
-const CSRF_STORAGE_KEY = 'tinglov_csrf_token';
+import { CSRF_STORAGE_KEY } from '../services/storageKeys';
+
 const CSRF_COOKIE_NAME = 'XSRF-TOKEN';
 
 /**
@@ -15,6 +16,7 @@ function generateRandomToken(): string {
     window.crypto.getRandomValues(array);
     return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
   }
+  console.warn('[CSRF] SECURITY: crypto.getRandomValues unavailable; using weak Math.random fallback token');
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }
 

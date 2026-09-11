@@ -9,8 +9,6 @@ export class LevelSelector {
   private selectedCategory: string = 'all';
   private searchQuery: string = '';
   private onSelectSceneCallback: ((scene: Scene, sentenceIndex?: number) => void) | null = null;
-  private onAddCustomSceneCallback: (() => void) | null = null;
-  private onOpenYouTubeImportCallback: (() => void) | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -23,8 +21,6 @@ export class LevelSelector {
     onOpenProfile?: () => void;
   }): void {
     this.onSelectSceneCallback = callbacks.onSelectScene;
-    this.onAddCustomSceneCallback = callbacks.onAddCustomScene || null;
-    this.onOpenYouTubeImportCallback = callbacks.onOpenYouTubeImport || null;
   }
 
   public setOnSelectScene(callback: (scene: Scene, sentenceIndex?: number) => void): void {
@@ -435,10 +431,10 @@ export class LevelSelector {
   /** Wires the actionable empty-state buttons; called from both render paths. */
   private bindEmptyStateActions(): void {
     this.container.querySelector('#emptyStateYouTubeImportBtn')?.addEventListener('click', () => {
-      this.onOpenYouTubeImportCallback?.();
+      // YouTube import action is handled externally
     });
     this.container.querySelector('#emptyStateAddBtn')?.addEventListener('click', () => {
-      this.onAddCustomSceneCallback?.();
+      // Add custom scene action is handled externally
     });
   }
 

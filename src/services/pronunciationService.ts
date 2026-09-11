@@ -24,8 +24,13 @@ export interface PronunciationAssessment {
 export function cleanSpokenText(text: string): string {
   return text
     .toLowerCase()
+    // Curly apostrophes (U+2019) first normalize to ASCII ' so a single
+    // strip class below removes both variants.
     .replace(/’/g, "'")
-    .replace(/[.,/#!$%^&*;:{}=\-_`~()?"!]/g, '')
+    // NOTE: the class must contain an apostrophe: without it "don't" survived
+    // cleaning as "don't" and never matched the contraction map keys ("dont").
+    // (The class previously had a duplicated `!` where `'` belongs — typo.)
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()?"']/g, '')
     .trim();
 }
 

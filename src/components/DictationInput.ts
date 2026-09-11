@@ -113,7 +113,9 @@ export class DictationInput {
     // Update active mode buttons
     const modeBtns = card.querySelectorAll<HTMLElement>('.sub-mode-btn');
     modeBtns.forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.subMode === mode);
+      const isActive = btn.dataset.subMode === mode;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     });
 
     // Update body content
@@ -266,7 +268,7 @@ export class DictationInput {
           </div>
 
           <!-- Clean Word Slots -->
-          <div class="word-slots-row" id="wordSlotsRow">
+          <div class="word-slots-row" id="wordSlotsRow" aria-hidden="true">
             ${targetWords.map((_, i) => `
               <div class="clean-word-slot" id="slot-${i}">
                 <span>${i + 1}.</span>
@@ -285,30 +287,33 @@ export class DictationInput {
             autocorrect="off"
             autocapitalize="off"
             spellcheck="false"
+            aria-label="${escapeHtml(t.listenAndType)}"
+            aria-describedby="liveMetricsText"
           ></textarea>
 
           <!-- Metrics and Action Buttons -->
           <div class="dictation-controls-cluster">
-            <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;" id="liveMetricsText">
+            <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;" id="liveMetricsText" role="status" aria-live="polite">
               ${t.accuracyLive} <strong style="color: var(--text-heading);" id="liveAccVal">0%</strong>
             </div>
 
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-              <!-- Shadowing Mode Button (Temporarily hidden) -->
-              <!-- <button class="clean-btn shadowing-trigger-pill" id="dictationShadowingBtn" title="${t.shadowingBtn}">
-                <i class="ph ph-microphone"></i> ${t.shadowingBtn}
-              </button> -->
-              <button class="clean-btn hint" id="dictationHintBtn" title="${t.hintBtn} (Alt+H)">
-                <i class="ph ph-lightbulb"></i> ${t.hintBtn}
+              <!-- Shadowing Mode: temporarily disabled — keeps layout stable + informs users -->
+              <button class="clean-btn shadowing-trigger-pill" id="dictationShadowingBtn" type="button" disabled aria-disabled="true" title="${escapeHtml(t.shadowingBtn)} — Tez kunda" aria-label="${escapeHtml(t.shadowingBtn)} (Tez kunda)">
+                <i class="ph ph-microphone" aria-hidden="true"></i> ${t.shadowingBtn}
+                <span class="coming-soon-badge">Tez kunda</span>
               </button>
-              <button class="clean-btn" id="dictationRevealBtn" title="${t.revealBtn}">
-                <i class="ph ph-eye"></i> ${t.revealBtn}
+              <button class="clean-btn hint" id="dictationHintBtn" type="button" title="${escapeHtml(t.hintBtn)} (Alt+H)" aria-label="${escapeHtml(t.hintBtn)}">
+                <i class="ph ph-lightbulb" aria-hidden="true"></i> ${t.hintBtn}
               </button>
-              <button class="clean-btn" id="dictationClearBtn" title="${t.clearBtn}">
-                <i class="ph ph-trash"></i>
+              <button class="clean-btn" id="dictationRevealBtn" type="button" title="${escapeHtml(t.revealBtn)}" aria-label="${escapeHtml(t.revealBtn)}">
+                <i class="ph ph-eye" aria-hidden="true"></i> ${t.revealBtn}
               </button>
-              <button class="clean-btn" id="dictationSkipBtn" title="${t.nextReplica}">
-                <i class="ph ph-caret-right"></i>
+              <button class="clean-btn" id="dictationClearBtn" type="button" title="${escapeHtml(t.clearBtn)}" aria-label="${escapeHtml(t.clearBtn)}">
+                <i class="ph ph-trash" aria-hidden="true"></i>
+              </button>
+              <button class="clean-btn" id="dictationSkipBtn" type="button" title="${escapeHtml(t.nextReplica)}" aria-label="${escapeHtml(t.nextReplica)}">
+                <i class="ph ph-caret-right" aria-hidden="true"></i>
               </button>
             </div>
           </div>
@@ -331,18 +336,18 @@ export class DictationInput {
               </div>
 
               <!-- Mode Switcher: Both | EN | UZ | Off -->
-              <div class="subtitles-toggle-controls">
-                <button class="sub-mode-btn ${this.subtitleMode === 'both' ? 'active' : ''}" data-sub-mode="both" title="Inglizcha va O‘zbekcha parallel">
+              <div class="subtitles-toggle-controls" role="group" aria-label="Subtitr rejimi">
+                <button class="sub-mode-btn ${this.subtitleMode === 'both' ? 'active' : ''}" data-sub-mode="both" type="button" aria-pressed="${this.subtitleMode === 'both'}" title="Inglizcha va O‘zbekcha parallel">
                   <span>EN + UZ</span>
                 </button>
-                <button class="sub-mode-btn ${this.subtitleMode === 'en' ? 'active' : ''}" data-sub-mode="en" title="Faqat Inglizcha">
+                <button class="sub-mode-btn ${this.subtitleMode === 'en' ? 'active' : ''}" data-sub-mode="en" type="button" aria-pressed="${this.subtitleMode === 'en'}" title="Faqat Inglizcha">
                   <span>EN</span>
                 </button>
-                <button class="sub-mode-btn ${this.subtitleMode === 'uz' ? 'active' : ''}" data-sub-mode="uz" title="Faqat O‘zbekcha">
+                <button class="sub-mode-btn ${this.subtitleMode === 'uz' ? 'active' : ''}" data-sub-mode="uz" type="button" aria-pressed="${this.subtitleMode === 'uz'}" title="Faqat O‘zbekcha">
                   <span>UZ</span>
                 </button>
-                <button class="sub-mode-btn ${this.subtitleMode === 'off' ? 'active' : ''}" data-sub-mode="off" title="${t.subtitlesHide}">
-                  <i class="ph ph-eye-slash"></i>
+                <button class="sub-mode-btn ${this.subtitleMode === 'off' ? 'active' : ''}" data-sub-mode="off" type="button" aria-pressed="${this.subtitleMode === 'off'}" title="${escapeHtml(t.subtitlesHide)}" aria-label="${escapeHtml(t.subtitlesHide)}">
+                  <i class="ph ph-eye-slash" aria-hidden="true"></i>
                 </button>
               </div>
             </div>

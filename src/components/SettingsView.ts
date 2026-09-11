@@ -1,4 +1,5 @@
 import { storageService } from '../services/storageService';
+import { APP_THEME_KEY } from '../services/storageKeys';
 import { soundEffects } from '../services/soundEffects';
 import { i18n, AppLanguage } from '../services/i18nService';
 import { apiService } from '../services/apiService';
@@ -360,10 +361,10 @@ export class SettingsView {
 
         if (selectedTheme === 'dark' || selectedTheme === 'oled') {
           document.documentElement.setAttribute('data-theme', selectedTheme);
-          localStorage.setItem('movielisten_theme', selectedTheme);
+          localStorage.setItem(APP_THEME_KEY, selectedTheme);
         } else {
           document.documentElement.removeAttribute('data-theme');
-          localStorage.setItem('movielisten_theme', 'light');
+          localStorage.setItem(APP_THEME_KEY, 'light');
         }
 
         this.onThemeOrSoundChangedCallback?.();

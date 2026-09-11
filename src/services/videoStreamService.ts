@@ -20,8 +20,10 @@ class VideoStreamService {
 
   constructor() {
     // Detect Cloudflare R2 URL from window injection or Vite env
-    const injectedR2 = typeof window !== 'undefined' ? (window as any).__CLOUDFLARE_R2_URL__ : '';
-    const envR2 = (import.meta as any).env?.VITE_CLOUDFLARE_R2_URL || '';
+    const injectedR2 = typeof window !== 'undefined'
+      ? (window as unknown as { __CLOUDFLARE_R2_URL__?: string }).__CLOUDFLARE_R2_URL__ || ''
+      : '';
+    const envR2 = (import.meta.env.VITE_CLOUDFLARE_R2_URL as string | undefined) || '';
     const initialUrl = (injectedR2 || envR2 || '').trim().replace(/\/+$/, '');
     if (initialUrl) {
       this.cloudflareR2Url = initialUrl;

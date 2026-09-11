@@ -1,4 +1,5 @@
 import { storageService } from '../services/storageService';
+import { APP_THEME_KEY } from '../services/storageKeys';
 import { soundEffects } from '../services/soundEffects';
 import { i18n, AppLanguage } from '../services/i18nService';
 import { searchByWord } from '../services/searchService';
@@ -26,7 +27,7 @@ export class StatsHeader {
 
   constructor(container: HTMLElement) {
     this.container = container;
-    const savedTheme = (localStorage.getItem('movielisten_theme') as AppTheme) || 'light';
+    const savedTheme = (localStorage.getItem(APP_THEME_KEY) as AppTheme) || 'light';
     this.currentTheme = savedTheme;
     if (savedTheme === 'dark' || savedTheme === 'oled') {
       document.documentElement.setAttribute('data-theme', savedTheme);
@@ -62,7 +63,7 @@ export class StatsHeader {
   public update(): void {
     // Re-read the theme on every update — Settings changes it via localStorage
     // and the header must not keep showing a stale theme state/icon.
-    const savedTheme = (localStorage.getItem('movielisten_theme') as AppTheme) || 'light';
+    const savedTheme = (localStorage.getItem(APP_THEME_KEY) as AppTheme) || 'light';
     this.currentTheme = savedTheme;
 
     const stats = storageService.getStats();
@@ -535,15 +536,15 @@ export class StatsHeader {
       if (this.currentTheme === 'light') {
         this.currentTheme = 'dark';
         document.documentElement.setAttribute('data-theme', 'dark');
-        localStorage.setItem('movielisten_theme', 'dark');
+        localStorage.setItem(APP_THEME_KEY, 'dark');
       } else if (this.currentTheme === 'dark') {
         this.currentTheme = 'oled';
         document.documentElement.setAttribute('data-theme', 'oled');
-        localStorage.setItem('movielisten_theme', 'oled');
+        localStorage.setItem(APP_THEME_KEY, 'oled');
       } else {
         this.currentTheme = 'light';
         document.documentElement.removeAttribute('data-theme');
-        localStorage.setItem('movielisten_theme', 'light');
+        localStorage.setItem(APP_THEME_KEY, 'light');
       }
       this.update();
     });

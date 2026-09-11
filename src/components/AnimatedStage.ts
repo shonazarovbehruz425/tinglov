@@ -4,6 +4,7 @@ import { videoStreamService } from '../services/videoStreamService';
 import { soundEffects } from '../services/soundEffects';
 import { i18n } from '../services/i18nService';
 import { storageService } from '../services/storageService';
+import { SUBTITLE_MODE_KEY } from '../services/storageKeys';
 import { escapeHtml, isValidYouTubeVideoId, buildSecureYouTubeEmbedUrl } from '../utils/sanitize';
 
 /**
@@ -26,7 +27,7 @@ export class AnimatedStage {
   private isSpeaking: boolean = false;
   private speed: number = 1.0;
   private isSubtitleRevealed: boolean = false;
-  private subtitleMode: 'both' | 'en' | 'uz' | 'off' = (localStorage.getItem('lingua_subtitle_mode') as 'both' | 'en' | 'uz' | 'off') || 'both';
+  private subtitleMode: 'both' | 'en' | 'uz' | 'off' = (localStorage.getItem(SUBTITLE_MODE_KEY) as 'both' | 'en' | 'uz' | 'off') || 'both';
   private activeTab: 'description' | 'materials' | 'task' | 'highscores' = 'description';
   private onReplayRequest: (() => void) | null = null;
   private onPrevSentenceRequest: (() => void) | null = null;
@@ -317,7 +318,7 @@ export class AnimatedStage {
   public setSubtitleMode(mode: 'both' | 'en' | 'uz' | 'off'): void {
     this.subtitleMode = mode;
     try {
-      localStorage.setItem('lingua_subtitle_mode', mode);
+      localStorage.setItem(SUBTITLE_MODE_KEY, mode);
     } catch {
       // Ignore
     }
@@ -397,8 +398,8 @@ export class AnimatedStage {
 
           <div class="practice-title-row">
             <div class="practice-title-left">
-              <button class="back-round-btn" id="backToLibraryBtn" title="Orqaga qaytish">
-                <i class="ph ph-caret-left"></i>
+              <button class="back-round-btn" id="backToLibraryBtn" title="Orqaga qaytish" aria-label="Katalogga qaytish">
+                <i class="ph ph-caret-left" aria-hidden="true"></i>
               </button>
               <h2 class="practice-course-heading">${escapeHtml(this.currentScene.title)}</h2>
             </div>
@@ -413,8 +414,8 @@ export class AnimatedStage {
                 <i class="ph ph-clock"></i>
                 <span>${escapeHtml(this.currentScene.duration)}</span>
               </div>
-              <button class="info-pill-yellow focus-mode-btn" id="stageFocusModeBtn" title="Minimalist Focus Mode: Faqat video va matnga diqqat qaratish">
-                <i class="ph ph-corners-out"></i>
+              <button class="info-pill-yellow focus-mode-btn" id="stageFocusModeBtn" title="Minimalist Focus Mode: Faqat video va matnga diqqat qaratish" aria-label="Minimalist fokus rejimini yoqish">
+                <i class="ph ph-corners-out" aria-hidden="true"></i>
                 <span>Fokus Rejimi</span>
               </button>
             </div>
@@ -469,7 +470,7 @@ export class AnimatedStage {
           </div>
 
           <!-- In-Video Floating Subtitle Overlay -->
-          <div class="video-subtitles-overlay ${this.isSubtitleRevealed && this.subtitleMode !== 'off' ? 'visible' : ''}" id="videoSubtitleOverlay">
+          <div class="video-subtitles-overlay ${this.isSubtitleRevealed && this.subtitleMode !== 'off' ? 'visible' : ''}" id="videoSubtitleOverlay" aria-live="polite">
             ${this.isSubtitleRevealed && this.subtitleMode !== 'off' ? `
               ${(this.subtitleMode === 'both' || this.subtitleMode === 'en') ? `<div class="invideo-sub-en">${escapeHtml(this.currentSentence.text)}</div>` : ''}
               ${(this.subtitleMode === 'both' || this.subtitleMode === 'uz') ? `<div class="invideo-sub-uz">${escapeHtml(i18n.getSentenceTranslation(this.currentSentence))}</div>` : ''}
@@ -479,7 +480,7 @@ export class AnimatedStage {
           <!-- YouTube-Style Bottom Overlay: Timeline Scrubber + Floating Controls -->
           <div class="video-scrubber-overlay">
             <!-- Progress Bar with Sentence Markers -->
-            <div class="timeline-progress-track" id="videoTimelineTrack" title="Vaqtni tanlash">
+            <div class="timeline-progress-track" id="videoTimelineTrack" title="Vaqtni tanlash" role="slider" tabindex="0" aria-label="Video vaqti" aria-valuemin="0" aria-valuemax="${Math.round(totalDuration)}" aria-valuenow="${Math.round(this.currentSentence.startTime)}">
               <div class="timeline-progress-fill" id="videoProgressFill" style="width: ${(this.currentSentence.startTime / totalDuration) * 100}%"></div>
               ${this.currentScene.dialogues.map((d, i) => `
                 <div class="timeline-dialogue-marker ${i === this.sentenceIndex ? 'active' : ''}"
@@ -492,27 +493,27 @@ export class AnimatedStage {
             <div class="yt-video-controls-bar">
               <!-- Left: Play/Replay & Navigation buttons -->
               <div class="yt-controls-left">
-                <button class="yt-ctrl-btn" id="stagePrevBtn" ${isFirstSentence ? 'disabled' : ''} title="${i18n.t().prevReplica} (Ctrl+Left)">
-                  <i class="ph ph-skip-back"></i>
+                <button class="yt-ctrl-btn" id="stagePrevBtn" ${isFirstSentence ? 'disabled' : ''} title="${i18n.t().prevReplica} (Ctrl+Left)" aria-label="${i18n.t().prevReplica}">
+                  <i class="ph ph-skip-back" aria-hidden="true"></i>
                   <span>${i18n.t().prevReplica}</span>
                 </button>
 
-                <button class="yt-ctrl-btn icon-only" id="stageRewind2sBtn" title="-2 soniya">
-                  -2s
+                <button class="yt-ctrl-btn icon-only" id="stageRewind2sBtn" title="-2 soniya" aria-label="2 soniya orqaga">
+                  <span aria-hidden="true">-2s</span>
                 </button>
 
-                <button class="yt-ctrl-btn primary-replay" id="stageReplayBtn" title="${i18n.t().replay} (Space / Tab)">
-                  <i class="ph ph-play-fill"></i>
+                <button class="yt-ctrl-btn primary-replay" id="stageReplayBtn" title="${i18n.t().replay} (Space / Tab)" aria-label="${i18n.t().replay}">
+                  <i class="ph ph-play-fill" aria-hidden="true"></i>
                   <span>${i18n.t().replay}</span>
                 </button>
 
-                <button class="yt-ctrl-btn icon-only" id="stageForward2sBtn" title="+2 soniya">
-                  +2s
+                <button class="yt-ctrl-btn icon-only" id="stageForward2sBtn" title="+2 soniya" aria-label="2 soniya oldinga">
+                  <span aria-hidden="true">+2s</span>
                 </button>
 
-                <button class="yt-ctrl-btn" id="stageNextBtn" ${isLastSentence ? 'disabled' : ''} title="${i18n.t().nextReplica} (Ctrl+Right)">
+                <button class="yt-ctrl-btn" id="stageNextBtn" ${isLastSentence ? 'disabled' : ''} title="${i18n.t().nextReplica} (Ctrl+Right)" aria-label="${i18n.t().nextReplica}">
                   <span>${i18n.t().nextReplica}</span>
-                  <i class="ph ph-skip-forward"></i>
+                  <i class="ph ph-skip-forward" aria-hidden="true"></i>
                 </button>
 
                 <div class="yt-time-badge">
@@ -523,12 +524,12 @@ export class AnimatedStage {
               <!-- Right: Speed Selector Chips -->
               <div class="yt-controls-right">
                 <div class="yt-speed-selector">
-                  <span class="yt-speed-label">${i18n.t().speedLabel}</span>
-                  <div class="yt-speed-chips">
-                    <button class="yt-speed-chip ${this.speed === 0.5 ? 'active' : ''}" data-speed="0.5">0.5x</button>
-                    <button class="yt-speed-chip ${this.speed === 0.75 ? 'active' : ''}" data-speed="0.75">0.75x</button>
-                    <button class="yt-speed-chip ${this.speed === 1.0 ? 'active' : ''}" data-speed="1.0">1.0x</button>
-                    <button class="yt-speed-chip ${this.speed === 1.25 ? 'active' : ''}" data-speed="1.25">1.25x</button>
+                  <span class="yt-speed-label" id="speedLabelId">${i18n.t().speedLabel}</span>
+                  <div class="yt-speed-chips" role="group" aria-labelledby="speedLabelId">
+                    <button class="yt-speed-chip ${this.speed === 0.5 ? 'active' : ''}" data-speed="0.5" aria-pressed="${this.speed === 0.5}">0.5x</button>
+                    <button class="yt-speed-chip ${this.speed === 0.75 ? 'active' : ''}" data-speed="0.75" aria-pressed="${this.speed === 0.75}">0.75x</button>
+                    <button class="yt-speed-chip ${this.speed === 1.0 ? 'active' : ''}" data-speed="1.0" aria-pressed="${this.speed === 1.0}">1.0x</button>
+                    <button class="yt-speed-chip ${this.speed === 1.25 ? 'active' : ''}" data-speed="1.25" aria-pressed="${this.speed === 1.25}">1.25x</button>
                   </div>
                 </div>
               </div>
@@ -538,23 +539,23 @@ export class AnimatedStage {
 
         <!-- Tabs Under Player (Description, Materials, Home task, Community TOP 3 + Share lesson) -->
         <div class="player-tabs-bar">
-          <div class="player-nav-tabs">
-            <button class="player-tab-pill ${this.activeTab === 'description' ? 'active' : ''}" data-tab="description">
+          <div class="player-nav-tabs" role="tablist" aria-label="Dars bo'limlari">
+            <button class="player-tab-pill ${this.activeTab === 'description' ? 'active' : ''}" data-tab="description" role="tab" aria-selected="${this.activeTab === 'description'}">
               ${i18n.t().tabDescription}
             </button>
-            <button class="player-tab-pill ${this.activeTab === 'materials' ? 'active' : ''}" data-tab="materials">
+            <button class="player-tab-pill ${this.activeTab === 'materials' ? 'active' : ''}" data-tab="materials" role="tab" aria-selected="${this.activeTab === 'materials'}">
               ${i18n.t().tabMaterials}
             </button>
-            <button class="player-tab-pill ${this.activeTab === 'task' ? 'active' : ''}" data-tab="task">
+            <button class="player-tab-pill ${this.activeTab === 'task' ? 'active' : ''}" data-tab="task" role="tab" aria-selected="${this.activeTab === 'task'}">
               ${i18n.t().tabTask}
             </button>
-            <button class="player-tab-pill ${this.activeTab === 'highscores' ? 'active' : ''}" data-tab="highscores">
+            <button class="player-tab-pill ${this.activeTab === 'highscores' ? 'active' : ''}" data-tab="highscores" role="tab" aria-selected="${this.activeTab === 'highscores'}">
               ${i18n.t().tabHighScores}
             </button>
           </div>
 
-          <div class="share-lesson-action" id="shareLessonBtn">
-            <i class="ph ph-share-network"></i>
+          <div class="share-lesson-action" id="shareLessonBtn" role="button" tabindex="0" aria-label="${i18n.t().share}">
+            <i class="ph ph-share-network" aria-hidden="true"></i>
             <span>${i18n.t().share}</span>
           </div>
         </div>
@@ -621,7 +622,8 @@ export class AnimatedStage {
           const exitBtn = document.createElement('button');
           exitBtn.id = 'minimalistExitBtn';
           exitBtn.className = 'minimalist-exit-badge';
-          exitBtn.innerHTML = '<i class="ph ph-corners-in"></i> <span>Oddiy rejimga qaytish</span>';
+          exitBtn.setAttribute('aria-label', 'Oddiy rejimga qaytish');
+          exitBtn.innerHTML = '<i class="ph ph-corners-in" aria-hidden="true"></i> <span>Oddiy rejimga qaytish</span>';
           exitBtn.addEventListener('click', () => {
             soundEffects.playKeyClick();
             document.body.classList.remove('minimalist-focus-mode');
@@ -672,24 +674,49 @@ export class AnimatedStage {
     });
 
     // Share lesson / challenge friend
-    this.container.querySelector('#shareLessonBtn')?.addEventListener('click', () => {
+    const shareBtn = this.container.querySelector('#shareLessonBtn');
+    shareBtn?.addEventListener('click', () => {
       this.onChallengeRequest?.();
+    });
+    shareBtn?.addEventListener('keydown', (e) => {
+      if ((e as KeyboardEvent).key === 'Enter' || (e as KeyboardEvent).key === ' ') {
+        e.preventDefault();
+        this.onChallengeRequest?.();
+      }
     });
 
     // Timeline track click
     const timelineTrack = this.container.querySelector('#videoTimelineTrack');
-    timelineTrack?.addEventListener('click', (e) => {
+    const seekByRatio = (ratio: number): void => {
       if (!this.currentScene) return;
-      const rect = (timelineTrack as HTMLElement).getBoundingClientRect();
-      const clickX = (e as MouseEvent).clientX - rect.left;
-      const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-      const targetTime = ratio * this.getTotalDuration();
+      const clamped = Math.max(0, Math.min(1, ratio));
+      const targetTime = clamped * this.getTotalDuration();
 
       const sentenceIdx = this.currentScene.dialogues.findIndex(
         d => targetTime >= d.startTime - 0.5 && targetTime <= d.endTime + 0.5
       );
       if (sentenceIdx >= 0) {
         this.onSeekToSentence?.(sentenceIdx);
+      }
+    };
+    timelineTrack?.addEventListener('click', (e) => {
+      if (!this.currentScene) return;
+      const rect = (timelineTrack as HTMLElement).getBoundingClientRect();
+      const clickX = (e as MouseEvent).clientX - rect.left;
+      seekByRatio(clickX / rect.width);
+    });
+    // Keyboard: arrows seek between replicas on the slider track
+    timelineTrack?.addEventListener('keydown', (e) => {
+      const ke = e as KeyboardEvent;
+      if (ke.key === 'ArrowLeft') {
+        e.preventDefault();
+        this.onPrevSentenceRequest?.();
+      } else if (ke.key === 'ArrowRight') {
+        e.preventDefault();
+        this.onNextSentenceRequest?.();
+      } else if (ke.key === 'Enter' || ke.key === ' ') {
+        e.preventDefault();
+        this.onReplayRequest?.();
       }
     });
 

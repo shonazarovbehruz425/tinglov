@@ -1,0 +1,445 @@
+openapi: 3.0.3
+info:
+  title: Tinglov API
+  description: |
+    Tinglov — kino va multfilm orqali listening platformasi REST API.
+    Barcha POST/DELETE so'rovlarida CSRF himoyasi mavjud (XSRF-TOKEN cookie + x-csrf-token header),
+    Bearer token bo'lsa CSRF shart emas. Rate limiting headerlari har javobda qaytariladi.
+  version: 1.0.0
+  contact:
+    name: Tinglov Team
+    url: https://tinglov.uz
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Lokal dev
+  - url: https://tinglov.onrender.com
+    description: Production (Render)
+
+tags:
+  - name: health
+    description: Monitoring
+  - name: auth
+    description: Autentifikatsiya
+  - name: user
+    description: Foydalanuvchi progress
+  - name: leaderboard
+    description: Reyting
+  - name: admin
+    description: Boshqaruv markazi
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Health check (rate-limit exempt)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  service: { type: string, example: tinglov }
+                  timestamp: { type: string, format: date-time }
+                  uptimeSeconds: { type: integer, example: 3600 }
+                  message: { type: string }
+
+  /api/csrf-token:
+    get:
+      tags: [auth]
+      summary: CSRF token olish
+      responses:
+        '200':
+          description: CSRF token
+          headers:
+            Set-Cookie:
+              schema: { type: string, example: 'XSRF-TOKEN=abc123; Path=/; SameSite=Strict' }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  csrfToken: { type: string, example: a1b2c3d4e5f6 }
+
+  /api/captcha/new:
+    get:
+      tags: [auth]
+      summary: CAPTCHA challenge generatsiya
+      responses:
+        '200':
+          description: Challenge
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  question: { type: string, example: '7 + 5 = ?' }
+                  token: { type: string, description: 'HMAC-SHA256 imzolangan token (5min TTL, single-use)' }
+
+  /api/auth/register:
+    post:
+      tags: [auth]
+      summary: Ro'yxatdan o'tish
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username: { type: string, minLength: 3, maxLength: 20, example: ali_uz }
+                email: { type: string, format: email, example: ali@tinglov.uz }
+                password: { type: string, minLength: 8, example: KuchliParol123! }
+                fullName: { type: string, example: Ali Valiyev }
+                _csrf: { type: string, description: Alternativ CSRF maydoni }
+      responses:
+        '201':
+          description: Muvaffaqiyatli ro'yxatdan o'tdi
+          headers:
+            Set-Cookie:
+              schema: { type: string, example: 'token=eyJ...; HttpOnly; SameSite=Lax; Max-Age=2592000' }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Kirish (username yoki email bilan)
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier, password]
+              properties:
+                identifier: { type: string, description: 'username yoki email', example: ali@tinglov.uz }
+                password: { type: string, example: KuchliParol123! }
+                captchaToken: { type: string }
+                captchaAnswer: { type: string }
+      responses:
+        '200':
+          description: Xush kelibsiz
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Noto'g'ri parol yoki CAPTCHA xato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string, example: 'Bunday foydalanuvchi topilmadi yoki parol noto‘g‘ri' }
+                  requiresCaptcha: { type: boolean }
+                  retryAfter: { type: integer }
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/auth/me:
+    get:
+      tags: [auth]
+      summary: Joriy foydalanuvchi profili
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Profil + so'zlar + sahnalar
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  savedWords:
+                    type: array
+                    items: { $ref: '#/components/schemas/SavedWord' }
+                  completedScenes:
+                    type: array
+                    items: { $ref: '#/components/schemas/CompletedScene' }
+                  completedSceneIds:
+                    type: array
+                    items: { type: string }
+                  lastPositions:
+                    type: object
+                    additionalProperties: { type: integer }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/user/sync:
+    post:
+      tags: [user]
+      summary: Progress sinxronlash (XP, streak, lug'at, sahnalar, pozitsiyalar)
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                xp: { type: integer, example: 450 }
+                streak: { type: integer, example: 7 }
+                level: { type: integer, example: 4 }
+                lastActiveDate: { type: string, format: date, example: '2026-09-10' }
+                lastPositions: { type: object, additionalProperties: { type: integer }, example: { scene_1: 5 } }
+                savedWords:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      word: { type: string }
+                      translation: { type: string }
+                      sceneTitle: { type: string }
+                completedScene:
+                  type: object
+                  properties:
+                    sceneId: { type: string }
+                    accuracy: { type: integer }
+                    wpm: { type: integer }
+                completedScenes:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200':
+          description: Sinxronlandi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  user: { $ref: '#/components/schemas/User' }
+                  savedWords: { type: array, items: { $ref: '#/components/schemas/SavedWord' } }
+                  completedScenes: { type: array, items: { $ref: '#/components/schemas/CompletedScene' } }
+                  completedSceneIds: { type: array, items: { type: string } }
+                  lastPositions: { type: object, additionalProperties: { type: integer } }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/leaderboard:
+    get:
+      tags: [leaderboard]
+      summary: Global leaderboard TOP-20
+      responses:
+        '200':
+          description: Reyting
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  leaderboard:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        username: { type: string }
+                        full_name: { type: string }
+                        avatar_color: { type: string }
+                        xp: { type: integer }
+                        streak: { type: integer }
+                        level: { type: integer }
+
+  /api/admin/login:
+    post:
+      tags: [admin]
+      summary: Admin login
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string, example: admin }
+                password: { type: string, example: "<ADMIN_PASSWORD>" }
+      responses:
+        '200':
+          description: Admin token
+          headers:
+            Set-Cookie:
+              schema: { type: string, example: 'admin_token=eyJ...; HttpOnly; SameSite=Strict; Max-Age=86400' }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  token: { type: string }
+                  admin: { type: object, properties: { username: { type: string }, role: { type: string, example: admin } } }
+                  adminPath: { type: string, example: /admin }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/admin/stats:
+    get:
+      tags: [admin]
+      summary: Admin statistika
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Statistika
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  stats:
+                    type: object
+                    properties:
+                      totalUsers: { type: integer }
+                      usersToday: { type: integer }
+                      totalSavedWords: { type: integer }
+                      totalCompletedScenes: { type: integer }
+                      totalCustomScenes: { type: integer }
+                  system:
+                    type: object
+                    properties:
+                      adminPath: { type: string }
+                      nodeVersion: { type: string }
+                      uptimeSeconds: { type: integer }
+                      memoryRssMb: { type: integer }
+                      memoryHeapUsedMb: { type: integer }
+                      redisConfigured: { type: boolean }
+                      csrfProtection: { type: boolean }
+                      hstsProtection: { type: boolean }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Authorization: Bearer <JWT>'
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
+      description: 'HttpOnly cookie: token=<JWT>'
+
+  parameters:
+    CsrfHeader:
+      name: x-csrf-token
+      in: header
+      required: false
+      schema: { type: string }
+      description: 'CSRF token (XSRF-TOKEN cookie qiymati). Bearer auth bo\'lsa shart emas.'
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        username: { type: string, example: ali_uz }
+        email: { type: string, format: email, example: ali@tinglov.uz }
+        full_name: { type: string, example: Ali Valiyev }
+        avatar_color: { type: string, example: '#A3E635' }
+        xp: { type: integer, example: 450 }
+        streak: { type: integer, example: 7 }
+        level: { type: integer, example: 4 }
+        last_active_date: { type: string, nullable: true, example: '2026-09-10' }
+        auth_provider: { type: string, enum: [email, google], example: email }
+        created_at: { type: string, format: date-time }
+
+    AuthSuccess:
+      type: object
+      properties:
+        message: { type: string, example: 'Xush kelibsiz!' }
+        token: { type: string, example: eyJhbGciOiJIUzI1NiIs... }
+        user: { $ref: '#/components/schemas/User' }
+
+    SavedWord:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        word: { type: string, example: serendipity }
+        translation: { type: string, example: omad }
+        scene_title: { type: string, example: Cinema }
+
+    CompletedScene:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        scene_id: { type: string, example: scene_1 }
+        accuracy: { type: integer, example: 95 }
+        wpm: { type: integer, example: 42 }
+        completed_at: { type: string, format: date-time }
+
+  responses:
+    BadRequest:
+      description: Validatsiya xatosi
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string, example: 'Parol kamida 8 belgidan iborat bo‘lishi kerak' }
+    Unauthorized:
+      description: Avtorizatsiya talab qilinadi
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string, example: 'Avtorizatsiyadan o‘tish talab etiladi (Token topilmadi)' }
+    RateLimited:
+      description: Juda ko'p so'rov (429)
+      headers:
+        Retry-After:
+          schema: { type: integer, example: 60 }
+        RateLimit-Limit:
+          schema: { type: integer, example: 120 }
+        RateLimit-Remaining:
+          schema: { type: integer, example: 0 }
+        RateLimit-Reset:
+          schema: { type: integer, example: 42 }
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string, example: 'Juda ko‘p so‘rov yuborildi. Iltimos, birozdan keyin qayta urinib ko‘ring.' }
+              retryAfter: { type: integer, example: 60 }
+              requiresCaptcha: { type: boolean }

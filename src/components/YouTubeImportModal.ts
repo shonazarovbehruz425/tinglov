@@ -1,4 +1,6 @@
+// internal
 import { Scene, Difficulty } from '../types';
+import { BaseModal } from './BaseModal';
 import { youtubeService, YOUTUBE_PRESETS, YouTubeVideoMetadata } from '../services/youtubeService';
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
@@ -7,15 +9,14 @@ import { escapeHtml, sanitizeUrl } from '../utils/sanitize';
 import { safeValidate, youtubeUrlSchema } from '../utils/validation';
 import { logger } from '../utils/logger';
 
-export class YouTubeImportModal {
-  private container: HTMLElement;
+export class YouTubeImportModal extends BaseModal {
   private currentMetadata: YouTubeVideoMetadata | null = null;
   private isLoading: boolean = false;
   private onCloseCallback: (() => void) | null = null;
   private onLessonCreatedCallback: ((scene: Scene) => void) | null = null;
 
   constructor(container: HTMLElement) {
-    this.container = container;
+    super(container);
   }
 
   public setCallbacks(callbacks: {
@@ -29,21 +30,13 @@ export class YouTubeImportModal {
   public open(): void {
     this.currentMetadata = null;
     this.isLoading = false;
+    this.markOpened();
+    this.enableEscapeClose();
     this.render();
   }
 
-  public close(): void {
-    const backdrop = this.container.querySelector('.modal-backdrop');
-    if (backdrop) {
-      backdrop.classList.add('modal-closing');
-      setTimeout(() => {
-        this.container.innerHTML = '';
-        this.onCloseCallback?.();
-      }, 260);
-    } else {
-      this.container.innerHTML = '';
-      this.onCloseCallback?.();
-    }
+  protected override onAfterClose(): void {
+    this.onCloseCallback?.();
   }
 
   private render(): void {
@@ -156,12 +149,7 @@ export class YouTubeImportModal {
   }
 
   private bindEvents(): void {
-    // Backdrop click
-    this.container.querySelector('#youtubeModalBackdrop')?.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).id === 'youtubeModalBackdrop') {
-        this.close();
-      }
-    });
+    this.bindBackdropClose('youtubeModalBackdrop');
 
     this.container.querySelector('#closeYoutubeModalBtn')?.addEventListener('click', () => this.close());
     this.container.querySelector('#cancelYoutubeModalBtn')?.addEventListener('click', () => this.close());
@@ -291,8 +279,7 @@ export class YouTubeImportModal {
     const t = i18n.t();
 
     this.isLoading = true;
-    if (generateBtn) generateBtn.disabled = true;
-    if (btnLabel) btnLabel.textContent = t.youtubeGenerating;
+    this.setBusyButton(generateBtn, true, btnLabel, t.youtubeGenerating, t.youtubeGenerateBtn);
 
     try {
       if (!this.currentMetadata || this.currentMetadata.videoId !== videoId) {
@@ -323,8 +310,7 @@ export class YouTubeImportModal {
       alert('Darsni generatsiya qilishda xatolik yuz berdi. Qayta urinib ko\'ring.');
     } finally {
       this.isLoading = false;
-      if (generateBtn) generateBtn.disabled = false;
-      if (btnLabel) btnLabel.textContent = t.youtubeGenerateBtn;
+      this.setBusyButton(generateBtn, false, btnLabel, t.youtubeGenerating, t.youtubeGenerateBtn);
     }
   }
 }

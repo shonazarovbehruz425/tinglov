@@ -1,4 +1,6 @@
+// internal
 import { Scene } from '../types';
+import { BaseModal } from './BaseModal';
 import { soundEffects } from '../services/soundEffects';
 import { escapeHtml } from '../utils/sanitize';
 
@@ -12,8 +14,7 @@ export interface CompletionStats {
   rank?: number;
 }
 
-export class CompletionModal {
-  private container: HTMLElement;
+export class CompletionModal extends BaseModal {
   private currentScene: Scene | null = null;
   private currentStats: CompletionStats | null = null;
   private onNextSceneCallback: (() => void) | null = null;
@@ -22,7 +23,7 @@ export class CompletionModal {
   private onChallengeFriendCallback: ((scene: Scene, stats: CompletionStats) => void) | null = null;
 
   constructor(container: HTMLElement) {
-    this.container = container;
+    super(container);
   }
 
   public setCallbacks(callbacks: {
@@ -43,6 +44,8 @@ export class CompletionModal {
     } else {
       soundEffects.playSentenceComplete();
     }
+    this.markOpened();
+    this.enableEscapeClose();
 
     this.container.innerHTML = `
       <div class="modal-backdrop">
@@ -113,18 +116,6 @@ export class CompletionModal {
     this.currentScene = scene;
     this.currentStats = stats;
     this.bindEvents();
-  }
-
-  public hide(): void {
-    const backdrop = this.container.querySelector('.modal-backdrop');
-    if (backdrop) {
-      backdrop.classList.add('modal-closing');
-      setTimeout(() => {
-        this.container.innerHTML = '';
-      }, 260);
-    } else {
-      this.container.innerHTML = '';
-    }
   }
 
   private bindEvents(): void {

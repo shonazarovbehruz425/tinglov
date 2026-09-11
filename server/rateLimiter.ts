@@ -6,14 +6,20 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Secret key for HMAC CAPTCHA signing
-const CAPTCHA_SECRET = process.env.CAPTCHA_SECRET;
-if (!CAPTCHA_SECRET) {
+const captchaSecretEnv = process.env.CAPTCHA_SECRET;
+if (!captchaSecretEnv) {
   throw new Error('FATAL: CAPTCHA_SECRET environment variable is required. Please define a static secret in your .env or host dashboard.');
 }
 
-if (CAPTCHA_SECRET.length < 16 && process.env.NODE_ENV === 'production') {
+if (captchaSecretEnv.length < 16 && process.env.NODE_ENV === 'production') {
   throw new Error('FATAL: CAPTCHA_SECRET must be at least 16 characters long for production security.');
 }
+
+// Re-bind with the value the guards above proved to be a non-empty `string`
+// (the first guard throws otherwise, so this is a type-level narrowing only):
+// module-scope narrowing is not carried into hoisted function declarations,
+// which is why `crypto.createHmac` call sites below saw `string | undefined`.
+const CAPTCHA_SECRET: string = captchaSecretEnv;
 
 // Max entries for bounded in-memory fallback to prevent memory exhaustion attacks
 const MAX_STORE_ENTRIES = 10000;
@@ -444,8 +450,8 @@ export interface CaptchaChallenge {
 }
 
 export function generateCaptchaChallenge(): CaptchaChallenge {
-  const num1 = Math.floor(Math.random() * 12) + 3;
-  const num2 = Math.floor(Math.random() * 10) + 1;
+  const num1 = Math.floor(Math.random() * 10) + 2;
+  const num2 = Math.floor(Math.random() * 8) + 1;
   const operation = Math.random() > 0.4 ? '+' : '-';
   
   let question = '';

@@ -1,18 +1,19 @@
+// internal
 import { SavedWord } from '../types';
+import { BaseModal } from './BaseModal';
 import { storageService } from '../services/storageService';
 import { speechService } from '../services/speechService';
 import { soundEffects } from '../services/soundEffects';
 import { escapeHtml } from '../utils/sanitize';
 
-export class VocabularyModal {
-  private container: HTMLElement;
+export class VocabularyModal extends BaseModal {
   private isQuizMode: boolean = false;
   private quizIndex: number = 0;
   private showQuizAnswer: boolean = false;
   private onCloseCallback: (() => void) | null = null;
 
   constructor(container: HTMLElement) {
-    this.container = container;
+    super(container);
   }
 
   public setOnClose(callback: () => void): void {
@@ -23,21 +24,13 @@ export class VocabularyModal {
     this.isQuizMode = false;
     this.quizIndex = 0;
     this.showQuizAnswer = false;
+    this.markOpened();
+    this.enableEscapeClose();
     this.render();
   }
 
-  public close(): void {
-    const backdrop = this.container.querySelector('.modal-backdrop');
-    if (backdrop) {
-      backdrop.classList.add('modal-closing');
-      setTimeout(() => {
-        this.container.innerHTML = '';
-        this.onCloseCallback?.();
-      }, 260);
-    } else {
-      this.container.innerHTML = '';
-      this.onCloseCallback?.();
-    }
+  protected override onAfterClose(): void {
+    this.onCloseCallback?.();
   }
 
   private render(): void {
@@ -149,11 +142,7 @@ export class VocabularyModal {
   }
 
   private bindEvents(savedWords: SavedWord[]): void {
-    this.container.querySelector('#vocabModalBackdrop')?.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).id === 'vocabModalBackdrop') {
-        this.close();
-      }
-    });
+    this.bindBackdropClose('vocabModalBackdrop');
 
     this.container.querySelector('#closeVocabModalBtn')?.addEventListener('click', () => this.close());
     this.container.querySelector('#toggleQuizBtn')?.addEventListener('click', () => {

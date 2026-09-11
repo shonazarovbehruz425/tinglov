@@ -1,18 +1,19 @@
+// internal
 import { getLevelProgress } from '../types';
+import { BaseModal } from './BaseModal';
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
 import { i18n, AppLanguage } from '../services/i18nService';
 import { escapeHtml } from '../utils/sanitize';
 import { safeValidate, profileUpdateSchema } from '../utils/validation';
 
-export class ProfileModal {
-  private container: HTMLElement;
+export class ProfileModal extends BaseModal {
   private isEditing: boolean = false;
   private onOpenVocabCallback: (() => void) | null = null;
   private onProfileUpdatedCallback: (() => void) | null = null;
 
   constructor(container: HTMLElement) {
-    this.container = container;
+    super(container);
   }
 
   public setCallbacks(callbacks: {
@@ -25,19 +26,8 @@ export class ProfileModal {
 
   public open(): void {
     this.isEditing = false;
+    this.markOpened();
     this.render();
-  }
-
-  public close(): void {
-    const backdrop = this.container.querySelector('.modal-backdrop');
-    if (backdrop) {
-      backdrop.classList.add('modal-closing');
-      setTimeout(() => {
-        this.container.innerHTML = '';
-      }, 260);
-    } else {
-      this.container.innerHTML = '';
-    }
   }
 
   private render(): void {
@@ -212,11 +202,7 @@ export class ProfileModal {
   }
 
   private bindEvents(): void {
-    this.container.querySelector('#profileModalBackdrop')?.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).id === 'profileModalBackdrop') {
-        this.close();
-      }
-    });
+    this.bindBackdropClose('profileModalBackdrop');
 
     this.container.querySelector('#closeProfileModalBtn')?.addEventListener('click', () => this.close());
     this.container.querySelector('#closeProfileBtn')?.addEventListener('click', () => this.close());

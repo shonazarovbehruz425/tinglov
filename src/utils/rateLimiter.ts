@@ -3,8 +3,10 @@
  * Prevents automated brute-force attacks and safeguards login/register forms.
  */
 
-const STORAGE_FAILURES_KEY = 'tinglov_auth_failures';
-const STORAGE_COOLDOWN_KEY = 'tinglov_auth_cooldown_until';
+import {
+  AUTH_FAILURES_KEY as STORAGE_FAILURES_KEY,
+  AUTH_COOLDOWN_KEY as STORAGE_COOLDOWN_KEY,
+} from '../services/storageKeys';
 
 export interface CaptchaData {
   id: string;
@@ -110,9 +112,19 @@ export async function getCaptchaChallenge(): Promise<CaptchaData> {
   }
 
   // Client-side fallback challenge
-  const num1 = Math.floor(Math.random() * 10) + 2;
-  const num2 = Math.floor(Math.random() * 8) + 1;
-  const op = Math.random() > 0.5 ? '+' : '-';
+  const cryptoObj = typeof globalThis !== 'undefined' ? globalThis.crypto : undefined;
+  if (!cryptoObj || typeof cryptoObj.getRandomValues !== 'function') {
+    return {
+      id: `c_${Date.now()}`,
+      question: 'CAPTCHA xizmati vaqtincha mavjud emas. Iltimos, sahifani yangilab keyinroq urinib ko‘ring.',
+      clientAnswer: Number.NaN,
+    };
+  }
+  const randomValues = new Uint32Array(2);
+  cryptoObj.getRandomValues(randomValues);
+  const num1 = (randomValues[0] % 10) + 2;
+  const num2 = (randomValues[1] % 8) + 1;
+  const op = (randomValues[0] & 1) === 0 ? '+' : '-';
   const high = Math.max(num1, num2);
   const low = Math.min(num1, num2);
 
@@ -135,6 +147,7 @@ export function verifyCaptchaClient(challenge: CaptchaData, answer: string): boo
 
   // If client-side challenge fallback
   if (challenge.clientAnswer !== undefined) {
+    if (!Number.isFinite(challenge.clientAnswer)) return false;
     return cleanAnswer === challenge.clientAnswer.toString();
   }
 

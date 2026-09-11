@@ -1,12 +1,14 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'node:crypto';
 import { Request, Response, NextFunction } from 'express';
 import { findUserById, DbUser } from './db';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const JWT_SECRET = process.env.JWT_SECRET;
+// Typed as string so closures (jwt.sign/verify) see a narrowed secret; the falsy guard below still fails fast at boot.
+const JWT_SECRET: string = process.env.JWT_SECRET ?? '';
 if (!JWT_SECRET) {
   throw new Error('FATAL: JWT_SECRET environment variable is required. Please define a strong secret in your .env or host dashboard.');
 }
@@ -15,7 +17,14 @@ if (JWT_SECRET.length < 32 && process.env.NODE_ENV === 'production') {
   throw new Error('FATAL: JWT_SECRET must be at least 32 characters long for production security.');
 }
 
+// Separate secret for admin sessions so a leaked user JWT cannot forge admin access (and vice versa)
+const JWT_ADMIN_SECRET = process.env.JWT_ADMIN_SECRET || `${JWT_SECRET}::admin`;
+if (!process.env.JWT_ADMIN_SECRET && process.env.NODE_ENV === 'production') {
+  console.warn('⚠️ JWT_ADMIN_SECRET not set — derived from JWT_SECRET. Set a dedicated JWT_ADMIN_SECRET in production.');
+}
+
 const JWT_EXPIRES_IN = '7d';
+const JWT_ADMIN_EXPIRES_IN = '7d'; // aligned with admin cookie maxAge (7d)
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
@@ -23,6 +32,37 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function comparePassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
+}
+
+/**
+ * Constant-time string comparison to prevent timing attacks on admin login.
+ * Falls back to false on length mismatch without leaking prefix info.
+ */
+export function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
+/**
+ * Admin password verification: bcrypt compare when ADMIN_PASSWORD_HASH is set,
+ * otherwise constant-time comparison of the plaintext secret.
+ * Fail-closed: if neither a bcrypt hash nor a plaintext secret is configured,
+ * the candidate is rejected (never compared against the string "undefined").
+ */
+export async function compareAdminPassword(candidate: string, plainSecret?: string, bcryptHash?: string): Promise<boolean> {
+  if (bcryptHash && bcryptHash.startsWith('$2')) {
+    try {
+      return await bcrypt.compare(candidate, bcryptHash);
+    } catch {
+      return false;
+    }
+  }
+  if (!plainSecret) {
+    return false;
+  }
+  return safeEqual(candidate, plainSecret);
 }
 
 export function generateToken(user: { id: number; username: string; email: string }): string {
@@ -104,8 +144,8 @@ export interface AdminRequest extends Request {
 export function generateAdminToken(username: string): string {
   return jwt.sign(
     { username, role: 'admin' },
-    JWT_SECRET,
-    { expiresIn: '24h' }
+    JWT_ADMIN_SECRET as string,
+    { expiresIn: JWT_ADMIN_EXPIRES_IN }
   );
 }
 
@@ -134,7 +174,7 @@ export function requireAdminAuth(req: AdminRequest, res: Response, next: NextFun
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as { username: string; role: string };
+    const payload = jwt.verify(token, JWT_ADMIN_SECRET as string) as { username: string; role: string };
     if (payload.role !== 'admin') {
       res.status(403).json({ error: 'Ruxsat berilmagan: faqat admin uchun' });
       return;

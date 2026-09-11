@@ -3,7 +3,7 @@ import DOMPurify from 'dompurify';
 /**
  * Escapes HTML characters to prevent XSS injection in strings inserted into innerHTML
  */
-export function escapeHtml(str: any): string {
+export function escapeHtml(str: unknown): string {
   if (str === null || str === undefined) return '';
   return String(str)
     .replace(/&/g, '&amp;')
@@ -30,16 +30,51 @@ export function sanitizeHtml(dirty: string): string {
 /**
  * Validates and sanitizes URLs to prevent javascript: or malicious URI schemes
  */
+const URL_CONTROL_CHARS = /[\x00-\x1f\x7f]/g;
+
+function decodeUrlPayload(input: string): string {
+  let current = input;
+  for (let pass = 0; pass < 3; pass++) {
+    let decoded = current;
+    if (decoded.includes('%')) {
+      try {
+        decoded = decodeURIComponent(decoded);
+      } catch {}
+    }
+    if (typeof document !== 'undefined' && /&(?:#\d+|#x[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);/.test(decoded)) {
+      try {
+        const decoder = document.createElement('textarea');
+        decoder.innerHTML = decoded;
+        decoded = decoder.value;
+      } catch {}
+    }
+    decoded = decoded.replace(URL_CONTROL_CHARS, '');
+    if (decoded === current) break;
+    current = decoded;
+  }
+  return current;
+}
+
 export function sanitizeUrl(url: string | null | undefined): string {
   if (!url) return '';
-  const trimmed = url.trim();
+  const cleaned = decodeUrlPayload(url.trim().replace(URL_CONTROL_CHARS, ''));
+  const lower = cleaned.toLowerCase();
   if (
-    trimmed.startsWith('https://') ||
-    trimmed.startsWith('http://') ||
-    trimmed.startsWith('/') ||
-    trimmed.startsWith('blob:')
+    lower.startsWith('javascript:') ||
+    lower.startsWith('data:') ||
+    lower.startsWith('vbscript:') ||
+    lower.startsWith('file:') ||
+    lower.startsWith('ftp:')
   ) {
-    return escapeHtml(trimmed);
+    return '';
+  }
+  if (
+    cleaned.startsWith('https://') ||
+    cleaned.startsWith('http://') ||
+    cleaned.startsWith('/') ||
+    cleaned.startsWith('blob:')
+  ) {
+    return escapeHtml(cleaned);
   }
   return '';
 }

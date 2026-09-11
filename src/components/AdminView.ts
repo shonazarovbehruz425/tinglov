@@ -1,7 +1,39 @@
-import { apiService } from '../services/apiService';
+import {
+  apiService,
+  AdminStatsResult,
+  AdminSystemInfo,
+  AdminUserDto,
+  AdminSceneDto,
+} from '../services/apiService';
 import { escapeHtml } from '../utils/sanitize';
 
 type AdminTab = 'overview' | 'users' | 'scenes' | 'security';
+type AdminUserFilter = 'all' | 'google' | 'email' | 'top_xp';
+/**
+ * AdminStatsResult'ning panel ichidagi ko'rinishi: backend statikasi
+ * offline bo'lganda `system` bo'sh qoladi, shuning uchun u ixtiyoriy
+ * va qisman (Partial) deb hisoblanadi.
+ */
+type AdminViewStats = Omit<AdminStatsResult, 'system'> & { system?: Partial<AdminSystemInfo> };
+
+/** View Transitions API — hozirgi TS lib.dom'da yo'q, lokal kengaytma. */
+type DocumentWithViewTransition = Document & {
+  startViewTransition?: (callback: VoidFunction) => unknown;
+};
+
+/**
+ * View Transitions API mavjud bo'lsa `run`ni animatsiya ichida bajaradi va
+ * `true` qaytaradi; aks holda chaqiruvchi o'zining oddiy (class-based)
+ * fallback yo'lini tanlaydi va `false` qaytadi.
+ */
+function tryStartViewTransition(run: () => void): boolean {
+  const doc = document as DocumentWithViewTransition;
+  if (typeof doc.startViewTransition === 'function') {
+    doc.startViewTransition(run);
+    return true;
+  }
+  return false;
+}
 
 export class AdminView {
   private container: HTMLElement;
@@ -9,11 +41,11 @@ export class AdminView {
   private activeTab: AdminTab = 'overview';
   private adminUsername: string = 'Admin';
   private adminPath: string = '/admin';
-  private stats: any = null;
-  private users: any[] = [];
-  private scenes: any[] = [];
+  private stats: AdminViewStats | null = null;
+  private users: AdminUserDto[] = [];
+  private scenes: AdminSceneDto[] = [];
   private searchQuery: string = '';
-  private userFilter: 'all' | 'google' | 'email' | 'top_xp' = 'all';
+  private userFilter: AdminUserFilter = 'all';
   private healthLatencyMs: number | null = null;
   private errorMsg: string | null = null;
   private successMsg: string | null = null;
@@ -261,7 +293,7 @@ export class AdminView {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const usersTodayFromList = this.users.filter((u) => {
-        const time = u.created_at || (u as any).updated_at;
+        const time = u.created_at || u.updated_at;
         if (!time) return false;
         const d = new Date(time);
         return !isNaN(d.getTime()) && d >= todayStart;
@@ -386,7 +418,7 @@ export class AdminView {
       totalCompletedScenes: 0,
       totalCustomScenes: 0
     };
-    const sys = this.stats?.system || {};
+    const sys: Partial<AdminSystemInfo> = this.stats?.system ?? {};
 
     const uptimeHrs = sys.uptimeSeconds ? Math.floor(sys.uptimeSeconds / 3600) : 0;
     const uptimeMins = sys.uptimeSeconds ? Math.floor((sys.uptimeSeconds % 3600) / 60) : 0;
@@ -576,7 +608,7 @@ export class AdminView {
     `;
   }
 
-  private getFilteredUsers(): any[] {
+  private getFilteredUsers(): AdminUserDto[] {
     let filteredUsers = [...this.users];
     if (this.userFilter === 'google') {
       filteredUsers = filteredUsers.filter((u) => u.auth_provider === 'google');
@@ -777,7 +809,7 @@ export class AdminView {
           <h4 class="admin-scene-title">${escapeHtml(scene.title)}</h4>
           <div class="admin-scene-meta">
             <span><i class="ph ph-bold ph-chat-centered-text"></i> ${dialoguesCount} ta dialog qatori</span>
-            <span><i class="ph ph-bold ph-video-camera"></i> ${escapeHtml(scene.video_url.slice(0, 30))}...</span>
+            <span><i class="ph ph-bold ph-video-camera"></i> ${escapeHtml(scene.video_url?.slice(0, 30) ?? '')}...</span>
           </div>
         </div>
       `;
@@ -1067,11 +1099,7 @@ export class AdminView {
       this.bindTabContentEvents();
     };
 
-    if ('startViewTransition' in document && typeof (document as any).startViewTransition === 'function') {
-      (document as any).startViewTransition(() => {
-        updatePanelContent();
-      });
-    } else {
+    if (!tryStartViewTransition(() => updatePanelContent())) {
       mainPanel.classList.add('admin-panel-switching');
       setTimeout(() => {
         updatePanelContent();
@@ -1277,7 +1305,7 @@ export class AdminView {
     filterPills.forEach((pill) => {
       pill.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
-        const filter = target.getAttribute('data-filter') as any;
+        const filter = target.getAttribute('data-filter') as AdminUserFilter | null;
         if (!filter || filter === this.userFilter) return;
 
         this.userFilter = filter;
@@ -1294,9 +1322,7 @@ export class AdminView {
             this.bindUserRowEvents();
           };
 
-          if ('startViewTransition' in document && typeof (document as any).startViewTransition === 'function') {
-            (document as any).startViewTransition(() => updateContent());
-          } else {
+          if (!tryStartViewTransition(updateContent)) {
             tbody.classList.remove('admin-table-fade');
             void tbody.offsetWidth; // Force CSS reflow to re-trigger smooth fade
             updateContent();
@@ -1335,7 +1361,7 @@ export class AdminView {
     // Users: Search
     const searchInput = this.container.querySelector('#adminUserSearchInput') as HTMLInputElement;
     if (searchInput) {
-      let debounceTimer: any;
+      let debounceTimer: ReturnType<typeof setTimeout> | undefined;
       searchInput.addEventListener('input', (e) => {
         clearTimeout(debounceTimer);
         this.searchQuery = (e.target as HTMLInputElement).value;

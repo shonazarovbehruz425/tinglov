@@ -1,3 +1,4 @@
+import { ONBOARDED_KEY } from '../services/storageKeys';
 export interface StepData {
   title: string;
   subtitle?: string;
@@ -162,7 +163,7 @@ export class OnboardingStepper {
   }
 
   public shouldAutoOpen(): boolean {
-    return localStorage.getItem('movielisten_onboarded') !== 'true';
+    return localStorage.getItem(ONBOARDED_KEY) !== 'true';
   }
 
   private handleWindowResize = (): void => {
@@ -191,7 +192,7 @@ export class OnboardingStepper {
   }
 
   private complete(): void {
-    localStorage.setItem('movielisten_onboarded', 'true');
+    localStorage.setItem(ONBOARDED_KEY, 'true');
     this.close();
     this.onCompleteCallback?.();
   }
