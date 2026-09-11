@@ -14742,6 +14742,441 @@ body:not(.in-admin-mode) .app-skeleton-box {
 
 .text-green { color: #4ADE80; }
 
+/* ==========================================================================
+   Admin Analytics & Charts Tab (Grafiklar va Foizlar)
+   ========================================================================== */
+
+.admin-analytics-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.admin-analytics-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.admin-analytics-kpi-card {
+  background: rgba(18, 22, 32, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 1.25rem 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 1.15rem;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-analytics-kpi-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.admin-kpi-ring-wrap {
+  width: 56px;
+  height: 56px;
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-kpi-ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.admin-kpi-ring-val {
+  position: absolute;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #FFF;
+}
+
+.admin-analytics-kpi-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.admin-analytics-kpi-title {
+  font-size: 0.78rem;
+  color: #94A3B8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.admin-analytics-kpi-value {
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #FFF;
+  letter-spacing: -0.02em;
+}
+
+.admin-analytics-kpi-sub {
+  font-size: 0.75rem;
+  color: #A3E635;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Charts Grid */
+.admin-charts-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .admin-charts-grid-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-chart-box {
+  background: rgba(18, 22, 32, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 1.5rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  position: relative;
+}
+
+.admin-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 1rem;
+}
+
+.admin-chart-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.admin-chart-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #F8FAFC;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.admin-chart-desc {
+  font-size: 0.8rem;
+  color: #94A3B8;
+  margin: 0;
+}
+
+.admin-chart-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(163, 230, 53, 0.12);
+  color: #A3E635;
+  border: 1px solid rgba(163, 230, 53, 0.25);
+}
+
+/* Donut Chart with Legend */
+.admin-donut-layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0;
+}
+
+.admin-donut-graphic {
+  position: relative;
+  width: 170px;
+  height: 170px;
+  flex-shrink: 0;
+}
+
+.admin-donut-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.admin-donut-center-info {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.admin-donut-center-num {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #FFF;
+  line-height: 1.1;
+}
+
+.admin-donut-center-label {
+  font-size: 0.72rem;
+  color: #94A3B8;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.admin-donut-legend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 180px;
+}
+
+.admin-donut-legend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.85rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  font-size: 0.83rem;
+  transition: all 0.2s ease;
+}
+
+.admin-donut-legend-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateX(3px);
+}
+
+.admin-donut-legend-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #CBD5E1;
+  font-weight: 600;
+}
+
+.admin-donut-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.admin-donut-legend-values {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.admin-donut-legend-count {
+  font-size: 0.8rem;
+  color: #94A3B8;
+}
+
+.admin-donut-legend-pct {
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: #FFF;
+}
+
+/* 100% Stacked Balance Bar */
+.admin-stacked-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.admin-stacked-bar-track {
+  height: 24px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+  padding: 2px;
+}
+
+.admin-stacked-slice {
+  height: 100%;
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #FFF;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  border-radius: 999px;
+  min-width: 4px;
+}
+
+.admin-stacked-legend {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 600px) {
+  .admin-stacked-legend {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-stacked-legend-card {
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-align: center;
+}
+
+/* Weekly Trend Bar Chart */
+.admin-trend-chart-box {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.85rem;
+  height: 190px;
+  padding-top: 1.8rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-trend-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.admin-trend-pct-bubble {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #A3E635;
+  background: rgba(163, 230, 53, 0.12);
+  padding: 2px 5px;
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.admin-trend-pillar {
+  width: 100%;
+  max-width: 38px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px 8px 4px 4px;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.admin-trend-fill {
+  width: 100%;
+  border-radius: 8px 8px 0 0;
+  transition: height 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  background: linear-gradient(180deg, #A3E635 0%, #3B82F6 100%);
+}
+
+.admin-trend-day {
+  font-size: 0.75rem;
+  color: #94A3B8;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Funnel Chart */
+.admin-funnel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-funnel-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.8rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.2s ease;
+}
+
+.admin-funnel-step:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateX(3px);
+}
+
+.admin-funnel-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.84rem;
+}
+
+.admin-funnel-name {
+  color: #F1F5F9;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-funnel-pct {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #A3E635;
+}
+
+.admin-funnel-track {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.admin-funnel-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  background: linear-gradient(90deg, #38BDF8, #A3E635);
+}
+
 @media (max-width: 900px) {
   .admin-workspace {
     grid-template-columns: 1fr;

@@ -281,4 +281,80 @@ describe('AdminView scene management & editing', () => {
     await new Promise((r) => setTimeout(r, 280));
     expect(modal.style.display).toBe('none');
   });
+
+  it('renders Analytics & Charts tab with complete percentage breakdowns and visual graphs', async () => {
+    vi.spyOn(apiService, 'adminGetUsers').mockResolvedValue([
+      {
+        id: 'u1',
+        email: 'ali@example.com',
+        full_name: 'Ali Valiyev',
+        avatar_url: null,
+        xp: 1500,
+        level: 4,
+        streak_days: 7,
+        last_active_at: new Date().toISOString(),
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'u2',
+        email: 'vali@example.com',
+        full_name: 'Vali Aliyev',
+        avatar_url: null,
+        xp: 800,
+        level: 2,
+        streak_days: 3,
+        last_active_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+        created_at: new Date(Date.now() - 86400000 * 5).toISOString()
+      }
+    ]);
+
+    await adminView.render();
+
+    // Verify analytics tab button in sidebar
+    const analyticsTabBtn = container.querySelector<HTMLButtonElement>('.admin-tab-btn[data-tab="analytics"]');
+    expect(analyticsTabBtn).not.toBeNull();
+    expect(analyticsTabBtn?.textContent).toContain('Grafiklar & Foizlar');
+
+    // Switch to analytics tab
+    analyticsTabBtn?.click();
+    await new Promise((r) => setTimeout(r, 120));
+
+    // Verify analytics pane header
+    const paneTitle = container.querySelector('.admin-pane-title');
+    expect(paneTitle?.textContent).toContain('Grafiklar va Foizli Tahlil');
+
+    // Verify KPI percentage rings
+    const kpiCards = container.querySelectorAll('.admin-analytics-kpi-card');
+    expect(kpiCards.length).toBe(4);
+    expect(container.textContent).toContain('Kunlik Faollik (DAU)');
+    expect(container.textContent).toContain('Darslar Tugallanishi');
+    expect(container.textContent).toContain('Lug‘at Qamrovi');
+    expect(container.textContent).toContain('Server Barqarorligi');
+
+    // Verify Donut Level distribution chart
+    expect(container.textContent).toContain('O‘quvchilar Darajalari Taqsimoti');
+    expect(container.textContent).toContain('Boshlang‘ich (Level 1)');
+    expect(container.textContent).toContain('O‘rta (Level 2–3)');
+    expect(container.textContent).toContain('Yuqori (Level 4+)');
+
+    // Verify Category Share multi-bar chart
+    expect(container.textContent).toContain('Kontent Kategoriyalari Taqsimoti');
+    expect(container.textContent).toContain('Kino va Badiiy Filmlar');
+    expect(container.textContent).toContain('Multfilm va Animatsiya');
+
+    // Verify Difficulty 100% stacked balance bar
+    expect(container.textContent).toContain('Darslarning Qiyinchilik Balansi');
+    expect(container.textContent).toContain('BEGINNER (OSON)');
+    expect(container.textContent).toContain('INTERMEDIATE (O‘RTA)');
+
+    // Verify Weekly 7-day activity trend
+    expect(container.textContent).toContain('Haftalik Faollik Dinamikasi');
+    expect(container.textContent).toContain('Dush');
+    expect(container.textContent).toContain('Yak');
+
+    // Verify Learning conversion funnel
+    expect(container.textContent).toContain('O‘quv Konversiyasi Voronkasi');
+    expect(container.textContent).toContain('1. Darslarga Kirish');
+    expect(container.textContent).toContain('5. Darsni Yakunlash & XP');
+  });
 });
