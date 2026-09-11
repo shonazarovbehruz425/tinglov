@@ -8,11 +8,49 @@ import { SkeletonLoader } from './SkeletonLoader';
 export class LevelSelector {
   private container: HTMLElement;
   private selectedCategory: string = 'all';
+  private selectedDifficulty: 'all' | 'beginner' | 'intermediate' | 'advanced' = 'all';
+  private selectedAccent: 'all' | 'American' | 'British' = 'all';
   private searchQuery: string = '';
   private onSelectSceneCallback: ((scene: Scene, sentenceIndex?: number) => void) | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
+  }
+
+  private matchesDifficulty(sceneDifficulty: string | undefined): boolean {
+    if (this.selectedDifficulty === 'all') return true;
+    const d = (sceneDifficulty || '').toLowerCase();
+    if (this.selectedDifficulty === 'beginner') {
+      return d === 'beginner' || d.includes('a1') || d.includes('a2');
+    }
+    if (this.selectedDifficulty === 'intermediate') {
+      return d === 'intermediate' || d.includes('b1') || d.includes('b2');
+    }
+    if (this.selectedDifficulty === 'advanced') {
+      return d === 'advanced' || d.includes('c1') || d.includes('c2');
+    }
+    return true;
+  }
+
+  private matchesAccent(sceneAccent: string | undefined): boolean {
+    if (this.selectedAccent === 'all') return true;
+    const a = (sceneAccent || '').toLowerCase();
+    const target = this.selectedAccent.toLowerCase();
+    return a.includes(target);
+  }
+
+  private filterScenes(scenes: Scene[]): Scene[] {
+    return scenes.filter(scene => {
+      const matchesCategory = this.selectedCategory === 'all' || scene.category.toLowerCase() === this.selectedCategory.toLowerCase();
+      const matchesDifficulty = this.matchesDifficulty(scene.difficulty);
+      const matchesAccent = this.matchesAccent(scene.accent);
+      const matchesSearch = this.searchQuery === '' ||
+        scene.title.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        scene.movieName.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        scene.dialogues.some(d => d.text.toLowerCase().includes(this.searchQuery.toLowerCase()));
+
+      return matchesCategory && matchesDifficulty && matchesAccent && matchesSearch;
+    });
   }
 
   public setCallbacks(callbacks: {
@@ -43,15 +81,7 @@ export class LevelSelector {
     const stats = storageService.getStats();
     const t = i18n.t();
 
-    const filteredScenes = allScenes.filter(scene => {
-      const matchesCategory = this.selectedCategory === 'all' || scene.category.toLowerCase() === this.selectedCategory.toLowerCase();
-      const matchesSearch = this.searchQuery === '' ||
-        scene.title.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        scene.movieName.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        scene.dialogues.some(d => d.text.toLowerCase().includes(this.searchQuery.toLowerCase()));
-
-      return matchesCategory && matchesSearch;
-    });
+    const filteredScenes = this.filterScenes(allScenes);
 
     const wordSearchResults = this.searchQuery ? searchByWord(this.searchQuery) : null;
     const heroScene = allScenes[0];
@@ -129,6 +159,45 @@ export class LevelSelector {
           </div>
         </div>
 
+        <!-- 2.1 Secondary Filter Toolbar: Daraja (Difficulty) & Talaffuz (Accent) & Reset -->
+        <div class="catalog-filters-toolbar">
+          <div class="filter-group-cluster">
+            <!-- Daraja (Difficulty) -->
+            <div class="filter-subgroup">
+              <span class="filter-label">Daraja:</span>
+              <div class="filter-pill-box" id="levelDifficultyFilters">
+                <button class="filter-btn-pill ${this.selectedDifficulty === 'all' ? 'active' : ''}" data-difficulty="all">Barchasi</button>
+                <button class="filter-btn-pill ${this.selectedDifficulty === 'beginner' ? 'active' : ''}" data-difficulty="beginner">A1-A2</button>
+                <button class="filter-btn-pill ${this.selectedDifficulty === 'intermediate' ? 'active' : ''}" data-difficulty="intermediate">B1-B2</button>
+                <button class="filter-btn-pill ${this.selectedDifficulty === 'advanced' ? 'active' : ''}" data-difficulty="advanced">C1-C2</button>
+              </div>
+            </div>
+
+            <div class="filter-vertical-divider" aria-hidden="true"></div>
+
+            <!-- Talaffuz (Accent) -->
+            <div class="filter-subgroup">
+              <span class="filter-label">Talaffuz:</span>
+              <div class="filter-pill-box" id="levelAccentFilters">
+                <button class="filter-btn-pill ${this.selectedAccent === 'American' ? 'active' : ''}" data-accent="American">
+                  <span class="flag-tag">us</span>
+                  <span>American</span>
+                </button>
+                <button class="filter-btn-pill ${this.selectedAccent === 'British' ? 'active' : ''}" data-accent="British">
+                  <span class="flag-tag">gb</span>
+                  <span>British</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filtrlarni tozalash (Reset) -->
+          <button class="filter-reset-action-btn" id="clearAllFiltersBtn" title="Filtrlarni tozalash">
+            <i class="ph ph-arrows-counter-clockwise"></i>
+            <span>Filtrlarni tozalash</span>
+          </button>
+        </div>
+
         <!-- Word Search Dialogue Matches (Shown when searching by word) -->
         <div id="catalogWordResultsContainer">
           ${wordSearchResults ? this.renderWordDialogueMatchesHtml(wordSearchResults.dialogueMatches) : ''}
@@ -172,15 +241,18 @@ export class LevelSelector {
 
   private renderCoursesGridHtml(scenes: Scene[], stats: any): string {
     if (scenes.length === 0) {
-      // Actionable empty state: the user can immediately import a lesson from
-      // YouTube or create a custom one instead of staring at a dead end.
+      // Actionable empty state: the user can clear filters, import from YouTube, or create a custom lesson.
       const t = i18n.t();
       return `
         <div class="clean-empty-box" style="grid-column: 1 / -1;">
           <div style="font-size: 2.5rem; margin-bottom: 0.5rem;"><i class="ph ph-film-strip"></i></div>
           <h3>Darslar topilmadi</h3>
-          <p>Ushbu kategoriya bo'yicha hozircha darslar mavjud emas. Birinchi darsni yarating:</p>
+          <p>Tanlangan filtrlar yoki qidiruv so‘zi bo‘yicha darslar topilmadi.</p>
           <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-top: 1.1rem;">
+            <button class="filter-reset-action-btn" id="emptyStateResetFiltersBtn" style="padding: 0.5rem 1rem; border-radius: 8px;">
+              <i class="ph ph-arrows-counter-clockwise"></i>
+              <span>Filtrlarni tozalash</span>
+            </button>
             <button class="header-action-pill primary" id="emptyStateYouTubeImportBtn">
               <i class="ph-fill ph-youtube-logo"></i> ${t.youtubeImport}
             </button>
@@ -371,15 +443,7 @@ export class LevelSelector {
 
     setTimeout(() => {
       const stats = storageService.getStats();
-      const filteredScenes = allScenes.filter(scene => {
-        const matchesCategory = this.selectedCategory === 'all' || scene.category.toLowerCase() === this.selectedCategory.toLowerCase();
-        const matchesSearch = this.searchQuery === '' ||
-          scene.title.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-          scene.movieName.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-          scene.dialogues.some(d => d.text.toLowerCase().includes(this.searchQuery.toLowerCase()));
-
-        return matchesCategory && matchesSearch;
-      });
+      const filteredScenes = this.filterScenes(allScenes);
 
       if (countEl) {
         // Keep the localized label — a hardcoded Uzbek string previously
@@ -429,6 +493,10 @@ export class LevelSelector {
 
   /** Wires the actionable empty-state buttons; called from both render paths. */
   private bindEmptyStateActions(): void {
+    this.container.querySelector('#emptyStateResetFiltersBtn')?.addEventListener('click', () => {
+      const clearBtn = this.container.querySelector('#clearAllFiltersBtn') as HTMLElement | null;
+      if (clearBtn) clearBtn.click();
+    });
     this.container.querySelector('#emptyStateYouTubeImportBtn')?.addEventListener('click', () => {
       // YouTube import action is handled externally
     });
@@ -438,7 +506,7 @@ export class LevelSelector {
   }
 
   private bindEvents(allScenes: Scene[]): void {
-    // Empty state actions (YouTube import / custom scene)
+    // Empty state actions (YouTube import / custom scene / reset)
     this.bindEmptyStateActions();
 
     // Category filter pills with smooth gliding transition
@@ -456,6 +524,79 @@ export class LevelSelector {
         this.updateGliderPosition(true);
         this.updateFilteredGrid(allScenes);
       });
+    });
+
+    // Difficulty filter pills (Barchasi | A1-A2 | B1-B2 | C1-C2)
+    const difficultyBtns = this.container.querySelectorAll('#levelDifficultyFilters .filter-btn-pill');
+    difficultyBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const clicked = e.currentTarget as HTMLElement;
+        const diff = (clicked.dataset.difficulty || 'all') as typeof this.selectedDifficulty;
+        if (this.selectedDifficulty === diff) return;
+        this.selectedDifficulty = diff;
+        difficultyBtns.forEach(b => b.classList.remove('active'));
+        clicked.classList.add('active');
+        this.updateFilteredGrid(allScenes);
+      });
+    });
+
+    // Accent filter pills (us American | gb British) - toggleable
+    const accentBtns = this.container.querySelectorAll('#levelAccentFilters .filter-btn-pill');
+    accentBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const clicked = e.currentTarget as HTMLElement;
+        const acc = (clicked.dataset.accent || 'all') as 'American' | 'British';
+        if (this.selectedAccent === acc) {
+          this.selectedAccent = 'all';
+          clicked.classList.remove('active');
+        } else {
+          this.selectedAccent = acc;
+          accentBtns.forEach(b => b.classList.remove('active'));
+          clicked.classList.add('active');
+        }
+        this.updateFilteredGrid(allScenes);
+      });
+    });
+
+    // Reset all filters button
+    const clearBtn = this.container.querySelector('#clearAllFiltersBtn');
+    clearBtn?.addEventListener('click', () => {
+      this.selectedCategory = 'all';
+      this.selectedDifficulty = 'all';
+      this.selectedAccent = 'all';
+      this.searchQuery = '';
+
+      const searchInput = document.querySelector('#globalSearchInput') as HTMLInputElement | null;
+      if (searchInput) {
+        searchInput.value = '';
+      }
+
+      // Reset category pills
+      const catBtns = this.container.querySelectorAll('#categoryFilters .category-pill');
+      catBtns.forEach(b => {
+        if (b.getAttribute('data-category') === 'all') {
+          b.classList.add('active');
+        } else {
+          b.classList.remove('active');
+        }
+      });
+      this.updateGliderPosition(true);
+
+      // Reset difficulty pills
+      const diffBtns = this.container.querySelectorAll('#levelDifficultyFilters .filter-btn-pill');
+      diffBtns.forEach(b => {
+        if (b.getAttribute('data-difficulty') === 'all') {
+          b.classList.add('active');
+        } else {
+          b.classList.remove('active');
+        }
+      });
+
+      // Reset accent pills
+      const accBtns = this.container.querySelectorAll('#levelAccentFilters .filter-btn-pill');
+      accBtns.forEach(b => b.classList.remove('active'));
+
+      this.updateFilteredGrid(allScenes);
     });
 
     window.removeEventListener('resize', this.handleResize);

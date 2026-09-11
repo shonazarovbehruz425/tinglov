@@ -799,6 +799,9 @@ export class AdminView {
             <div>
               <span class="admin-badge admin-badge-blue">${escapeHtml(scene.category || 'Movie')}</span>
               <span class="admin-badge admin-badge-xp">${escapeHtml(scene.difficulty || 'Intermediate')}</span>
+              <span class="admin-badge" style="background: rgba(255, 87, 34, 0.15); color: #FF7A45; border: 1px solid rgba(255, 87, 34, 0.3);">
+                ${scene.accent === 'British' ? '🇬🇧 British' : '🇺🇸 American'}
+              </span>
             </div>
             <button class="admin-btn-del-scene admin-btn-danger" data-scene-id="${escapeHtml(scene.id)}" title="Darsni o‘chirish">
               <svg viewBox="0 0 256 256" width="18" height="18" fill="currentColor" aria-hidden="true">
@@ -865,9 +868,16 @@ export class AdminView {
                 <div class="admin-form-group">
                   <label>Qiyinchilik Darajasi *</label>
                   <select id="newSceneDifficulty" class="admin-input">
-                    <option value="Beginner">Beginner (Boshlang‘ich)</option>
-                    <option value="Intermediate" selected>Intermediate (O‘rta)</option>
-                    <option value="Advanced">Advanced (Murakkab)</option>
+                    <option value="Beginner">Beginner (A1-A2 Boshlang‘ich)</option>
+                    <option value="Intermediate" selected>Intermediate (B1-B2 O‘rta)</option>
+                    <option value="Advanced">Advanced (C1-C2 Murakkab)</option>
+                  </select>
+                </div>
+                <div class="admin-form-group">
+                  <label>Talaffuz (Accent) *</label>
+                  <select id="newSceneAccent" class="admin-input">
+                    <option value="American" selected>🇺🇸 US American</option>
+                    <option value="British">🇬🇧 GB British</option>
                   </select>
                 </div>
               </div>
@@ -1421,6 +1431,7 @@ export class AdminView {
         const titleInput = this.container.querySelector('#newSceneTitle') as HTMLInputElement;
         const catInput = this.container.querySelector('#newSceneCategory') as HTMLSelectElement;
         const diffInput = this.container.querySelector('#newSceneDifficulty') as HTMLSelectElement;
+        const accentInput = this.container.querySelector('#newSceneAccent') as HTMLSelectElement;
         const videoInput = this.container.querySelector('#newSceneVideoUrl') as HTMLInputElement;
         const posterInput = this.container.querySelector('#newScenePosterUrl') as HTMLInputElement;
         const dialInput = this.container.querySelector('#newSceneDialogues') as HTMLTextAreaElement;
@@ -1428,6 +1439,7 @@ export class AdminView {
         const title = titleInput.value.trim();
         const category = catInput.value;
         const difficulty = diffInput.value;
+        const accent = accentInput ? accentInput.value : 'American';
         const videoUrl = videoInput.value.trim();
         const posterUrl = posterInput.value.trim();
         const dialoguesRaw = dialInput.value.trim();
@@ -1470,6 +1482,7 @@ export class AdminView {
           title,
           category,
           difficulty,
+          accent,
           video_url: videoUrl,
           poster_url: posterUrl,
           dialogues,

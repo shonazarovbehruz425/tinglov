@@ -411,7 +411,7 @@ class MovieListenApp implements RouterDelegate {
               category: (s.category === 'Animation' ? 'Cartoon' : s.category === 'Anime' ? 'Anime' : 'Cinema') as any,
               difficulty: (s.difficulty?.toLowerCase() || 'intermediate') as any,
               duration: '1:30',
-              accent: 'Neutral',
+              accent: (s.accent === 'British' ? 'British' : 'American'),
               videoUrl: s.video_url,
               dialogues,
             });

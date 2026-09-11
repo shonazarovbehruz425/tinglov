@@ -216,14 +216,15 @@ describe('server/db', () => {
   });
 
   describe('createAdminScene', () => {
-    it('should create an admin scene', () => {
-      const mockScene = { id: '1', title: 'Test', category: 'Cartoon', difficulty: 'beginner', video_url: 'https://x.com', poster_url: null, dialogues_json: '[]', created_at: '2024-01-01' };
+    it('should create an admin scene with accent', () => {
+      const mockScene = { id: '1', title: 'Test', category: 'Cartoon', difficulty: 'beginner', accent: 'British', video_url: 'https://x.com', poster_url: null, dialogues_json: '[]', created_at: '2024-01-01' };
       vi.mocked(db.prepare).mockImplementation((sql: string) => ({
         run: vi.fn(),
         get: vi.fn().mockReturnValue(mockScene),
       }));
-      const result = createAdminScene({ id: '1', title: 'Test', category: 'Cartoon', difficulty: 'beginner', video_url: 'https://x.com', dialogues_json: '[]' });
+      const result = createAdminScene({ id: '1', title: 'Test', category: 'Cartoon', difficulty: 'beginner', accent: 'British', video_url: 'https://x.com', dialogues_json: '[]' });
       expect(result).toBeDefined();
+      expect(result.accent).toBe('British');
     });
   });
 

@@ -65,7 +65,7 @@ db.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_completed_scenes_user_scene ON completed_scenes(user_id, scene_id);
 `);
 
-// Safe migrations for auth_provider, uuid and last_positions
+// Safe migrations for auth_provider, uuid, last_positions and accent
 try {
   db.exec(`ALTER TABLE users ADD COLUMN auth_provider TEXT DEFAULT 'email';`);
 } catch {}
@@ -75,6 +75,21 @@ try {
 try {
   db.exec(`ALTER TABLE users ADD COLUMN last_positions TEXT;`);
 } catch {}
+try {
+  db.exec(`ALTER TABLE admin_scenes ADD COLUMN accent TEXT DEFAULT 'American';`);
+} catch {}
+
+export interface DbAdminScene {
+  id: string;
+  title: string;
+  category: string;
+  difficulty: string;
+  accent?: string;
+  video_url: string;
+  poster_url: string | null;
+  dialogues_json: string;
+  created_at: string;
+}
 
 export interface DbUser {
   id: number;
@@ -384,17 +399,20 @@ export function createAdminScene(scene: {
   title: string;
   category: string;
   difficulty: string;
+  accent?: string;
   video_url: string;
   poster_url?: string;
   dialogues_json: string;
 }): DbAdminScene {
+  const accent = scene.accent === 'British' ? 'British' : 'American';
   const stmt = db.prepare(`
-    INSERT INTO admin_scenes (id, title, category, difficulty, video_url, poster_url, dialogues_json)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO admin_scenes (id, title, category, difficulty, accent, video_url, poster_url, dialogues_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       title = excluded.title,
       category = excluded.category,
       difficulty = excluded.difficulty,
+      accent = excluded.accent,
       video_url = excluded.video_url,
       poster_url = excluded.poster_url,
       dialogues_json = excluded.dialogues_json
@@ -404,6 +422,7 @@ export function createAdminScene(scene: {
     scene.title.trim(),
     scene.category.trim(),
     scene.difficulty.trim(),
+    accent,
     scene.video_url.trim(),
     scene.poster_url?.trim() || '',
     scene.dialogues_json

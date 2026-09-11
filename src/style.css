@@ -1785,6 +1785,201 @@ body {
   font-weight: 500;
 }
 
+/* ==========================================================================
+   Secondary Filter Toolbar: Daraja (Difficulty), Talaffuz (Accent), & Reset
+   ========================================================================== */
+.catalog-filters-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1.25rem 0 1.5rem 0;
+  padding: 0.65rem 0.85rem;
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 14px);
+}
+
+.filter-group-cluster {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.filter-subgroup {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.filter-label {
+  font-family: var(--font-heading);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+
+.filter-pill-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 3px 4px;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9999px;
+}
+
+.filter-btn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-heading);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.filter-btn-pill:hover {
+  color: var(--text-heading);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.filter-btn-pill.active {
+  background: var(--accent-black, #1A1D1F);
+  border-color: var(--accent-black, #1A1D1F);
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.filter-btn-pill .flag-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.filter-btn-pill.active .flag-tag {
+  background: rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+}
+
+.filter-vertical-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border-subtle);
+  margin: 0 0.25rem;
+}
+
+.filter-reset-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--accent-orange, #FF5B37);
+  font-family: var(--font-heading);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.filter-reset-action-btn i {
+  font-size: 1.15rem;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.filter-reset-action-btn:hover {
+  background: var(--accent-orange-subtle, rgba(255, 91, 55, 0.1));
+  color: var(--accent-orange-hover, #F04824);
+}
+
+.filter-reset-action-btn:hover i {
+  transform: rotate(-180deg);
+}
+
+.filter-reset-action-btn:active {
+  transform: scale(0.97);
+}
+
+/* Dark theme overrides for filter toolbar */
+[data-theme="dark"] .catalog-filters-toolbar {
+  background: #1A1D1F;
+  border-color: #272B30;
+}
+
+[data-theme="dark"] .filter-label {
+  color: #9A9FA5;
+}
+
+[data-theme="dark"] .filter-pill-box {
+  background: #111315;
+  border-color: #272B30;
+}
+
+[data-theme="dark"] .filter-btn-pill {
+  color: #9A9FA5;
+}
+
+[data-theme="dark"] .filter-btn-pill:hover {
+  color: #FCFCFC;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .filter-btn-pill.active {
+  background: #272B30;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #FCFCFC;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .filter-btn-pill .flag-tag {
+  background: rgba(255, 255, 255, 0.08);
+  color: #9A9FA5;
+}
+
+[data-theme="dark"] .filter-btn-pill.active .flag-tag {
+  background: rgba(255, 91, 55, 0.25);
+  color: #FF7A45;
+}
+
+[data-theme="dark"] .filter-vertical-divider {
+  background: #272B30;
+}
+
+[data-theme="dark"] .filter-reset-action-btn {
+  color: #FF5B37;
+}
+
+[data-theme="dark"] .filter-reset-action-btn:hover {
+  background: rgba(255, 91, 55, 0.12);
+  color: #FF7043;
+}
+
 .cinema-courses-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));

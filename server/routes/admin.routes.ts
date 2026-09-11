@@ -239,6 +239,7 @@ const adminSceneSchema = z.object({
   title: z.string().trim().min(2).max(100),
   category: z.string().trim().min(1).max(50),
   difficulty: z.string().trim().min(1).max(20),
+  accent: z.enum(['American', 'British', 'Neutral']).optional().default('American'),
   video_url: httpsUrlSchema,
   poster_url: optionalHttpsUrlSchema,
   dialogues: z.array(dialogueSchema).min(1).max(50),
@@ -270,7 +271,7 @@ const adminScenesCreateHandler = (req: AdminRequest, res: Response) => {
       res.status(400).json({ error: validation.error });
       return;
     }
-    const { title, category, difficulty, video_url, poster_url, dialogues: cleanDialogues } = validation.data as any;
+    const { title, category, difficulty, accent, video_url, poster_url, dialogues: cleanDialogues } = validation.data as any;
 
     const sceneId = randomUUID();
     const dialoguesJson = JSON.stringify(cleanDialogues);
@@ -280,6 +281,7 @@ const adminScenesCreateHandler = (req: AdminRequest, res: Response) => {
       title,
       category,
       difficulty,
+      accent: accent || 'American',
       video_url,
       poster_url: poster_url || '',
       dialogues_json: dialoguesJson,

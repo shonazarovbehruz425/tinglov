@@ -170,6 +170,7 @@ export interface AdminSceneDto {
   title: string;
   category?: string | null;
   difficulty?: string | null;
+  accent?: string | null;
   video_url?: string | null;
   poster_url?: string | null;
   dialogues_json?: string | null;
