@@ -180,11 +180,11 @@ export class LevelSelector {
               <span class="filter-label">Talaffuz:</span>
               <div class="filter-pill-box" id="levelAccentFilters">
                 <button class="filter-btn-pill ${this.selectedAccent === 'American' ? 'active' : ''}" data-accent="American">
-                  <img src="/flags/us.png" alt="US" class="flag-icon-img" width="18" height="18" />
+                  <img src="/flags/us.png" alt="US" class="flag-icon-img" width="16" height="16" />
                   <span>American</span>
                 </button>
                 <button class="filter-btn-pill ${this.selectedAccent === 'British' ? 'active' : ''}" data-accent="British">
-                  <img src="/flags/gb.png" alt="GB" class="flag-icon-img" width="18" height="18" />
+                  <img src="/flags/gb.png" alt="GB" class="flag-icon-img" width="16" height="16" />
                   <span>British</span>
                 </button>
               </div>
