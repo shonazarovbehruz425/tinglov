@@ -2830,6 +2830,105 @@ body {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
+.yt-ctrl-btn.active.highlight-mode {
+  background: var(--accent-yellow);
+  color: #111315;
+  border-color: var(--accent-yellow);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+}
+
+/* Timing Adjuster Bar below Cinema Video */
+.yt-timing-adjuster-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-top: -0.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.yt-timing-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+}
+
+.yt-timing-title {
+  font-weight: 700;
+  color: var(--text-main);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.yt-timing-range {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent-orange);
+  background: rgba(255, 91, 55, 0.1);
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+}
+
+.yt-timing-dur {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.yt-timing-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.yt-timing-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-main);
+  border: 1px solid var(--border-divider);
+  color: var(--text-main);
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.yt-timing-btn:hover {
+  background: var(--accent-orange);
+  color: #FFFFFF;
+  border-color: var(--accent-orange);
+  transform: translateY(-1px);
+}
+
+.yt-timing-hint-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.9rem;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: var(--radius-md);
+  font-size: 0.84rem;
+  color: #1E40AF;
+  line-height: 1.4;
+}
+
+.yt-timing-hint-banner i {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  color: #2563EB;
+}
+
 @media (max-width: 768px) {
   .yt-ctrl-btn span {
     display: none;

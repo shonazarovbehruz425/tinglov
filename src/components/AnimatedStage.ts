@@ -44,6 +44,7 @@ export class AnimatedStage {
   private ytCurrentTime: number = 0;
   private challengePayload: ChallengePayload | null = null;
   private onChallengeRequest: (() => void) | null = null;
+  private isFreePlayMode: boolean = false;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -84,9 +85,16 @@ export class AnimatedStage {
     this.isSubtitleRevealed = false;
     this.isSentenceCompleted = false;
     this.isManualPaused = false;
+    this.isFreePlayMode = false;
     this.clearLoopTimer();
     this.stopVideoTracking();
     this.render();
+  }
+
+  public saveCurrentSceneChanges(): void {
+    if (this.currentScene) {
+      storageService.saveCustomScene(this.currentScene);
+    }
   }
 
   private getTotalDuration(): number {
@@ -195,8 +203,20 @@ export class AnimatedStage {
       curTime = this.ytCurrentTime;
     }
 
-    // If already at or very close to the end (within 0.2s) or before start, restart from start
-    if (curTime >= endTime - 0.2 || curTime < startTime) {
+    if (this.isFreePlayMode) {
+      this.playVideoSegment(curTime, this.getTotalDuration());
+      return;
+    }
+
+    // If at or past sentence end, instead of trapping user at 0s, play forward
+    if (curTime >= endTime - 0.2) {
+      // If user presses Play after stopping at the end of replica,
+      // extend endTime by 4s to let them hear the speech, or play up to next replica
+      this.currentSentence.endTime = Math.min(this.getTotalDuration(), endTime + 4);
+      this.saveCurrentSceneChanges();
+      this.render();
+      this.playVideoSegment(curTime, this.currentSentence.endTime);
+    } else if (curTime < startTime) {
       this.playVideoSegment(startTime, endTime);
     } else {
       this.playVideoSegment(curTime, endTime);
@@ -299,7 +319,7 @@ export class AnimatedStage {
         const currentPos = this.ytCurrentTime > startTime ? this.ytCurrentTime : estimatedCurrentTime;
         this.updateTimelineProgress(currentPos);
 
-        if (currentPos >= endTime) {
+        if (!this.isFreePlayMode && currentPos >= endTime) {
           window.removeEventListener('message', onYtMessage);
           const pauseMsg = JSON.stringify({
             event: 'command',
@@ -316,6 +336,11 @@ export class AnimatedStage {
           if (!this.isSentenceCompleted && !this.isManualPaused) {
             this.scheduleAutoLoop(this.currentSentence?.startTime ?? startTime, this.currentSentence?.endTime ?? endTime);
           }
+        } else if (this.isFreePlayMode && currentPos >= this.getTotalDuration()) {
+          window.removeEventListener('message', onYtMessage);
+          this.stopVideoTracking();
+          this.setSpeakingState(false);
+          onEnd?.();
         } else {
           this.animFrameId = requestAnimationFrame(trackYtProgress);
         }
@@ -345,7 +370,7 @@ export class AnimatedStage {
         this.updateTimelineProgress(cur);
 
         // ONLY stop when reached or passed sentence endTime (never stop prematurely on buffer/pause)
-        if (cur >= endTime) {
+        if (!this.isFreePlayMode && cur >= endTime) {
           this.videoElement.pause();
           this.stopVideoTracking();
           this.setSpeakingState(false);
@@ -356,6 +381,11 @@ export class AnimatedStage {
           if (!this.isSentenceCompleted && !this.isManualPaused) {
             this.scheduleAutoLoop(this.currentSentence?.startTime ?? startTime, this.currentSentence?.endTime ?? endTime);
           }
+        } else if (this.isFreePlayMode && cur >= this.getTotalDuration()) {
+          this.videoElement.pause();
+          this.stopVideoTracking();
+          this.setSpeakingState(false);
+          onEnd?.();
         } else {
           this.animFrameId = requestAnimationFrame(checkTime);
         }
@@ -391,11 +421,19 @@ export class AnimatedStage {
 
   public seekRelative(deltaSeconds: number): void {
     if (!this.currentSentence) return;
-    const newTime = Math.max(
-      this.currentSentence.startTime,
-      Math.min(this.currentSentence.endTime, (this.videoElement?.currentTime || this.currentSentence.startTime) + deltaSeconds)
-    );
-    this.playVideoSegment(newTime, this.currentSentence.endTime);
+    const curTime = this.videoElement ? this.videoElement.currentTime : this.ytCurrentTime;
+    const baseTime = curTime > 0 ? curTime : this.currentSentence.startTime;
+    const newTime = Math.max(0, baseTime + deltaSeconds);
+
+    if (deltaSeconds > 0 && newTime >= this.currentSentence.endTime) {
+      // User is seeking forward beyond current replica duration, extend endTime so they can listen further!
+      this.currentSentence.endTime = Math.min(this.getTotalDuration(), Math.max(newTime + 3, this.currentSentence.endTime + 3));
+      this.saveCurrentSceneChanges();
+      this.render();
+    }
+
+    const targetEnd = this.isFreePlayMode ? this.getTotalDuration() : Math.max(newTime + 1, this.currentSentence.endTime);
+    this.playVideoSegment(newTime, targetEnd);
   }
 
   public stopPlayback(): void {
@@ -705,6 +743,11 @@ export class AnimatedStage {
                   <i class="ph ph-skip-forward" aria-hidden="true"></i>
                 </button>
 
+                <button class="yt-ctrl-btn ${this.isFreePlayMode ? 'active highlight-mode' : ''}" id="stageFreePlayBtn" title="Erkin ijro rejimi (to'xtovsiz ko'rish)" aria-label="Erkin ijro">
+                  <i class="ph ph-fast-forward" aria-hidden="true"></i>
+                  <span>${this.isFreePlayMode ? 'Replika rejimi' : 'Erkin ijro'}</span>
+                </button>
+
                 <div class="yt-time-badge">
                   <span id="videoTimeDisplay">${formatTimecode(this.currentSentence.startTime)} / ${formatTimecode(totalDuration)}</span>
                 </div>
@@ -725,6 +768,33 @@ export class AnimatedStage {
             </div>
           </div>
         </div>
+
+        <!-- Timing Adjuster Bar: Allows fixing replica start/end directly from video -->
+        <div class="yt-timing-adjuster-bar">
+          <div class="yt-timing-info">
+            <span class="yt-timing-title"><i class="ph ph-sliders"></i> Replika vaqti:</span>
+            <span class="yt-timing-range">${formatTimecode(this.currentSentence.startTime)} - ${formatTimecode(this.currentSentence.endTime)}</span>
+            <span class="yt-timing-dur">(${(this.currentSentence.endTime - this.currentSentence.startTime).toFixed(1)}s)</span>
+          </div>
+          <div class="yt-timing-actions">
+            <button type="button" class="yt-timing-btn" id="stageSetStartBtn" title="Hozirgi vaqtni boshlanish deb belgilash">
+              <i class="ph ph-map-pin"></i> <span>Boshlanish</span>
+            </button>
+            <button type="button" class="yt-timing-btn" id="stageSetEndBtn" title="Hozirgi vaqtni tugash deb belgilash">
+              <i class="ph ph-flag-checkered"></i> <span>Tugash</span>
+            </button>
+            <button type="button" class="yt-timing-btn" id="stageExtend2sBtn" title="Davomiylikni +2 soniyaga uzaytirish">
+              <i class="ph ph-plus-circle"></i> <span>+2s uzaytirish</span>
+            </button>
+          </div>
+        </div>
+
+        ${(this.currentSentence.endTime - this.currentSentence.startTime) <= 4.5 ? `
+          <div class="yt-timing-hint-banner">
+            <i class="ph ph-info"></i>
+            <span>Gap hali boshlanmadimi? <strong>"Erkin ijro"</strong> tugmasini bosing yoki <strong>"+2s uzaytirish"</strong> orqali qahramon ovozi eshitiladigan joygacha cho'zing.</span>
+          </div>
+        ` : ''}
 
         <!-- Tabs Under Player (Description, Materials, Home task, Community TOP 3 + Share lesson) -->
         <div class="player-tabs-bar">
@@ -904,6 +974,54 @@ export class AnimatedStage {
       }
     });
 
+    // Free play toggle button
+    this.container.querySelector('#stageFreePlayBtn')?.addEventListener('click', () => {
+      this.isFreePlayMode = !this.isFreePlayMode;
+      soundEffects.playKeyClick();
+      if (this.isFreePlayMode) {
+        this.clearLoopTimer();
+        const curTime = this.videoElement ? this.videoElement.currentTime : this.ytCurrentTime;
+        this.playVideoSegment(curTime, this.getTotalDuration());
+      } else {
+        this.pausePlayback(true);
+      }
+      this.render();
+    });
+
+    // Timing adjustment buttons
+    this.container.querySelector('#stageSetStartBtn')?.addEventListener('click', () => {
+      if (!this.currentSentence) return;
+      const curTime = this.videoElement ? this.videoElement.currentTime : this.ytCurrentTime;
+      this.currentSentence.startTime = Math.max(0, Math.round(curTime * 10) / 10);
+      if (this.currentSentence.endTime <= this.currentSentence.startTime) {
+        this.currentSentence.endTime = this.currentSentence.startTime + 4;
+      }
+      this.saveCurrentSceneChanges();
+      soundEffects.playCorrectWord();
+      this.render();
+    });
+
+    this.container.querySelector('#stageSetEndBtn')?.addEventListener('click', () => {
+      if (!this.currentSentence) return;
+      const curTime = this.videoElement ? this.videoElement.currentTime : this.ytCurrentTime;
+      const rounded = Math.round(curTime * 10) / 10;
+      if (rounded > this.currentSentence.startTime) {
+        this.currentSentence.endTime = rounded;
+        this.saveCurrentSceneChanges();
+        soundEffects.playCorrectWord();
+        this.render();
+      }
+    });
+
+    this.container.querySelector('#stageExtend2sBtn')?.addEventListener('click', () => {
+      if (!this.currentSentence) return;
+      this.currentSentence.endTime = Math.min(this.getTotalDuration(), this.currentSentence.endTime + 2);
+      this.saveCurrentSceneChanges();
+      soundEffects.playKeyClick();
+      this.render();
+      this.playVideoSegment(this.currentSentence.startTime, this.currentSentence.endTime);
+    });
+
     // Timeline track click
     const timelineTrack = this.container.querySelector('#videoTimelineTrack');
     const seekByRatio = (ratio: number): void => {
@@ -916,6 +1034,14 @@ export class AnimatedStage {
       );
       if (sentenceIdx >= 0) {
         this.onSeekToSentence?.(sentenceIdx);
+      } else {
+        // Seek directly to clicked position and continue playback
+        this.updateTimelineProgress(targetTime);
+        if (this.currentSentence && targetTime > this.currentSentence.endTime) {
+          this.currentSentence.endTime = Math.min(this.getTotalDuration(), targetTime + 4);
+          this.saveCurrentSceneChanges();
+        }
+        this.playVideoSegment(targetTime, this.isFreePlayMode ? this.getTotalDuration() : Math.max(targetTime + 4, this.currentSentence?.endTime || targetTime + 4));
       }
     };
     timelineTrack?.addEventListener('click', (e) => {

@@ -96,7 +96,15 @@ export class CustomSceneModal extends BaseModal {
 
               <div id="dialoguesListInputs" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 250px; overflow-y: auto;">
                 <div class="dialogue-row-item">
-                  <input type="text" class="form-clean-input char-name-input" placeholder="Personaj nomi (masalan: Dory)" value="Dory" required />
+                  <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="text" class="form-clean-input char-name-input" placeholder="Personaj nomi (masalan: Dory)" value="Dory" required style="flex: 2;" />
+                    <div style="display: flex; align-items: center; gap: 0.25rem; flex: 1.5;">
+                      <input type="number" step="0.1" min="0" class="form-clean-input start-time-input" placeholder="Boshlanish" value="0.0" title="Boshlanish vaqti (soniya)" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.8rem;" />
+                      <span>-</span>
+                      <input type="number" step="0.1" min="0.5" class="form-clean-input end-time-input" placeholder="Tugash" value="6.0" title="Tugash vaqti (soniya)" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.8rem;" />
+                      <span style="font-size: 0.75rem; color: var(--text-secondary);">sek</span>
+                    </div>
+                  </div>
                   <textarea class="form-clean-input sentence-en-input" placeholder="Inglizcha replika: Just keep swimming..." required rows="2"></textarea>
                   <input type="text" class="form-clean-input sentence-uz-input" placeholder="O'zbekcha tarjimasi: Faqat suzishda davom et..." required />
                 </div>
@@ -126,11 +134,19 @@ export class CustomSceneModal extends BaseModal {
 
     addBtn?.addEventListener('click', () => {
       const rowCount = listContainer?.querySelectorAll('.dialogue-row-item').length || 0;
+      const defaultStart = rowCount * 6;
+      const defaultEnd = (rowCount + 1) * 6;
       const newRow = document.createElement('div');
       newRow.className = 'dialogue-row-item';
       newRow.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-          <input type="text" class="form-clean-input char-name-input" placeholder="Personaj nomi" value="Character ${rowCount + 1}" required style="flex: 1;" />
+          <input type="text" class="form-clean-input char-name-input" placeholder="Personaj nomi" value="Character ${rowCount + 1}" required style="flex: 2;" />
+          <div style="display: flex; align-items: center; gap: 0.25rem; flex: 1.5;">
+            <input type="number" step="0.1" min="0" class="form-clean-input start-time-input" placeholder="Boshlanish" value="${defaultStart.toFixed(1)}" title="Boshlanish vaqti (soniya)" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.8rem;" />
+            <span>-</span>
+            <input type="number" step="0.1" min="0.5" class="form-clean-input end-time-input" placeholder="Tugash" value="${defaultEnd.toFixed(1)}" title="Tugash vaqti (soniya)" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.8rem;" />
+            <span style="font-size: 0.75rem; color: var(--text-secondary);">sek</span>
+          </div>
           <button type="button" class="clean-btn remove-row-btn" style="color: #EF4444; padding: 0.4rem;"><i class="ph ph-trash"></i></button>
         </div>
         <textarea class="form-clean-input sentence-en-input" placeholder="Inglizcha replika..." required rows="2"></textarea>
@@ -199,18 +215,31 @@ export class CustomSceneModal extends BaseModal {
       const rawVideoUrl = selectedVideoBlobUrl || manualUrl || undefined;
 
       const dialogueRows = form.querySelectorAll('.dialogue-row-item');
-      const rawDialogues = Array.from(dialogueRows).map((row, idx) => ({
-        character: ((row.querySelector('.char-name-input') as HTMLInputElement)?.value || '').trim() || `Character ${idx + 1}`,
-        textEn: ((row.querySelector('.sentence-en-input') as HTMLTextAreaElement)?.value || '').trim(),
-        textUz: ((row.querySelector('.sentence-uz-input') as HTMLInputElement)?.value || '').trim(),
-      }));
+      const rawDialogues = Array.from(dialogueRows).map((row, idx) => {
+        const startVal = parseFloat((row.querySelector('.start-time-input') as HTMLInputElement)?.value || '');
+        const endVal = parseFloat((row.querySelector('.end-time-input') as HTMLInputElement)?.value || '');
+        const sTime = !isNaN(startVal) && startVal >= 0 ? startVal : idx * 6;
+        const eTime = !isNaN(endVal) && endVal > sTime ? endVal : sTime + 6;
+
+        return {
+          character: ((row.querySelector('.char-name-input') as HTMLInputElement)?.value || '').trim() || `Character ${idx + 1}`,
+          textEn: ((row.querySelector('.sentence-en-input') as HTMLTextAreaElement)?.value || '').trim(),
+          textUz: ((row.querySelector('.sentence-uz-input') as HTMLInputElement)?.value || '').trim(),
+          startTime: sTime,
+          endTime: eTime,
+        };
+      });
 
       // Validate scene inputs with Zod
       const validation = safeValidate(customSceneSchema, {
         movieName: rawMovieName,
         category,
         videoUrl: rawVideoUrl,
-        dialogues: rawDialogues,
+        dialogues: rawDialogues.map(d => ({
+          character: d.character,
+          textEn: d.textEn,
+          textUz: d.textUz,
+        })),
       });
 
       if (!validation.success) {
@@ -220,20 +249,16 @@ export class CustomSceneModal extends BaseModal {
       }
 
       const validatedData = validation.data;
-      // Store RAW user text: all render sites escape via escapeHtml(), and the
-      // dictation/pronunciation logic must compare against what the user
-      // actually types. Pre-escaping here made words like "Don't" (stored as
-      // "Don&#039;t") impossible to complete.
       const movieName = validatedData.movieName;
       const resolvedVideoUrl = sanitizeUrl(validatedData.videoUrl || '') || undefined;
 
-      const dialogues: DialogueSentence[] = validatedData.dialogues.map((d, idx) => {
+      const dialogues: DialogueSentence[] = rawDialogues.map((d, idx) => {
         return {
           id: `custom-dialogue-${Date.now()}-${idx}`,
           character: d.character,
           characterAvatar: '🗣️',
-          startTime: idx * 4,
-          endTime: (idx + 1) * 4,
+          startTime: d.startTime,
+          endTime: d.endTime,
           text: d.textEn,
           cleanText: d.textEn.replace(/[.,/#!$%^&*;:{}=\-_`~()?"'’]/g, ''),
           uzbekTranslation: d.textUz,
@@ -241,6 +266,7 @@ export class CustomSceneModal extends BaseModal {
         };
       });
 
+      const maxEndTime = dialogues.reduce((max, d) => Math.max(max, d.endTime), 0);
       const newScene: Scene = {
         id: `custom-scene-${Date.now()}`,
         title: movieName,
@@ -248,7 +274,7 @@ export class CustomSceneModal extends BaseModal {
         coverEmoji: '🎬',
         difficulty: 'beginner' as Difficulty,
         category: validatedData.category as Scene['category'],
-        duration: `${Math.ceil((dialogues.length * 4) / 60)} min`,
+        duration: `${Math.ceil(Math.max(maxEndTime, dialogues.length * 6) / 60)} min`,
         accent: 'American',
         videoUrl: resolvedVideoUrl,
         dialogues

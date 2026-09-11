@@ -346,7 +346,17 @@ export class StorageService {
   }
 
   public saveCustomScene(scene: Scene): void {
-    this.customScenes.push(scene);
+    const idx = this.customScenes.findIndex(s => s.id === scene.id);
+    if (idx >= 0) {
+      this.customScenes[idx] = scene;
+    } else {
+      this.customScenes.push(scene);
+    }
+    // Also update in serverScenes if cached locally
+    const serverIdx = this.serverScenes.findIndex(s => s.id === scene.id);
+    if (serverIdx >= 0) {
+      this.serverScenes[serverIdx] = scene;
+    }
     try {
       localStorage.setItem(CUSTOM_SCENES_KEY, JSON.stringify(this.customScenes));
     } catch {
