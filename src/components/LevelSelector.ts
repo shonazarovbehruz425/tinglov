@@ -3,6 +3,7 @@ import { storageService } from '../services/storageService';
 import { i18n } from '../services/i18nService';
 import { searchByWord, DialogueMatch } from '../services/searchService';
 import { escapeHtml, sanitizeHtml } from '../utils/sanitize';
+import { SkeletonLoader } from './SkeletonLoader';
 
 export class LevelSelector {
   private container: HTMLElement;
@@ -34,9 +35,7 @@ export class LevelSelector {
   }
 
   public renderSkeleton(): void {
-    import('./SkeletonLoader').then(({ SkeletonLoader }) => {
-      this.container.innerHTML = SkeletonLoader.getDashboardSkeletonHtml();
-    });
+    this.container.innerHTML = SkeletonLoader.getDashboardSkeletonHtml();
   }
 
   public render(): void {

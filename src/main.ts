@@ -668,20 +668,57 @@ class MovieListenApp implements RouterDelegate {
       return;
     }
 
-    // 2. Protected routes (/dashboard, /library, /practice, /profile, /settings):
-    // If we already have persistent cached user credentials, render immediately (0ms latency!)
+    // 2. Dashboard / Library reload & initial route:
+    // Foydalanuvchi talabiga asosan: har doim dastlab shimmer skeleton ko'rsatiladi,
+    // serverdan eng so'nggi ma'lumotlar olingach silliq haqiqiy darslarga almashtiriladi.
+    if (rawPath === '/dashboard' || rawPath === '/library' || rawHash === 'dashboard' || rawHash === 'library') {
+      this.switchView('library');
+      this.setLibraryBusyState(true);
+      this.levelSelector.renderSkeleton();
+
+      const startTime = Date.now();
+      try {
+        const data = await apiService.waitForAuth();
+        sessionManager.markReady();
+        if (data) {
+          storageService.syncWithServer(data);
+        }
+        this.statsHeader.update();
+
+        // Shimmer skeletni foydalanuvchi ko'rishi va silliq o'tishi uchun min 300ms kechikish
+        const elapsed = Date.now() - startTime;
+        const minDelay = Math.max(0, 320 - elapsed);
+        setTimeout(() => {
+          if (apiService.isAuthenticated()) {
+            this.levelSelector.render();
+            this.setLibraryBusyState(false);
+          } else {
+            this.checkAndEnforceAuth();
+          }
+        }, minDelay);
+      } catch {
+        sessionManager.markReady();
+        if (apiService.isAuthenticated()) {
+          this.levelSelector.render();
+          this.setLibraryBusyState(false);
+        } else {
+          this.checkAndEnforceAuth();
+        }
+      }
+      return;
+    }
+
+    // 3. Boshqa himoyalangan yo'llar (/practice, /profile, /settings):
     if (apiService.isAuthenticated()) {
       sessionManager.markReady();
       this.router.resolve(false);
 
-      // Always fetch freshest data from server on reload and update UI smoothly
+      // Serverdan yangi ma'lumotlarni fonda sinxronlash
       apiService.waitForAuth().then((data) => {
         if (data) {
           storageService.syncWithServer(data);
           this.statsHeader.update();
-          if (this.currentView === 'library') {
-            this.levelSelector.render();
-          } else if (this.currentView === 'profile') {
+          if (this.currentView === 'profile') {
             this.profileView.render();
           }
         }
@@ -689,13 +726,7 @@ class MovieListenApp implements RouterDelegate {
       return;
     }
 
-    // Otherwise, show skeleton preview while awaiting server network authentication
-    if (rawPath === '/dashboard' || rawPath === '/library') {
-      this.switchView('library');
-      this.setLibraryBusyState(true);
-      this.levelSelector.renderSkeleton();
-    }
-
+    // Autentifikatsiya qilinmagan bo'lsa serverni kutish
     try {
       const data = await apiService.waitForAuth();
       sessionManager.markReady();
@@ -707,7 +738,6 @@ class MovieListenApp implements RouterDelegate {
         this.statsHeader.update();
         this.router.resolve(false);
       } else {
-        // Genuinely not authenticated, redirect to login
         this.checkAndEnforceAuth();
       }
     } catch {
