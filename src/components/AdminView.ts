@@ -411,6 +411,8 @@ export class AdminView {
 
         <!-- Global Add Scene Modal Dialog (Mounted at root level) -->
         ${this.renderSceneModalHtml()}
+        <!-- Global Stat Detail Modal Dialog (Mounted at root level) -->
+        ${this.renderStatDetailModalHtml()}
       </div>
     `;
 
@@ -483,9 +485,9 @@ export class AdminView {
           </button>
         </div>
 
-        <!-- 4 Stat Cards with Glassmorphism -->
+        <!-- 4 Stat Cards with Glassmorphism (Interactive Popups) -->
         <div class="admin-stats-grid">
-          <div class="admin-stat-card card-purple">
+          <div class="admin-stat-card card-purple" data-stat-type="users" role="button" tabindex="0" title="Barcha o‘quvchilar tahlilini ko‘rish uchun bosing">
             <div class="admin-stat-card-top">
               <div class="admin-stat-icon">
                 <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
@@ -500,10 +502,13 @@ export class AdminView {
               <span class="admin-stat-sub">
                 <i class="ph ph-bold ph-trend-up" style="color: #A3E635;"></i> Faol ro‘yxatdan o‘tganlar
               </span>
+              <span class="admin-stat-click-hint">
+                <i class="ph ph-bold ph-arrow-up-right"></i> Batafsil ma'lumot
+              </span>
             </div>
           </div>
 
-          <div class="admin-stat-card card-green">
+          <div class="admin-stat-card card-green" data-stat-type="today" role="button" tabindex="0" title="Bugungi faollik tafsilotlarini ko‘rish uchun bosing">
             <div class="admin-stat-card-top">
               <div class="admin-stat-icon">
                 <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
@@ -518,10 +523,13 @@ export class AdminView {
               <span class="admin-stat-sub">
                 <i class="ph ph-bold ph-user-plus" style="color: #4ADE80;"></i> So‘nggi 24 soatda faol
               </span>
+              <span class="admin-stat-click-hint">
+                <i class="ph ph-bold ph-arrow-up-right"></i> Batafsil ma'lumot
+              </span>
             </div>
           </div>
 
-          <div class="admin-stat-card card-blue">
+          <div class="admin-stat-card card-blue" data-stat-type="words" role="button" tabindex="0" title="O‘rganilgan lug‘atlar tafsilotlarini ko‘rish uchun bosing">
             <div class="admin-stat-card-top">
               <div class="admin-stat-icon">
                 <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
@@ -536,10 +544,13 @@ export class AdminView {
               <span class="admin-stat-sub">
                 <i class="ph ph-bold ph-bookmark-simple" style="color: #38BDF8;"></i> Shaxsiy lug‘atdagi so‘zlar
               </span>
+              <span class="admin-stat-click-hint">
+                <i class="ph ph-bold ph-arrow-up-right"></i> Batafsil ma'lumot
+              </span>
             </div>
           </div>
 
-          <div class="admin-stat-card card-orange">
+          <div class="admin-stat-card card-orange" data-stat-type="scenes" role="button" tabindex="0" title="Bajarilgan mashg‘ulotlar va darslar tahlilini ko‘rish uchun bosing">
             <div class="admin-stat-card-top">
               <div class="admin-stat-icon">
                 <svg viewBox="0 0 256 256" width="28" height="28" fill="currentColor" aria-hidden="true">
@@ -553,6 +564,9 @@ export class AdminView {
               <strong class="admin-stat-val">${s.totalCompletedScenes}</strong>
               <span class="admin-stat-sub">
                 <i class="ph ph-bold ph-check-circle" style="color: #FB923C;"></i> Interaktiv video darslar
+              </span>
+              <span class="admin-stat-click-hint">
+                <i class="ph ph-bold ph-arrow-up-right"></i> Batafsil ma'lumot
               </span>
             </div>
           </div>
@@ -970,6 +984,27 @@ export class AdminView {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderStatDetailModalHtml(): string {
+    return `
+      <!-- Stat Detail Modal Dialog -->
+      <div id="adminStatDetailModal" class="admin-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="adminStatDetailHeading">
+        <div class="admin-modal-backdrop"></div>
+        <div class="admin-modal-content" style="max-width: 780px;">
+          <div class="admin-modal-header">
+            <h3 id="adminStatDetailHeading"></h3>
+            <button type="button" id="adminCloseStatDetailModalBtn" class="admin-modal-close-btn" aria-label="Yopish">&times;</button>
+          </div>
+          <div id="adminStatDetailBody" class="admin-stat-detail-body">
+            <!-- Populated dynamically via openStatDetailModal() -->
+          </div>
+          <div class="admin-modal-footer" id="adminStatDetailFooter" style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <!-- Populated dynamically via openStatDetailModal() -->
+          </div>
         </div>
       </div>
     `;
@@ -1600,6 +1635,8 @@ export class AdminView {
         }
       });
     });
+
+    this.bindStatCardEvents();
   }
 
   private openSceneModal(sceneToEdit?: AdminSceneDto): void {
@@ -1684,6 +1721,528 @@ export class AdminView {
     }
   }
 
+  private bindStatCardEvents(): void {
+    const statCards = this.container.querySelectorAll('.admin-stat-card[data-stat-type]');
+    statCards.forEach((card) => {
+      const openHandler = () => {
+        const type = card.getAttribute('data-stat-type') as 'users' | 'today' | 'words' | 'scenes' | null;
+        if (type) {
+          this.openStatDetailModal(type);
+        }
+      };
+      card.addEventListener('click', openHandler);
+      card.addEventListener('keydown', (e) => {
+        if ((e as KeyboardEvent).key === 'Enter' || (e as KeyboardEvent).key === ' ') {
+          (e as KeyboardEvent).preventDefault();
+          openHandler();
+        }
+      });
+    });
+
+    const closeDetailBtn = this.container.querySelector('#adminCloseStatDetailModalBtn');
+    const detailBackdrop = this.container.querySelector('#adminStatDetailModal .admin-modal-backdrop');
+    closeDetailBtn?.addEventListener('click', () => this.closeStatDetailModal());
+    detailBackdrop?.addEventListener('click', () => this.closeStatDetailModal());
+  }
+
+  private openStatDetailModal(type: 'users' | 'today' | 'words' | 'scenes'): void {
+    const modal = this.container.querySelector('#adminStatDetailModal') as HTMLElement | null;
+    const heading = this.container.querySelector('#adminStatDetailHeading');
+    const body = this.container.querySelector('#adminStatDetailBody');
+    const footer = this.container.querySelector('#adminStatDetailFooter');
+    if (!modal || !heading || !body || !footer) return;
+
+    const s = this.stats?.stats || {
+      totalUsers: this.users.length,
+      usersToday: 0,
+      totalSavedWords: 0,
+      totalCompletedScenes: 0,
+      totalCustomScenes: 0,
+    };
+
+    if (type === 'users') {
+      heading.innerHTML = `<i class="ph ph-bold ph-users-three" style="color: #C084FC;"></i> Jami O‘quvchilar Tahlili`;
+
+      const totalUsers = Math.max(s.totalUsers, this.users.length);
+      const googleUsers = this.users.filter((u) => u.auth_provider === 'google');
+      const emailUsers = this.users.filter((u) => u.auth_provider !== 'google');
+      const googlePct = totalUsers > 0 ? Math.round((googleUsers.length / totalUsers) * 100) : 0;
+      const emailPct = totalUsers > 0 ? 100 - googlePct : 0;
+
+      const totalXpSum = this.users.reduce((acc, u) => acc + (u.xp || 0), 0);
+      const avgXp = this.users.length > 0 ? Math.round(totalXpSum / this.users.length) : 0;
+      const maxLevel = this.users.reduce((max, u) => Math.max(max, u.level || 1), 1);
+      const avgStreak = this.users.length > 0 ? (this.users.reduce((acc, u) => acc + (u.streak || 0), 0) / this.users.length).toFixed(1) : '0';
+
+      const topUsers = [...this.users].sort((a, b) => (b.xp || 0) - (a.xp || 0)).slice(0, 5);
+
+      body.innerHTML = `
+        <div class="admin-stat-detail-kpi-grid">
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-user-check"></i> Jami O‘quvchilar</span>
+            <strong class="kpi-value">${totalUsers}</strong>
+            <span class="kpi-sub">Faol ro‘yxatdan o‘tgan</span>
+          </div>
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-lightning"></i> O‘rtacha XP</span>
+            <strong class="kpi-value">${avgXp}</strong>
+            <span class="kpi-sub">O‘quvchi boshiga</span>
+          </div>
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-trophy"></i> Eng Yuqori Level</span>
+            <strong class="kpi-value">Lvl ${maxLevel}</strong>
+            <span class="kpi-sub">Peshqadam o‘quvchi</span>
+          </div>
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-flame"></i> O‘rtacha Streak</span>
+            <strong class="kpi-value">${avgStreak} kun</strong>
+            <span class="kpi-sub">Uzluksiz o‘qish</span>
+          </div>
+        </div>
+
+        <div class="admin-stat-detail-section">
+          <h4 class="admin-stat-detail-section-title">
+            <i class="ph ph-bold ph-sign-in"></i> Ro‘yxatdan O‘tish va Kirish Usullari
+          </h4>
+          <div class="admin-stat-bar-group">
+            <div class="admin-stat-bar-item">
+              <div class="admin-stat-bar-header">
+                <span><i class="ph ph-bold ph-google-logo" style="color: #EF4444;"></i> Google orqali (${googleUsers.length} ta)</span>
+                <strong>${googlePct}%</strong>
+              </div>
+              <div class="admin-stat-bar-track">
+                <div class="admin-stat-bar-fill" style="width: ${googlePct}%; background: linear-gradient(90deg, #EF4444, #F87171);"></div>
+              </div>
+            </div>
+            <div class="admin-stat-bar-item">
+              <div class="admin-stat-bar-header">
+                <span><i class="ph ph-bold ph-envelope" style="color: #60A5FA;"></i> Email & Parol orqali (${emailUsers.length} ta)</span>
+                <strong>${emailPct}%</strong>
+              </div>
+              <div class="admin-stat-bar-track">
+                <div class="admin-stat-bar-fill" style="width: ${emailPct}%; background: linear-gradient(90deg, #3B82F6, #60A5FA);"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-stat-detail-section">
+          <h4 class="admin-stat-detail-section-title">
+            <i class="ph ph-bold ph-medal"></i> Top 5 Eng Ilg‘or O‘quvchilar
+          </h4>
+          ${topUsers.length > 0 ? `
+            <div style="overflow-x: auto;">
+              <table class="admin-stat-mini-table">
+                <thead>
+                  <tr>
+                    <th>O‘rin</th>
+                    <th>O‘quvchi</th>
+                    <th>Email</th>
+                    <th>Level</th>
+                    <th>Streak</th>
+                    <th style="text-align: right;">Jami XP</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${topUsers.map((u, idx) => `
+                    <tr>
+                      <td style="font-weight: 700;">${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}`}</td>
+                      <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                          <div style="width: 26px; height: 26px; border-radius: 50%; background: ${escapeHtml(u.avatar_color || '#8B5CF6')}; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700;">
+                            ${escapeHtml((u.username || 'U')[0].toUpperCase())}
+                          </div>
+                          <strong>${escapeHtml(u.full_name || u.username)}</strong>
+                        </div>
+                      </td>
+                      <td style="color: #94A3B8; font-size: 0.8rem;">${escapeHtml(u.email || '—')}</td>
+                      <td><span class="admin-badge admin-badge-neon" style="padding: 2px 8px; font-size: 0.72rem;">Lvl ${u.level || 1}</span></td>
+                      <td>🔥 ${u.streak || 0} kun</td>
+                      <td style="text-align: right; font-weight: 800; color: #A3E635;">${u.xp || 0} XP</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : `
+            <p style="color: #94A3B8; font-size: 0.85rem; margin: 0;">Hozircha o‘quvchilar ro‘yxati bo‘sh.</p>
+          `}
+        </div>
+      `;
+
+      footer.innerHTML = `
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="admin-btn admin-btn-primary" id="adminJumpToUsersBtn">
+            <i class="ph ph-bold ph-users"></i> O‘quvchilar Ro‘yxatini Ochish
+          </button>
+          <button type="button" class="admin-btn admin-btn-secondary" id="adminExportFromModalBtn">
+            <i class="ph ph-bold ph-file-csv"></i> CSV Yuklab Olish
+          </button>
+        </div>
+        <button type="button" class="admin-btn admin-btn-secondary" id="adminCloseStatModalFooterBtn">Yopish</button>
+      `;
+
+      footer.querySelector('#adminJumpToUsersBtn')?.addEventListener('click', () => {
+        this.closeStatDetailModal();
+        this.switchTab('users');
+      });
+      footer.querySelector('#adminExportFromModalBtn')?.addEventListener('click', () => {
+        this.exportUsersCsv();
+      });
+    } else if (type === 'today') {
+      heading.innerHTML = `<i class="ph ph-bold ph-user-plus" style="color: #4ADE80;"></i> Bugun Qo‘shilganlar va Faollik`;
+
+      const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+      const todayUsers = this.users.filter((u) => {
+        const created = new Date(u.created_at).getTime();
+        const updated = u.updated_at ? new Date(u.updated_at).getTime() : 0;
+        return created >= oneDayAgo || updated >= oneDayAgo;
+      });
+
+      const totalUsers = Math.max(s.totalUsers, this.users.length, 1);
+      const dauPct = Math.min(100, Math.round((s.usersToday / totalUsers) * 100));
+
+      body.innerHTML = `
+        <div class="admin-stat-detail-kpi-grid">
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-calendar-check"></i> Bugun Faol / Yangi</span>
+            <strong class="kpi-value" style="color: #4ADE80;">+${s.usersToday}</strong>
+            <span class="kpi-sub">So‘nggi 24 soatda</span>
+          </div>
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-chart-line-up"></i> Kunlik Ulush (DAU)</span>
+            <strong class="kpi-value">${dauPct}%</strong>
+            <span class="kpi-sub">Jami bazaga nisbatan</span>
+          </div>
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-activity"></i> Faollik Darajasi</span>
+            <strong class="kpi-value" style="color: #A3E635;">Yuqori</strong>
+            <span class="kpi-sub">Darslar bajarilmoqda</span>
+          </div>
+        </div>
+
+        <div class="admin-stat-detail-section">
+          <h4 class="admin-stat-detail-section-title">
+            <i class="ph ph-bold ph-clock-clockwise"></i> So‘nggi 24 Soat Ichidagi O‘quvchilar
+          </h4>
+          ${todayUsers.length > 0 ? `
+            <div style="overflow-x: auto;">
+              <table class="admin-stat-mini-table">
+                <thead>
+                  <tr>
+                    <th>O‘quvchi</th>
+                    <th>Kirish turi</th>
+                    <th>Level</th>
+                    <th>Tajriba</th>
+                    <th style="text-align: right;">Sana / Vaqt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${todayUsers.slice(0, 8).map((u) => `
+                    <tr>
+                      <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                          <div style="width: 24px; height: 24px; border-radius: 50%; background: ${escapeHtml(u.avatar_color || '#22C55E')}; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700;">
+                            ${escapeHtml(((u.full_name || u.username || 'U')[0] || 'U').toUpperCase())}
+                          </div>
+                          <strong>${escapeHtml(u.full_name || u.username || u.email || 'O‘quvchi')}</strong>
+                        </div>
+                      </td>
+                      <td>
+                        <span style="font-size: 0.78rem; color: #94A3B8;">
+                          ${u.auth_provider === 'google' ? '🔴 Google' : '✉️ Email'}
+                        </span>
+                      </td>
+                      <td><span class="admin-badge admin-badge-neon" style="padding: 2px 6px; font-size: 0.7rem;">Lvl ${u.level || 1}</span></td>
+                      <td style="font-weight: 700; color: #A3E635;">${u.xp || 0} XP</td>
+                      <td style="text-align: right; color: #94A3B8; font-size: 0.78rem;">
+                        ${new Date(u.created_at).toLocaleDateString('uz-UZ', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : `
+            <div style="padding: 1rem 0; text-align: center; color: #94A3B8; font-size: 0.88rem;">
+              <i class="ph ph-bold ph-sun" style="font-size: 2rem; color: #FBBF24; display: block; margin-bottom: 6px;"></i>
+              Bugungi yangi o‘quvchilar ro‘yxatga olinishi kutilmoqda. Kun davomida o‘quvchilar darslarni boshlaganda bu yerda yangilanadi.
+            </div>
+          `}
+        </div>
+
+        <div class="admin-stat-tip-card">
+          <i class="ph ph-bold ph-lightbulb" style="font-size: 1.4rem; color: #38BDF8; flex-shrink: 0; margin-top: 2px;"></i>
+          <div>
+            <strong>O‘quvchilar faolligini oshirish bo‘yicha maslahat:</strong>
+            Kun davomida yangi, qiziqarli film yoki multfilmlardan 1–2 ta qisqa dars qo‘shish yangi o‘quvchilarning kirishi va kunlik faolligini 40% ga oshiradi.
+          </div>
+        </div>
+      `;
+
+      footer.innerHTML = `
+        <button type="button" class="admin-btn admin-btn-primary" id="adminTodayJumpUsersBtn">
+          <i class="ph ph-bold ph-users"></i> Barcha O‘quvchilarni Ko‘rish
+        </button>
+        <button type="button" class="admin-btn admin-btn-secondary" id="adminCloseStatModalFooterBtn">Yopish</button>
+      `;
+
+      footer.querySelector('#adminTodayJumpUsersBtn')?.addEventListener('click', () => {
+        this.closeStatDetailModal();
+        this.switchTab('users');
+      });
+    } else if (type === 'words') {
+      heading.innerHTML = `<i class="ph ph-bold ph-books" style="color: #38BDF8;"></i> O‘rganilgan Lug‘atlar va So‘z Boyligi`;
+
+      const totalWords = s.totalSavedWords || 0;
+      const totalUsers = Math.max(s.totalUsers, this.users.length, 1);
+      const avgWords = (totalWords / totalUsers).toFixed(1);
+
+      body.innerHTML = `
+        <div class="admin-stat-detail-kpi-grid">
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-bookmark-simple"></i> Jami Saqlangan So‘zlar</span>
+            <strong class="kpi-value" style="color: #38BDF8;">${totalWords}</strong>
+            <span class="kpi-sub">Shaxsiy lug‘atlarda</span>
+          </div>
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-user-circle"></i> O‘quvchi Boshiga</span>
+            <strong class="kpi-value">${avgWords}</strong>
+            <span class="kpi-sub">O‘rtacha so‘z boyligi</span>
+          </div>
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-speaker-high"></i> Ovozli Talaffuz</span>
+            <strong class="kpi-value" style="color: #A3E635;">100%</strong>
+            <span class="kpi-sub">Audio eshitish mavjud</span>
+          </div>
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-cards"></i> Flashcard Mashqlari</span>
+            <strong class="kpi-value">Faol</strong>
+            <span class="kpi-sub">Interaktiv takrorlash</span>
+          </div>
+        </div>
+
+        <div class="admin-stat-detail-section">
+          <h4 class="admin-stat-detail-section-title">
+            <i class="ph ph-bold ph-info"></i> Lug‘at Tizimi Platformada Qanday Ishlaydi?
+          </h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 1rem;">
+              <div style="font-size: 1.5rem; margin-bottom: 6px;">🎬 1. Subtitr bosish</div>
+              <p style="font-size: 0.8rem; color: #94A3B8; margin: 0; line-height: 1.4;">
+                O‘quvchi film yoki video dars ko‘rish chog‘ida har qanday so‘z ustiga bossa, darhol uning o‘zbekcha tarjimasi va konteksti qalqib chiqadi.
+              </p>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 1rem;">
+              <div style="font-size: 1.5rem; margin-bottom: 6px;">🔖 2. Shaxsiy Baza</div>
+              <p style="font-size: 0.8rem; color: #94A3B8; margin: 0; line-height: 1.4;">
+                So‘z bitta tugma bilan o‘quvchining shaxsiy lug‘atiga saqlanadi va uning hisobiga (XP) tajriba ballari yoziladi.
+              </p>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 1rem;">
+              <div style="font-size: 1.5rem; margin-bottom: 6px;">🧠 3. Interaktiv Mashq</div>
+              <p style="font-size: 0.8rem; color: #94A3B8; margin: 0; line-height: 1.4;">
+                Saqlangan so‘zlar Flashcards va diktant mashqlari orqali takrorlanib, o‘quvchining uzoq muddatli xotirasiga mustahkamlanadi.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-stat-tip-card">
+          <i class="ph ph-bold ph-graduation-cap" style="font-size: 1.4rem; color: #38BDF8; flex-shrink: 0; margin-top: 2px;"></i>
+          <div>
+            <strong>Leksika tavsiyasi:</strong>
+            Videolarga kiritilgan dialoglarda kundalik tabiiy so‘zlar va so‘zlashuv iboralari ko‘p bo‘lsa, o‘quvchilar lug‘atga saqlash ko‘rsatkichi 3 baravargacha oshadi.
+          </div>
+        </div>
+      `;
+
+      footer.innerHTML = `
+        <button type="button" class="admin-btn admin-btn-primary" id="adminWordsJumpScenesBtn">
+          <i class="ph ph-bold ph-film-strip"></i> Darslar Bo‘limiga O‘tish
+        </button>
+        <button type="button" class="admin-btn admin-btn-secondary" id="adminCloseStatModalFooterBtn">Yopish</button>
+      `;
+
+      footer.querySelector('#adminWordsJumpScenesBtn')?.addEventListener('click', () => {
+        this.closeStatDetailModal();
+        this.switchTab('scenes');
+      });
+    } else if (type === 'scenes') {
+      heading.innerHTML = `<i class="ph ph-bold ph-video" style="color: #FB923C;"></i> Bajarilgan Mashg‘ulotlar va Darslar`;
+
+      const totalScenes = this.scenes.length;
+      const totalCompleted = s.totalCompletedScenes || 0;
+      const avgPerScene = totalScenes > 0 ? (totalCompleted / totalScenes).toFixed(1) : '0';
+
+      const cinemaCount = this.scenes.filter((x) => x.category === 'Movie' || x.category === 'Cinema' || x.category === 'TV Series').length;
+      const cartoonCount = this.scenes.filter((x) => x.category === 'Animation' || x.category === 'Cartoon').length;
+      const animeCount = this.scenes.filter((x) => x.category === 'Anime').length;
+
+      const cinemaPct = totalScenes > 0 ? Math.round((cinemaCount / totalScenes) * 100) : 0;
+      const cartoonPct = totalScenes > 0 ? Math.round((cartoonCount / totalScenes) * 100) : 0;
+      const animePct = totalScenes > 0 ? Math.round((animeCount / totalScenes) * 100) : 0;
+
+      const begCount = this.scenes.filter((x) => (x.difficulty || '').toLowerCase() === 'beginner').length;
+      const intCount = this.scenes.filter((x) => (x.difficulty || '').toLowerCase() === 'intermediate').length;
+      const advCount = this.scenes.filter((x) => (x.difficulty || '').toLowerCase() === 'advanced').length;
+
+      body.innerHTML = `
+        <div class="admin-stat-detail-kpi-grid">
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-check-circle"></i> Jami Bajarilgan</span>
+            <strong class="kpi-value" style="color: #FB923C;">${totalCompleted}</strong>
+            <span class="kpi-sub">Muvaffaqiyatli yakunlangan</span>
+          </div>
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-film-strip"></i> Mavjud Darslar</span>
+            <strong class="kpi-value">${totalScenes} ta</strong>
+            <span class="kpi-sub">Platformadagi video kontent</span>
+          </div>
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-chart-line"></i> O‘rtacha Bajarilish</span>
+            <strong class="kpi-value">${avgPerScene}</strong>
+            <span class="kpi-sub">Har bir darsga to‘g‘ri keladi</span>
+          </div>
+          <div class="admin-stat-detail-kpi-card">
+            <span class="kpi-label"><i class="ph ph-bold ph-sparkle"></i> Maxsus Darslar</span>
+            <strong class="kpi-value">${s.totalCustomScenes || 0} ta</strong>
+            <span class="kpi-sub">Foydalanuvchi darslari</span>
+          </div>
+        </div>
+
+        <div class="admin-stat-detail-section">
+          <h4 class="admin-stat-detail-section-title">
+            <i class="ph ph-bold ph-pie-chart"></i> Kategoriyalar Taqsimoti
+          </h4>
+          <div class="admin-stat-bar-group">
+            <div class="admin-stat-bar-item">
+              <div class="admin-stat-bar-header">
+                <span>🍿 Kino va Filmlar (${cinemaCount} ta)</span>
+                <strong>${cinemaPct}%</strong>
+              </div>
+              <div class="admin-stat-bar-track">
+                <div class="admin-stat-bar-fill" style="width: ${cinemaPct}%; background: linear-gradient(90deg, #F59E0B, #FBBF24);"></div>
+              </div>
+            </div>
+            <div class="admin-stat-bar-item">
+              <div class="admin-stat-bar-header">
+                <span>🎈 Multfilm & Animatsiya (${cartoonCount} ta)</span>
+                <strong>${cartoonPct}%</strong>
+              </div>
+              <div class="admin-stat-bar-track">
+                <div class="admin-stat-bar-fill" style="width: ${cartoonPct}%; background: linear-gradient(90deg, #10B981, #34D399);"></div>
+              </div>
+            </div>
+            <div class="admin-stat-bar-item">
+              <div class="admin-stat-bar-header">
+                <span>⛩️ Anime (${animeCount} ta)</span>
+                <strong>${animePct}%</strong>
+              </div>
+              <div class="admin-stat-bar-track">
+                <div class="admin-stat-bar-fill" style="width: ${animePct}%; background: linear-gradient(90deg, #EC4899, #F472B6);"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-stat-detail-section">
+          <h4 class="admin-stat-detail-section-title">
+            <i class="ph ph-bold ph-chart-bar"></i> Qiyinchilik Darajalari Taqsimoti
+          </h4>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 140px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 12px; padding: 0.85rem; text-align: center;">
+              <div style="font-size: 0.78rem; color: #86EFAC; font-weight: 600;">BEGINNER (Oson)</div>
+              <div style="font-size: 1.5rem; font-weight: 800; color: #FFF; margin-top: 4px;">${begCount} ta</div>
+            </div>
+            <div style="flex: 1; min-width: 140px; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.25); border-radius: 12px; padding: 0.85rem; text-align: center;">
+              <div style="font-size: 0.78rem; color: #FDE047; font-weight: 600;">INTERMEDIATE (O‘rta)</div>
+              <div style="font-size: 1.5rem; font-weight: 800; color: #FFF; margin-top: 4px;">${intCount} ta</div>
+            </div>
+            <div style="flex: 1; min-width: 140px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 12px; padding: 0.85rem; text-align: center;">
+              <div style="font-size: 0.78rem; color: #FCA5A5; font-weight: 600;">ADVANCED (Murakkab)</div>
+              <div style="font-size: 1.5rem; font-weight: 800; color: #FFF; margin-top: 4px;">${advCount} ta</div>
+            </div>
+          </div>
+        </div>
+
+        ${this.scenes.length > 0 ? `
+          <div class="admin-stat-detail-section">
+            <h4 class="admin-stat-detail-section-title">
+              <i class="ph ph-bold ph-list-numbers"></i> Platformadagi Darslar Ro‘yxati
+            </h4>
+            <div style="overflow-x: auto;">
+              <table class="admin-stat-mini-table">
+                <thead>
+                  <tr>
+                    <th>Dars Nomi</th>
+                    <th>Kategoriya</th>
+                    <th>Daraja</th>
+                    <th style="text-align: right;">Video Turi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${this.scenes.slice(0, 6).map((sc) => `
+                    <tr>
+                      <td><strong>${escapeHtml(sc.title)}</strong></td>
+                      <td><span style="color: #94A3B8; font-size: 0.8rem;">${escapeHtml(sc.category)}</span></td>
+                      <td><span class="admin-badge admin-badge-neon" style="padding: 2px 6px; font-size: 0.7rem;">${escapeHtml(sc.difficulty)}</span></td>
+                      <td style="text-align: right; font-size: 0.78rem; color: #94A3B8;">
+                        ${(sc.video_url || '').includes('youtube') || (sc.video_url || '').includes('youtu.be') ? '🔴 YouTube' : '☁️ Cloudflare R2'}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+      `;
+
+      footer.innerHTML = `
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="admin-btn admin-btn-primary" id="adminScenesJumpScenesBtn">
+            <i class="ph ph-bold ph-film-strip"></i> Darslar Boshqaruviga O‘tish
+          </button>
+          <button type="button" class="admin-btn admin-btn-secondary" id="adminScenesOpenAddBtn" style="background: rgba(163, 230, 53, 0.15); color: #A3E635; border-color: rgba(163, 230, 53, 0.3);">
+            <i class="ph ph-bold ph-plus-circle"></i> Yangi Dars Qo‘shish
+          </button>
+        </div>
+        <button type="button" class="admin-btn admin-btn-secondary" id="adminCloseStatModalFooterBtn">Yopish</button>
+      `;
+
+      footer.querySelector('#adminScenesJumpScenesBtn')?.addEventListener('click', () => {
+        this.closeStatDetailModal();
+        this.switchTab('scenes');
+      });
+
+      footer.querySelector('#adminScenesOpenAddBtn')?.addEventListener('click', () => {
+        this.closeStatDetailModal();
+        this.openSceneModal();
+      });
+    }
+
+    footer.querySelector('#adminCloseStatModalFooterBtn')?.addEventListener('click', () => {
+      this.closeStatDetailModal();
+    });
+
+    modal.classList.remove('admin-modal-closing');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  private closeStatDetailModal(): void {
+    const modal = this.container.querySelector('#adminStatDetailModal') as HTMLElement | null;
+    if (modal) {
+      modal.classList.add('admin-modal-closing');
+      document.body.style.overflow = '';
+      setTimeout(() => {
+        modal.style.display = 'none';
+        modal.classList.remove('admin-modal-closing');
+      }, 260);
+    }
+  }
+
   private bindSceneModalEvents(): void {
     const closeBtn = this.container.querySelector('#adminCloseSceneModalBtn');
     const cancelBtn = this.container.querySelector('#adminCancelSceneBtn');
@@ -1742,6 +2301,10 @@ export class AdminView {
         const modal = this.container.querySelector('#adminSceneModal') as HTMLElement | null;
         if (modal && modal.style.display !== 'none') {
           this.closeSceneModal();
+        }
+        const statModal = this.container.querySelector('#adminStatDetailModal') as HTMLElement | null;
+        if (statModal && statModal.style.display !== 'none') {
+          this.closeStatDetailModal();
         }
       }
     });

@@ -206,4 +206,79 @@ describe('AdminView scene management & editing', () => {
     expect(alertSpy).toHaveBeenCalled();
     expect(createSpy).not.toHaveBeenCalled();
   });
+
+  it('clicking overview stat cards opens the corresponding detailed modal', async () => {
+    vi.spyOn(apiService, 'adminGetUsers').mockResolvedValue([
+      {
+        id: 'u1',
+        email: 'ali@example.com',
+        full_name: 'Ali Valiyev',
+        avatar_url: null,
+        xp: 1500,
+        level: 4,
+        streak_days: 7,
+        last_active_at: new Date().toISOString(),
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'u2',
+        email: 'vali@example.com',
+        full_name: 'Vali Aliyev',
+        avatar_url: null,
+        xp: 800,
+        level: 2,
+        streak_days: 3,
+        last_active_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+        created_at: new Date(Date.now() - 86400000 * 5).toISOString()
+      }
+    ]);
+
+    await adminView.render();
+
+    const modal = container.querySelector<HTMLElement>('#adminStatDetailModal')!;
+    const headingEl = container.querySelector<HTMLElement>('#adminStatDetailHeading')!;
+    const bodyEl = container.querySelector<HTMLElement>('#adminStatDetailBody')!;
+
+    // 1. Users Card
+    const usersCard = container.querySelector<HTMLElement>('.admin-stat-card[data-stat-type="users"]')!;
+    expect(usersCard).not.toBeNull();
+    usersCard.click();
+
+    expect(modal.style.display).toBe('flex');
+    expect(headingEl.textContent).toContain('Jami O‘quvchilar Tahlili');
+    expect(bodyEl.textContent).toContain('Ali Valiyev');
+    expect(bodyEl.textContent).toContain('O‘rtacha XP');
+
+    // Close modal via close button
+    const closeBtn = container.querySelector<HTMLButtonElement>('#adminCloseStatDetailModalBtn')!;
+    closeBtn.click();
+    await new Promise((r) => setTimeout(r, 280));
+    expect(modal.style.display).toBe('none');
+
+    // 2. Today Card
+    const todayCard = container.querySelector<HTMLElement>('.admin-stat-card[data-stat-type="today"]')!;
+    todayCard.click();
+    expect(modal.style.display).toBe('flex');
+    expect(headingEl.textContent).toContain('Bugun Qo‘shilganlar va Faollik');
+    expect(bodyEl.textContent).toContain('Ali Valiyev');
+
+    // 3. Words Card
+    const wordsCard = container.querySelector<HTMLElement>('.admin-stat-card[data-stat-type="words"]')!;
+    wordsCard.click();
+    expect(modal.style.display).toBe('flex');
+    expect(headingEl.textContent).toContain('O‘rganilgan Lug‘atlar va So‘z Boyligi');
+    expect(bodyEl.textContent).toContain('Lug‘at Tizimi');
+
+    // 4. Scenes Card
+    const scenesCard = container.querySelector<HTMLElement>('.admin-stat-card[data-stat-type="scenes"]')!;
+    scenesCard.click();
+    expect(modal.style.display).toBe('flex');
+    expect(headingEl.textContent).toContain('Bajarilgan Mashg‘ulotlar va Darslar');
+    expect(bodyEl.textContent).toContain('Oppogoy');
+
+    // Close via Escape key
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await new Promise((r) => setTimeout(r, 280));
+    expect(modal.style.display).toBe('none');
+  });
 });
