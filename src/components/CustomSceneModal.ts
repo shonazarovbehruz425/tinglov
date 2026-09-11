@@ -3,6 +3,7 @@ import { Scene, DialogueSentence, Difficulty } from '../types';
 import { BaseModal } from './BaseModal';
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
+import { audioVadService } from '../services/audioVadService';
 import { sanitizeUrl } from '../utils/sanitize';
 import { safeValidate, customSceneSchema } from '../utils/validation';
 
@@ -164,7 +165,7 @@ export class CustomSceneModal extends BaseModal {
 
     let selectedVideoBlobUrl = '';
 
-    fileInput?.addEventListener('change', () => {
+    fileInput?.addEventListener('change', async () => {
       const file = fileInput.files?.[0];
       if (file) {
         if (selectedVideoBlobUrl) {
@@ -175,11 +176,40 @@ export class CustomSceneModal extends BaseModal {
           uploadLabel.textContent = `Yuklandi: ${file.name.slice(0, 20)}...`;
         }
         if (statusBadge) {
-          statusBadge.textContent = 'Video fayl tayyor (Lokal)';
-          statusBadge.style.color = '#10B981';
+          statusBadge.textContent = '🎙️ Nutq vaqtlari tahlil qilinmoqda (musiqa filtrlanmoqda)...';
+          statusBadge.style.color = '#F59E0B';
         }
         if (urlInput) {
           urlInput.value = '';
+        }
+
+        // Automatically detect where characters speak, filtering music
+        try {
+          const rows = listContainer?.querySelectorAll('.dialogue-row-item');
+          const rowCount = rows?.length || 1;
+          const segments = await audioVadService.detectSpeechSegmentsFromFile(file, rowCount);
+          if (segments && segments.length > 0) {
+            rows?.forEach((row, idx) => {
+              if (segments[idx]) {
+                const startInput = row.querySelector<HTMLInputElement>('.start-time-input');
+                const endInput = row.querySelector<HTMLInputElement>('.end-time-input');
+                if (startInput) startInput.value = segments[idx].startTime.toFixed(1);
+                if (endInput) endInput.value = segments[idx].endTime.toFixed(1);
+              }
+            });
+            if (statusBadge) {
+              statusBadge.textContent = `✅ Nutq aniqlandi (${segments.length} ta replika vaqti ulandi)`;
+              statusBadge.style.color = '#10B981';
+            }
+          } else if (statusBadge) {
+            statusBadge.textContent = 'Video fayl tayyor (Lokal)';
+            statusBadge.style.color = '#10B981';
+          }
+        } catch {
+          if (statusBadge) {
+            statusBadge.textContent = 'Video fayl tayyor (Lokal)';
+            statusBadge.style.color = '#10B981';
+          }
         }
       }
     });

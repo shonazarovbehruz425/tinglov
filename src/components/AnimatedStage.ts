@@ -4,6 +4,7 @@ import { videoStreamService } from '../services/videoStreamService';
 import { soundEffects } from '../services/soundEffects';
 import { i18n } from '../services/i18nService';
 import { storageService } from '../services/storageService';
+import { audioVadService, SpeechSegment } from '../services/audioVadService';
 import { SUBTITLE_MODE_KEY } from '../services/storageKeys';
 import { escapeHtml, isValidYouTubeVideoId, buildSecureYouTubeEmbedUrl } from '../utils/sanitize';
 
@@ -44,7 +45,7 @@ export class AnimatedStage {
   private ytCurrentTime: number = 0;
   private challengePayload: ChallengePayload | null = null;
   private onChallengeRequest: (() => void) | null = null;
-  private isFreePlayMode: boolean = false;
+  private isDetectingSpeech: boolean = false;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -85,17 +86,50 @@ export class AnimatedStage {
     this.isSubtitleRevealed = false;
     this.isSentenceCompleted = false;
     this.isManualPaused = false;
-
-    // Auto-enable free play for suspiciously short segments (≤5s).
-    // These almost certainly have wrong timing (e.g. the old hardcoded 4s default).
-    // In free play mode the video plays straight through so the user can hear
-    // where the dialogue actually starts, then use the timing bar to fix it.
-    const segmentDuration = sentence.endTime - sentence.startTime;
-    this.isFreePlayMode = segmentDuration <= 5;
-
     this.clearLoopTimer();
     this.stopVideoTracking();
     this.render();
+  }
+
+  /**
+   * Automatically analyzes the video audio track using Voice Activity Detection (VAD)
+   * to find where characters actually speak, filtering out background music and intro songs.
+   */
+  public async autoDetectSpeechForCurrentScene(): Promise<void> {
+    if (!this.currentScene || !this.currentScene.dialogues.length) return;
+    if (this.isDetectingSpeech) return;
+
+    this.isDetectingSpeech = true;
+    this.render();
+
+    try {
+      let segments: SpeechSegment[] = [];
+      if (this.videoElement) {
+        segments = await audioVadService.detectSpeechSegmentsFromVideo(
+          this.videoElement,
+          this.currentScene.dialogues.length
+        );
+      }
+
+      if (segments && segments.length > 0) {
+        for (let i = 0; i < this.currentScene.dialogues.length; i++) {
+          if (segments[i]) {
+            this.currentScene.dialogues[i].startTime = segments[i].startTime;
+            this.currentScene.dialogues[i].endTime = segments[i].endTime;
+          }
+        }
+        this.saveCurrentSceneChanges();
+        this.currentSentence = this.currentScene.dialogues[this.sentenceIndex];
+        soundEffects.playCorrectWord();
+        this.render();
+        this.playVideoSegment(this.currentSentence.startTime, this.currentSentence.endTime);
+      }
+    } catch {
+      // Ignore
+    } finally {
+      this.isDetectingSpeech = false;
+      this.render();
+    }
   }
 
   public saveCurrentSceneChanges(): void {
@@ -210,20 +244,8 @@ export class AnimatedStage {
       curTime = this.ytCurrentTime;
     }
 
-    if (this.isFreePlayMode) {
-      this.playVideoSegment(curTime, this.getTotalDuration());
-      return;
-    }
-
-    // If at or past sentence end, instead of trapping user at 0s, play forward
-    if (curTime >= endTime - 0.2) {
-      // If user presses Play after stopping at the end of replica,
-      // extend endTime by 4s to let them hear the speech, or play up to next replica
-      this.currentSentence.endTime = Math.min(this.getTotalDuration(), endTime + 4);
-      this.saveCurrentSceneChanges();
-      this.render();
-      this.playVideoSegment(curTime, this.currentSentence.endTime);
-    } else if (curTime < startTime) {
+    // If at or close to end, or before start, restart dialogue from start
+    if (curTime >= endTime - 0.2 || curTime < startTime) {
       this.playVideoSegment(startTime, endTime);
     } else {
       this.playVideoSegment(curTime, endTime);
@@ -233,26 +255,7 @@ export class AnimatedStage {
   private scheduleAutoLoop(startTime: number, endTime: number): void {
     this.clearLoopTimer();
 
-    // For very short segments (≤4.5s), the dialogue likely hasn't started yet.
-    // Instead of trapping user in an infinite 4-second silent loop,
-    // auto-extend the endTime and keep playing forward.
-    if (this.currentSentence && (endTime - startTime) <= 4.5) {
-      const totalDur = this.getTotalDuration();
-      if (endTime < totalDur - 1) {
-        this.currentSentence.endTime = Math.min(totalDur, endTime + 4);
-        this.saveCurrentSceneChanges();
-        this.loopTimerId = window.setTimeout(() => {
-          this.loopTimerId = null;
-          if (!this.isSentenceCompleted && !this.isManualPaused && this.currentSentence) {
-            this.render();
-            this.playVideoSegment(endTime, this.currentSentence.endTime);
-          }
-        }, 300);
-        return;
-      }
-    }
-
-    // Normal-length replicas: gentle 1.2s pause then replay from start
+    // Gentle natural interval: 1.2s gives user comfortable thinking time to type what was heard
     this.loopTimerId = window.setTimeout(() => {
       this.loopTimerId = null;
       if (!this.isSentenceCompleted && !this.isManualPaused && this.currentSentence) {
@@ -349,7 +352,7 @@ export class AnimatedStage {
         const currentPos = this.ytCurrentTime > startTime ? this.ytCurrentTime : estimatedCurrentTime;
         this.updateTimelineProgress(currentPos);
 
-        if (!this.isFreePlayMode && currentPos >= endTime) {
+        if (currentPos >= endTime) {
           window.removeEventListener('message', onYtMessage);
           const pauseMsg = JSON.stringify({
             event: 'command',
@@ -366,11 +369,6 @@ export class AnimatedStage {
           if (!this.isSentenceCompleted && !this.isManualPaused) {
             this.scheduleAutoLoop(this.currentSentence?.startTime ?? startTime, this.currentSentence?.endTime ?? endTime);
           }
-        } else if (this.isFreePlayMode && currentPos >= this.getTotalDuration()) {
-          window.removeEventListener('message', onYtMessage);
-          this.stopVideoTracking();
-          this.setSpeakingState(false);
-          onEnd?.();
         } else {
           this.animFrameId = requestAnimationFrame(trackYtProgress);
         }
@@ -400,7 +398,7 @@ export class AnimatedStage {
         this.updateTimelineProgress(cur);
 
         // ONLY stop when reached or passed sentence endTime (never stop prematurely on buffer/pause)
-        if (!this.isFreePlayMode && cur >= endTime) {
+        if (cur >= endTime) {
           this.videoElement.pause();
           this.stopVideoTracking();
           this.setSpeakingState(false);
@@ -411,11 +409,6 @@ export class AnimatedStage {
           if (!this.isSentenceCompleted && !this.isManualPaused) {
             this.scheduleAutoLoop(this.currentSentence?.startTime ?? startTime, this.currentSentence?.endTime ?? endTime);
           }
-        } else if (this.isFreePlayMode && cur >= this.getTotalDuration()) {
-          this.videoElement.pause();
-          this.stopVideoTracking();
-          this.setSpeakingState(false);
-          onEnd?.();
         } else {
           this.animFrameId = requestAnimationFrame(checkTime);
         }
@@ -456,14 +449,12 @@ export class AnimatedStage {
     const newTime = Math.max(0, baseTime + deltaSeconds);
 
     if (deltaSeconds > 0 && newTime >= this.currentSentence.endTime) {
-      // User is seeking forward beyond current replica duration, extend endTime so they can listen further!
       this.currentSentence.endTime = Math.min(this.getTotalDuration(), Math.max(newTime + 3, this.currentSentence.endTime + 3));
       this.saveCurrentSceneChanges();
       this.render();
     }
 
-    const targetEnd = this.isFreePlayMode ? this.getTotalDuration() : Math.max(newTime + 1, this.currentSentence.endTime);
-    this.playVideoSegment(newTime, targetEnd);
+    this.playVideoSegment(newTime, this.currentSentence.endTime);
   }
 
   public stopPlayback(): void {
@@ -773,11 +764,6 @@ export class AnimatedStage {
                   <i class="ph ph-skip-forward" aria-hidden="true"></i>
                 </button>
 
-                <button class="yt-ctrl-btn ${this.isFreePlayMode ? 'active highlight-mode' : ''}" id="stageFreePlayBtn" title="Erkin ijro rejimi (to'xtovsiz ko'rish)" aria-label="Erkin ijro">
-                  <i class="ph ph-fast-forward" aria-hidden="true"></i>
-                  <span>${this.isFreePlayMode ? 'Replika rejimi' : 'Erkin ijro'}</span>
-                </button>
-
                 <div class="yt-time-badge">
                   <span id="videoTimeDisplay">${formatTimecode(this.currentSentence.startTime)} / ${formatTimecode(totalDuration)}</span>
                 </div>
@@ -807,6 +793,10 @@ export class AnimatedStage {
             <span class="yt-timing-dur">(${(this.currentSentence.endTime - this.currentSentence.startTime).toFixed(1)}s)</span>
           </div>
           <div class="yt-timing-actions">
+            <button type="button" class="yt-timing-btn highlight-btn" id="stageAutoDetectSpeechBtn" title="Qahramon ovozini videodan avtomatik aniqlash (musiqani filtrlash bilan)" ${this.isDetectingSpeech ? 'disabled' : ''}>
+              <i class="ph ph-${this.isDetectingSpeech ? 'spinner animate-spin' : 'waveform'}"></i>
+              <span>${this.isDetectingSpeech ? 'Aniqlanmoqda...' : '⚡ Avto-aniqlash'}</span>
+            </button>
             <button type="button" class="yt-timing-btn" id="stageSetStartBtn" title="Hozirgi vaqtni boshlanish deb belgilash">
               <i class="ph ph-map-pin"></i> <span>Boshlanish</span>
             </button>
@@ -819,13 +809,12 @@ export class AnimatedStage {
           </div>
         </div>
 
-        ${this.isFreePlayMode ? `
+        ${(this.currentSentence.endTime - this.currentSentence.startTime) <= 5.0 ? `
           <div class="yt-timing-hint-banner">
-            <i class="ph ph-warning-circle"></i>
+            <i class="ph ph-waveform"></i>
             <span>
-              <strong>⏩ Erkin ijro rejimi yoqilgan</strong> — replika vaqti juda qisqa (${(this.currentSentence.endTime - this.currentSentence.startTime).toFixed(1)}s).
-              Video to'xtovsiz o'ynaydi. Qahramon gapira boshlaganda <strong>"📍 Boshlanish"</strong> tugmasini,
-              gapirub bo'lganda <strong>"🏁 Tugash"</strong> tugmasini bosing. Shunda replika to'g'ri takrorlanadi.
+              💡 <strong>Qahramon gapi hali aytilmadimi?</strong>
+              <strong>"⚡ Avto-aniqlash"</strong> tugmasini bosing — tizim musiqa va intro qo'shig'ini chetlab o'tib, qahramon ovozini avtomatik aniqlaydi!
             </span>
           </div>
         ` : ''}
@@ -894,6 +883,16 @@ export class AnimatedStage {
         try {
           if (this.videoElement && Math.abs(this.videoElement.currentTime - targetStartTime) > 0.05) {
             this.videoElement.currentTime = targetStartTime;
+          }
+          // If scene has uncalibrated initial timing (starts at 0.0s with duration <= 4.5s on a video > 20s),
+          // automatically run voice activity detection to snap directly to where dialogue actually starts!
+          if (
+            this.currentSentence &&
+            this.currentSentence.startTime === 0 &&
+            (this.currentSentence.endTime - this.currentSentence.startTime) <= 4.5 &&
+            this.getTotalDuration() > 20
+          ) {
+            this.autoDetectSpeechForCurrentScene();
           }
         } catch {}
       };
@@ -1008,18 +1007,9 @@ export class AnimatedStage {
       }
     });
 
-    // Free play toggle button
-    this.container.querySelector('#stageFreePlayBtn')?.addEventListener('click', () => {
-      this.isFreePlayMode = !this.isFreePlayMode;
-      soundEffects.playKeyClick();
-      if (this.isFreePlayMode) {
-        this.clearLoopTimer();
-        const curTime = this.videoElement ? this.videoElement.currentTime : this.ytCurrentTime;
-        this.playVideoSegment(curTime, this.getTotalDuration());
-      } else {
-        this.pausePlayback(true);
-      }
-      this.render();
+    // Auto-detect speech button
+    this.container.querySelector('#stageAutoDetectSpeechBtn')?.addEventListener('click', () => {
+      this.autoDetectSpeechForCurrentScene();
     });
 
     // Timing adjustment buttons
@@ -1033,6 +1023,7 @@ export class AnimatedStage {
       this.saveCurrentSceneChanges();
       soundEffects.playCorrectWord();
       this.render();
+      this.playVideoSegment(this.currentSentence.startTime, this.currentSentence.endTime);
     });
 
     this.container.querySelector('#stageSetEndBtn')?.addEventListener('click', () => {
@@ -1044,6 +1035,7 @@ export class AnimatedStage {
         this.saveCurrentSceneChanges();
         soundEffects.playCorrectWord();
         this.render();
+        this.playVideoSegment(this.currentSentence.startTime, this.currentSentence.endTime);
       }
     });
 
@@ -1075,7 +1067,7 @@ export class AnimatedStage {
           this.currentSentence.endTime = Math.min(this.getTotalDuration(), targetTime + 4);
           this.saveCurrentSceneChanges();
         }
-        this.playVideoSegment(targetTime, this.isFreePlayMode ? this.getTotalDuration() : Math.max(targetTime + 4, this.currentSentence?.endTime || targetTime + 4));
+        this.playVideoSegment(targetTime, Math.max(targetTime + 4, this.currentSentence?.endTime || targetTime + 4));
       }
     };
     timelineTrack?.addEventListener('click', (e) => {
