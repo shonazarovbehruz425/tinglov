@@ -668,57 +668,22 @@ class MovieListenApp implements RouterDelegate {
       return;
     }
 
-    // 2. Dashboard / Library reload & initial route:
-    // Foydalanuvchi talabiga asosan: har doim dastlab shimmer skeleton ko'rsatiladi,
-    // serverdan eng so'nggi ma'lumotlar olingach silliq haqiqiy darslarga almashtiriladi.
-    if (rawPath === '/dashboard' || rawPath === '/library' || rawHash === 'dashboard' || rawHash === 'library') {
-      this.switchView('library');
-      this.setLibraryBusyState(true);
-      this.levelSelector.renderSkeleton();
-
-      const startTime = Date.now();
-      try {
-        const data = await apiService.waitForAuth();
-        sessionManager.markReady();
-        if (data) {
-          storageService.syncWithServer(data);
-        }
-        this.statsHeader.update();
-
-        // Shimmer skeletni foydalanuvchi ko'rishi va silliq o'tishi uchun min 300ms kechikish
-        const elapsed = Date.now() - startTime;
-        const minDelay = Math.max(0, 320 - elapsed);
-        setTimeout(() => {
-          if (apiService.isAuthenticated()) {
-            this.levelSelector.render();
-            this.setLibraryBusyState(false);
-          } else {
-            this.checkAndEnforceAuth();
-          }
-        }, minDelay);
-      } catch {
-        sessionManager.markReady();
-        if (apiService.isAuthenticated()) {
-          this.levelSelector.render();
-          this.setLibraryBusyState(false);
-        } else {
-          this.checkAndEnforceAuth();
-        }
-      }
-      return;
-    }
-
-    // 3. Boshqa himoyalangan yo'llar (/practice, /profile, /settings):
+    // 2. Himoyalangan yo'llar (/dashboard, /library, /practice, /profile, /settings):
+    // Agar foydalanuvchi allaqachon login qilgan bo'lsa (localStorage keshida sessiya mavjud):
+    // Brauzer reload bo'lishi bilanoq real darslarni DARHOL chizamiz (0ms latency)!
+    // Tepada reload to'xtagandan keyin pastda yolg'ondan skelet chiqib turishi to'xtatildi.
     if (apiService.isAuthenticated()) {
       sessionManager.markReady();
       this.router.resolve(false);
 
-      // Serverdan yangi ma'lumotlarni fonda sinxronlash
+      // Fondan eng so'nggi ma'lumotlarni tortib, fon rejimida yangilab qo'yamiz (Stale-While-Revalidate)
       apiService.waitForAuth().then((data) => {
         if (data) {
           storageService.syncWithServer(data);
           this.statsHeader.update();
-          if (this.currentView === 'profile') {
+          if (this.currentView === 'library') {
+            this.levelSelector.render();
+          } else if (this.currentView === 'profile') {
             this.profileView.render();
           }
         }
@@ -726,7 +691,13 @@ class MovieListenApp implements RouterDelegate {
       return;
     }
 
-    // Autentifikatsiya qilinmagan bo'lsa serverni kutish
+    // 3. Agar foydalanuvchi hali keshlanmagan bo'lsa (dastlabki kirish yoki cookie tekshirish payti):
+    if (rawPath === '/dashboard' || rawPath === '/library' || rawHash === 'dashboard' || rawHash === 'library') {
+      this.switchView('library');
+      this.setLibraryBusyState(true);
+      this.levelSelector.renderSkeleton();
+    }
+
     try {
       const data = await apiService.waitForAuth();
       sessionManager.markReady();
@@ -737,6 +708,7 @@ class MovieListenApp implements RouterDelegate {
         }
         this.statsHeader.update();
         this.router.resolve(false);
+        this.setLibraryBusyState(false);
       } else {
         this.checkAndEnforceAuth();
       }
@@ -744,6 +716,7 @@ class MovieListenApp implements RouterDelegate {
       sessionManager.markReady();
       if (apiService.isAuthenticated()) {
         this.router.resolve(false);
+        this.setLibraryBusyState(false);
       } else {
         this.checkAndEnforceAuth();
       }
