@@ -281,22 +281,34 @@ export class StatsHeader {
                       <span>${t.language}</span>
                     </div>
                     <div class="item-right-value">
-                      <span class="active-lang-badge">${i18n.getLanguageLabel()}</span>
+                      <span class="active-lang-badge">
+                        <img src="/flags/${curLang === 'en' ? 'gb' : (curLang === 'ru' ? 'ru' : 'uz')}.png" alt="${curLang.toUpperCase()}" class="flag-icon-img" width="14" height="14" />
+                        <span>${i18n.getLanguageLabel()}</span>
+                      </span>
                       <i class="ph ph-caret-down lang-arrow-icon" id="langArrowIcon"></i>
                     </div>
                   </button>
 
                   <div class="lang-options-drawer" id="langOptionsDrawer">
                     <button class="lang-choice-btn ${curLang === 'uz' ? 'active' : ''}" data-lang="uz">
-                      <span>🇺🇿 O‘zbekcha</span>
+                      <span class="lang-choice-label">
+                        <img src="/flags/uz.png" alt="UZ" class="flag-icon-img" width="18" height="18" />
+                        <span>O‘zbekcha</span>
+                      </span>
                       ${curLang === 'uz' ? '<i class="ph ph-check"></i>' : ''}
                     </button>
                     <button class="lang-choice-btn ${curLang === 'en' ? 'active' : ''}" data-lang="en">
-                      <span>🇬🇧 English</span>
+                      <span class="lang-choice-label">
+                        <img src="/flags/gb.png" alt="GB" class="flag-icon-img" width="18" height="18" />
+                        <span>English</span>
+                      </span>
                       ${curLang === 'en' ? '<i class="ph ph-check"></i>' : ''}
                     </button>
                     <button class="lang-choice-btn ${curLang === 'ru' ? 'active' : ''}" data-lang="ru">
-                      <span>🇷🇺 Русский</span>
+                      <span class="lang-choice-label">
+                        <img src="/flags/ru.png" alt="RU" class="flag-icon-img" width="18" height="18" />
+                        <span>Русский</span>
+                      </span>
                       ${curLang === 'ru' ? '<i class="ph ph-check"></i>' : ''}
                     </button>
                   </div>

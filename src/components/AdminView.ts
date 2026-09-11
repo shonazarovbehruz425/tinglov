@@ -799,8 +799,9 @@ export class AdminView {
             <div>
               <span class="admin-badge admin-badge-blue">${escapeHtml(scene.category || 'Movie')}</span>
               <span class="admin-badge admin-badge-xp">${escapeHtml(scene.difficulty || 'Intermediate')}</span>
-              <span class="admin-badge" style="background: rgba(255, 87, 34, 0.15); color: #FF7A45; border: 1px solid rgba(255, 87, 34, 0.3);">
-                ${scene.accent === 'British' ? '🇬🇧 British' : '🇺🇸 American'}
+              <span class="admin-badge" style="background: rgba(255, 87, 34, 0.15); color: #FF7A45; border: 1px solid rgba(255, 87, 34, 0.3); display: inline-flex; align-items: center; gap: 4px;">
+                <img src="/flags/${scene.accent === 'British' ? 'gb' : 'us'}.png" alt="${scene.accent === 'British' ? 'GB' : 'US'}" class="flag-icon-img" width="14" height="14" />
+                <span>${scene.accent === 'British' ? 'British' : 'American'}</span>
               </span>
             </div>
             <button class="admin-btn-del-scene admin-btn-danger" data-scene-id="${escapeHtml(scene.id)}" title="Darsni o‘chirish">

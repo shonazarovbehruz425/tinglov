@@ -74,7 +74,10 @@ export class SettingsView {
                 <div class="settings-lang-glider" id="settingsLangGlider"></div>
 
                 <div class="settings-lang-item ${curLang === 'uz' ? 'active' : ''}" data-lang="uz">
-                  <span class="lang-code-tag">UZ</span>
+                  <div class="lang-tag-row">
+                    <img src="/flags/uz.png" alt="UZ" class="flag-icon-img" width="22" height="22" />
+                    <span class="lang-code-tag">UZ</span>
+                  </div>
                   <div class="lang-meta">
                     <strong>O‘zbekcha</strong>
                     <span>Asosiy interfeys tili</span>
@@ -82,7 +85,10 @@ export class SettingsView {
                 </div>
 
                 <div class="settings-lang-item ${curLang === 'en' ? 'active' : ''}" data-lang="en">
-                  <span class="lang-code-tag">GB</span>
+                  <div class="lang-tag-row">
+                    <img src="/flags/gb.png" alt="GB" class="flag-icon-img" width="22" height="22" />
+                    <span class="lang-code-tag">GB</span>
+                  </div>
                   <div class="lang-meta">
                     <strong>English</strong>
                     <span>Full English experience</span>
@@ -90,7 +96,10 @@ export class SettingsView {
                 </div>
 
                 <div class="settings-lang-item ${curLang === 'ru' ? 'active' : ''}" data-lang="ru">
-                  <span class="lang-code-tag">RU</span>
+                  <div class="lang-tag-row">
+                    <img src="/flags/ru.png" alt="RU" class="flag-icon-img" width="22" height="22" />
+                    <span class="lang-code-tag">RU</span>
+                  </div>
                   <div class="lang-meta">
                     <strong>Русский</strong>
                     <span>Русский интерфейс и перевод</span>

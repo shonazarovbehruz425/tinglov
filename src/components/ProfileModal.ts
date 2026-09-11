@@ -109,13 +109,16 @@ export class ProfileModal extends BaseModal {
               </div>
               <div class="lang-pills-row" style="display: flex; gap: 0.5rem;">
                 <button type="button" class="lang-pill-btn ${curLang === 'uz' ? 'active' : ''}" data-lang="uz">
-                  🇺🇿 O‘zbekcha
+                  <img src="/flags/uz.png" alt="UZ" class="flag-icon-img" width="16" height="16" />
+                  <span>O‘zbekcha</span>
                 </button>
                 <button type="button" class="lang-pill-btn ${curLang === 'en' ? 'active' : ''}" data-lang="en">
-                  🇬🇧 English
+                  <img src="/flags/gb.png" alt="GB" class="flag-icon-img" width="16" height="16" />
+                  <span>English</span>
                 </button>
                 <button type="button" class="lang-pill-btn ${curLang === 'ru' ? 'active' : ''}" data-lang="ru">
-                  🇷🇺 Русский
+                  <img src="/flags/ru.png" alt="RU" class="flag-icon-img" width="16" height="16" />
+                  <span>Русский</span>
                 </button>
               </div>
             </div>
