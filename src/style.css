@@ -9944,6 +9944,19 @@ body.in-admin-mode .app-header {
    TINGLOV.ME - 100X COOLER CINEMATIC LANDING PAGE STYLES
    ========================================================================== */
 
+body.in-landing-mode .app-main-content {
+  padding: 0 !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+body.in-landing-mode #landingViewContainer {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 .landing-page {
   min-height: 100vh;
   background-color: var(--bg-page);
@@ -9951,6 +9964,8 @@ body.in-admin-mode .app-header {
   font-family: var(--font-body);
   position: relative;
   overflow-x: hidden;
+  margin: 0;
+  padding: 0;
 }
 
 /* Ambient Glowing Background Orbs & Cyber Grid */
@@ -10043,7 +10058,7 @@ body.in-admin-mode .app-header {
 .landing-nav-inner {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0.85rem 1.75rem;
+  padding: 0.65rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
