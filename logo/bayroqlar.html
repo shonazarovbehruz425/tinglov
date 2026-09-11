@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="uz" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Davlat Bayroqlari — iOS Stikerlar</title>
+  <meta name="description" content="Dunyo mamlakatlari bayroqlari original iOS Apple stikerlari to'plami. O'zbekiston va boshqa davlatlar bayroqlari.">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <style>
+
+    :root {
+      --bg-primary: #000000;
+      --bg-secondary: #1C1C1E;
+      --bg-tertiary: #2C2C2E;
+      --bg-glass: rgba(28, 28, 30, 0.82);
+      --bg-card: #1C1C1E;
+      --text-primary: #FFFFFF;
+      --text-secondary: #8E8E93;
+      --text-tertiary: #636366;
+      --border-color: rgba(255, 255, 255, 0.12);
+      --border-focus: #0A84FF;
+      --accent: #0A84FF;
+      --accent-hover: #0071E3;
+      --accent-gradient: linear-gradient(135deg, #0A84FF, #5E5CE6);
+      --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      --modal-overlay: rgba(0, 0, 0, 0.75);
+      --radius-sm: 10px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --radius-full: 9999px;
+      --spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    [data-theme="light"] {
+      --bg-primary: #F2F2F7;
+      --bg-secondary: #FFFFFF;
+      --bg-tertiary: #E5E5EA;
+      --bg-glass: rgba(255, 255, 255, 0.85);
+      --bg-card: #FFFFFF;
+      --text-primary: #000000;
+      --text-secondary: #6C6C70;
+      --text-tertiary: #8E8E93;
+      --border-color: rgba(0, 0, 0, 0.08);
+      --border-focus: #007AFF;
+      --accent: #007AFF;
+      --accent-hover: #0056B3;
+      --accent-gradient: linear-gradient(135deg, #007AFF, #5856D6);
+      --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+      --modal-overlay: rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* iOS Glass Navigation Bar */
+    header.ios-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg-glass);
+      backdrop-filter: blur(25px) saturate(180%);
+      -webkit-backdrop-filter: blur(25px) saturate(180%);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 16px 8px;
+      transition: all 0.3s ease;
+    }
+
+    .header-top {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .logo-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .apple-icon-wrap {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-sm);
+      background: var(--accent-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3);
+    }
+
+    .apple-icon-wrap svg {
+      width: 22px;
+      height: 22px;
+      fill: #FFFFFF;
+    }
+
+    .logo-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logo-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .logo-subtitle {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ios-btn-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-full);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 16px;
+    }
+
+    .ios-btn-icon:hover {
+      background: var(--bg-tertiary);
+      transform: scale(1.05);
+    }
+
+    .ios-btn-icon:active {
+      transform: scale(0.92);
+    }
+
+    .ios-segmented {
+      display: flex;
+      background: var(--bg-tertiary);
+      padding: 3px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--border-color);
+    }
+
+    .segment-btn {
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-full);
+      cursor: pointer;
+      transition: all 0.25s var(--spring);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .segment-btn.active {
+      color: var(--text-primary);
+      background: var(--bg-secondary);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Search Bar */
+    .search-container {
+      max-width: 1200px;
+      margin: 0 auto 10px;
+      position: relative;
+    }
+
+    .search-box {
+      width: 100%;
+      height: 44px;
+      background: var(--bg-tertiary);
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 0 40px 0 40px;
+      font-size: 15px;
+      color: var(--text-primary);
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .search-box:focus {
+      background: var(--bg-secondary);
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      fill: var(--text-secondary);
+      pointer-events: none;
+    }
+
+    .clear-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--text-tertiary);
+      color: var(--bg-primary);
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: none;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .clear-btn.visible {
+      display: flex;
+    }
+
+    /* Category Navigation Bar */
+    .category-scroll {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 4px;
+    }
+
+    .category-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .cat-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .cat-chip:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .cat-chip.active {
+      background: var(--accent);
+      color: #FFFFFF;
+      border-color: var(--accent);
+      box-shadow: 0 4px 12px rgba(10, 132, 255, 0.35);
+    }
+
+    .cat-chip .chip-icon {
+      font-size: 15px;
+    }
+
+    /* Main Container */
+    main.main-content {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 20px 16px 80px;
+      flex: 1;
+    }
+
+    /* Views */
+    .view-panel {
+      display: none;
+    }
+
+    .view-panel.active {
+      display: block;
+    }
+
+    /* Category Section */
+    .category-section {
+      margin-bottom: 32px;
+    }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding: 0 4px;
+    }
+
+    .category-title {
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .category-count {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: var(--bg-secondary);
+      padding: 3px 9px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Emoji Grid */
+    .emoji-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+      gap: 10px;
+    }
+
+    @media (max-width: 480px) {
+      .emoji-grid {
+        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+        gap: 8px;
+      }
+    }
+
+    .emoji-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      user-select: none;
+      transition: all 0.2s var(--spring);
+    }
+
+    .emoji-card:hover {
+      transform: scale(1.14);
+      background: var(--bg-tertiary);
+      border-color: rgba(10, 132, 255, 0.5);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+      z-index: 2;
+    }
+
+    .emoji-card:active {
+      transform: scale(0.92);
+    }
+
+    .emoji-card img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      pointer-events: none;
+      transition: transform 0.2s ease;
+    }
+
+    @media (max-width: 480px) {
+      .emoji-card img {
+        width: 34px;
+        height: 34px;
+      }
+    }
+
+    /* Search Results Info */
+    .search-meta {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding: 10px 16px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+    }
+
+    .search-meta.visible {
+      display: flex;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .empty-state h3 {
+      font-size: 18px;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    /* Action Modal / iOS Sheet */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: var(--modal-overlay);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      padding: 16px;
+    }
+
+    .modal-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .ios-modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 420px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      text-align: center;
+      transform: scale(0.9) translateY(20px);
+      transition: all 0.3s var(--spring);
+      position: relative;
+    }
+
+    .modal-backdrop.active .ios-modal {
+      transform: scale(1) translateY(0);
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .modal-emoji-preview {
+      width: 100px;
+      height: 100px;
+      margin: 10px auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
+      animation: floatEmoji 3s ease-in-out infinite;
+    }
+
+    @keyframes floatEmoji {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .modal-emoji-preview img {
+      width: 88px;
+      height: 88px;
+      object-fit: contain;
+    }
+
+    .modal-title {
+      font-size: 19px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .modal-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .badge-tag {
+      background: var(--bg-tertiary);
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      font-family: monospace;
+      font-size: 11px;
+    }
+
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-action {
+      width: 100%;
+      height: 48px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-action:hover {
+      background: var(--accent);
+      color: #FFFFFF;
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .btn-action:active {
+      transform: scale(0.98);
+    }
+
+    .btn-action.btn-primary {
+      background: var(--accent);
+      color: #FFFFFF;
+      border-color: var(--accent);
+      box-shadow: 0 4px 14px rgba(10, 132, 255, 0.4);
+    }
+
+    .btn-action.btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    /* Toast Notification (iOS Dynamic Island Style) */
+    .ios-toast {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      background: rgba(28, 28, 30, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+      color: #FFFFFF;
+      padding: 10px 20px;
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 2000;
+      transition: transform 0.4s var(--spring), opacity 0.3s ease;
+      opacity: 0;
+      pointer-events: none;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      max-width: 90vw;
+    }
+
+    [data-theme="light"] .ios-toast {
+      background: rgba(0, 0, 0, 0.88);
+    }
+
+    .ios-toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast-icon {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+    }
+
+    .toast-content {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+    }
+
+    .toast-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .toast-desc {
+      font-size: 12px;
+      color: #A1A1A6;
+    }
+
+    /* Sticker Studio (Canvas View) */
+    .studio-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--card-shadow);
+    }
+
+    .studio-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .studio-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .color-picker-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .bg-circle {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s ease;
+    }
+
+    .bg-circle:hover {
+      transform: scale(1.15);
+    }
+
+    .bg-circle.selected {
+      border-color: var(--accent);
+      transform: scale(1.1);
+    }
+
+    .canvas-viewport {
+      width: 100%;
+      height: 480px;
+      border-radius: var(--radius-md);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px dashed var(--border-color);
+      background-size: 20px 20px;
+      background-image: 
+        linear-gradient(to right, rgba(128, 128, 128, 0.1) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(128, 128, 128, 0.1) 1px, transparent 1px);
+      user-select: none;
+    }
+
+    .canvas-placeholder {
+      color: var(--text-secondary);
+      text-align: center;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .canvas-sticker {
+      position: absolute;
+      cursor: move;
+      user-select: none;
+      touch-action: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: outline 0.15s ease;
+    }
+
+    .canvas-sticker.selected {
+      outline: 2px solid var(--accent);
+      outline-offset: 4px;
+      border-radius: 8px;
+    }
+
+    .canvas-sticker img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    .sticker-controls {
+      position: absolute;
+      top: -36px;
+      display: none;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-full);
+      padding: 2px 6px;
+      gap: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .canvas-sticker.selected .sticker-controls {
+      display: flex;
+    }
+
+    .ctrl-btn {
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      cursor: pointer;
+      padding: 4px 6px;
+      font-size: 13px;
+      border-radius: 4px;
+    }
+
+    .ctrl-btn:hover {
+      background: var(--bg-tertiary);
+    }
+
+    /* iOS Sticky Bottom Bar on Mobile */
+    .mobile-bottom-info {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border-color);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+      z-index: 90;
+    }
+
+    .tip-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tip-pill span {
+      color: var(--accent);
+      font-weight: bold;
+    }
+  
+
+    a.cat-chip {
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    a.cat-chip:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      transform: translateY(-1px);
+    }
+
+    a.cat-chip.active {
+      background: var(--accent);
+      color: #FFFFFF;
+      border-color: var(--accent);
+      box-shadow: 0 4px 12px rgba(10, 132, 255, 0.35);
+    }
+
+    .page-hero {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--card-shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .page-hero-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .page-hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-tertiary);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .page-hero-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .page-hero-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      max-width: 600px;
+    }
+
+    .page-hero-stats {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--accent);
+      text-align: right;
+      line-height: 1.1;
+    }
+
+    .page-hero-stats small {
+      display: block;
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .portal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .portal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.25s var(--spring);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .portal-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      box-shadow: 0 12px 32px rgba(10, 132, 255, 0.2);
+    }
+
+    .portal-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .portal-card-icon {
+      font-size: 32px;
+    }
+
+    .portal-card-count {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: var(--bg-tertiary);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+    }
+
+    .portal-card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .portal-card-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      flex-grow: 1;
+    }
+
+    .portal-card-samples {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: var(--bg-tertiary);
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      margin-bottom: 14px;
+    }
+
+    .portal-card-samples img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+    }
+
+    .portal-card-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 10px;
+      background: var(--bg-tertiary);
+      color: var(--accent);
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .portal-card:hover .portal-card-btn {
+      background: var(--accent);
+      color: #FFFFFF;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- iOS Header & Search Bar -->
+  <header class="ios-header">
+    <div class="header-top">
+      <a href="index.html" class="logo-badge" style="text-decoration: none; color: inherit;">
+        <div class="apple-icon-wrap">
+          <svg viewBox="0 0 170 170">
+            <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.68-7.79-11.95-14.25-5.87-8.91-10.45-19.16-13.73-30.76-3.28-11.6-4.92-22.9-4.92-33.89 0-14.24 3.73-26.06 11.19-35.45 7.45-9.39 16.73-14.19 27.83-14.4 5.23 0 10.83 1.34 16.8 4.02 5.97 2.68 10.02 4.08 12.16 4.2 1.63-.12 5.92-1.61 12.87-4.47 6.95-2.86 13.06-4.11 18.32-3.75 13.48.87 24.34 5.75 32.58 14.65-11.75 7.18-17.5 17.07-17.25 29.68.25 9.9 4.15 18.25 11.7 25.04 7.55 6.79 16.48 10.74 26.8 11.85-2.39 7.4-5.23 14.73-8.52 21.99zM119.22 31.42c0-7.39 2.66-14.34 7.97-20.85 5.31-6.52 12.01-10.57 20.1-12.16.22 1.3.33 2.61.33 3.91 0 7.39-2.77 14.56-8.31 21.5-5.54 6.95-12.28 11.08-20.21 12.38-.11-1.3-.18-2.61-.18-3.91z"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <div class="logo-title">🚩 Davlat Bayroqlari</div>
+          <div class="logo-subtitle">Apple Color Emoji — Barcha davlatlar va xalqaro bayroqlar</div>
+        </div>
+      </a>
+
+      <div class="header-actions">
+        <!-- View Switcher -->
+        <div class="ios-segmented">
+          <button class="segment-btn active" id="tabCatalog" onclick="switchView('catalog')">
+            <span>📚</span> Katalog
+          </button>
+          <button class="segment-btn" id="tabStudio" onclick="switchView('studio')">
+            <span>🎨</span> Doska
+          </button>
+        </div>
+
+        <!-- Theme Toggle Button -->
+        <button class="ios-btn-icon" id="themeToggle" title="Mavzuni o'zgartirish" onclick="toggleTheme()">
+          <span id="themeIcon">☀️</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Search Box -->
+    <div class="search-container" id="searchWrap">
+      <svg class="search-icon" viewBox="0 0 24 24">
+        <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+      </svg>
+      <input type="text" id="searchInput" class="search-box" placeholder="Bayroqlar bo'yicha qidirish..." autocomplete="off" />
+      <button class="clear-btn" id="clearSearch" onclick="clearSearchInput()">&times;</button>
+    </div>
+
+    <!-- Category Nav Links -->
+    <div class="category-scroll" id="categoryNav">
+  <a href="index.html" class="cat-chip"><span class="chip-icon">🏠</span> Barcha toifalar (1903)</a>
+  <a href="yuz_ifodalari.html" class="cat-chip"><span class="chip-icon">😀</span> Yuz ifodalari (169)</a>
+  <a href="bayroqlar.html" class="cat-chip active"><span class="chip-icon">🚩</span> Bayroqlar (270)</a>
+  <a href="odamlar.html" class="cat-chip"><span class="chip-icon">🧑</span> Odamlar (386)</a>
+  <a href="hayvonlar.html" class="cat-chip"><span class="chip-icon">🐶</span> Hayvonlar (159)</a>
+  <a href="taomlar.html" class="cat-chip"><span class="chip-icon">🍔</span> Taomlar (131)</a>
+  <a href="sayohat.html" class="cat-chip"><span class="chip-icon">🚗</span> Sayohat (218)</a>
+  <a href="sport_faoliyat.html" class="cat-chip"><span class="chip-icon">⚽</span> Faoliyat (85)</a>
+  <a href="buyumlar.html" class="cat-chip"><span class="chip-icon">💡</span> Buyumlar (264)</a>
+  <a href="belgilar.html" class="cat-chip"><span class="chip-icon">🔣</span> Belgilar (221)</a>
+</div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    
+    <!-- View 1: Catalog Grid -->
+    <div id="catalogView" class="view-panel active">
+      
+      <!-- Category Banner -->
+      <div class="page-hero">
+        <div class="page-hero-content">
+          <div class="page-hero-badge">iOS Apple Stikerlar</div>
+          <h1 class="page-hero-title">🚩 Davlat bayroqlari</h1>
+          <p class="page-hero-desc">Dunyo mamlakatlari bayroqlari original iOS Apple stikerlari to'plami. O'zbekiston va boshqa davlatlar bayroqlari.</p>
+        </div>
+        <div class="page-hero-stats">
+          270
+          <small>ta stiker</small>
+        </div>
+      </div>
+
+      <!-- Search Meta Info -->
+      <div class="search-meta" id="searchMeta">
+        <span id="searchResultText">Qidiruv natijalari: 0 ta emoji</span>
+        <button class="cat-chip" onclick="clearSearchInput()" style="padding: 4px 10px; font-size: 12px;">Qidiruvni tozalash</button>
+      </div>
+
+      <!-- Recents Section -->
+      <div class="category-section" id="section-recents" style="display: none;">
+        <div class="category-header">
+          <div class="category-title">
+            <span>🕒</span>
+            <span>So'nggi ishlatilganlar</span>
+          </div>
+          <button class="cat-chip" onclick="clearRecents()" style="padding: 3px 8px; font-size: 11px;">Tozalash</button>
+        </div>
+        <div class="emoji-grid" id="grid-recents"></div>
+      </div>
+
+      <!-- Category Emojis Grid -->
+      <div class="category-section">
+        <div class="emoji-grid" id="categoryGrid"></div>
+      </div>
+
+      <!-- Empty Search State -->
+      <div class="empty-state" id="emptyState" style="display: none;">
+        <div style="font-size: 48px; margin-bottom: 12px;">🔍</div>
+        <h3>Bunday emoji topilmadi</h3>
+        <p>Boshqa so'z bilan qidirib ko'ring yoki boshqa toifalarni ko'ring.</p>
+      </div>
+    </div>
+
+    <!-- View 2: Sticker Studio (Canvas Playground) -->
+    <div id="studioView" class="view-panel">
+      <div class="studio-container">
+        <div class="studio-toolbar">
+          <div class="studio-tools">
+            <span style="font-weight: 600; font-size: 14px;">Fon turi:</span>
+            <div class="color-picker-wrap">
+              <div class="bg-circle selected" style="background: transparent; border: 2px dashed #888;" title="Shaffof" onclick="setCanvasBg('transparent', this)"></div>
+              <div class="bg-circle" style="background: #ffffff;" title="Oq" onclick="setCanvasBg('#ffffff', this)"></div>
+              <div class="bg-circle" style="background: #000000;" title="Qora" onclick="setCanvasBg('#000000', this)"></div>
+              <div class="bg-circle" style="background: linear-gradient(135deg, #0A84FF, #5E5CE6);" title="iOS Gradient" onclick="setCanvasBg('linear-gradient(135deg, #0A84FF, #5E5CE6)', this)"></div>
+              <div class="bg-circle" style="background: linear-gradient(135deg, #FF375F, #FF9F0A);" title="Sunset" onclick="setCanvasBg('linear-gradient(135deg, #FF375F, #FF9F0A)', this)"></div>
+              <div class="bg-circle" style="background: #0F2027;" title="Tungi" onclick="setCanvasBg('#0F2027', this)"></div>
+            </div>
+          </div>
+
+          <div class="studio-tools">
+            <button class="cat-chip" onclick="clearCanvas()">
+              <span>🗑️</span> Doskani tozalash
+            </button>
+            <button class="cat-chip active" onclick="exportCanvasPNG()">
+              <span>⬇️</span> Stikerni saqlash (.PNG)
+            </button>
+          </div>
+        </div>
+
+        <!-- Interactive Canvas -->
+        <div class="canvas-viewport" id="stickerCanvas" onclick="deselectStickers(event)">
+          <div class="canvas-placeholder" id="canvasPlaceholder">
+            <div style="font-size: 40px;">🎨</div>
+            <div style="font-weight: 600; font-size: 16px;">Stiker Doskasi</div>
+            <div style="font-size: 13px; max-width: 320px;">
+              Istalgan stikerni bosing va <strong>"Stiker doskasiga qo'shish"</strong> tugmasini tanlang.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Mobile Bottom Quick Info -->
+  <div class="mobile-bottom-info">
+    <div class="tip-pill">
+      <span>💡 Maslahat:</span> Stikerni bossangiz nusxalash yoki yuklab olish mumkin!
+    </div>
+    <div id="totalEmojiBadge">270 ta Bayroqlar</div>
+  </div>
+
+  <!-- iOS Action Sheet Modal -->
+  <div class="modal-backdrop" id="emojiModal" onclick="closeModal(event)">
+    <div class="ios-modal" onclick="event.stopPropagation()">
+      <button class="modal-close-btn" onclick="closeModal()">&times;</button>
+      
+      <div class="modal-emoji-preview">
+        <img id="modalImg" src="" alt="" />
+      </div>
+
+      <div class="modal-title" id="modalTitle">Emoji Nomi</div>
+      <div class="modal-subtitle">
+        <span class="badge-tag" id="modalCode">1F600</span>
+        <span class="badge-tag" id="modalCategory">Bayroqlar</span>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-action btn-primary" onclick="copyModalStickerPNG()">
+          <span>🖼️</span> Stiker sifatida nusxalash (PNG Rasm)
+        </button>
+
+        <button class="btn-action" onclick="copyModalUnicode()">
+          <span id="modalCharIcon" style="font-size: 18px;">😀</span> Emojini nusxalash (Matn)
+        </button>
+
+        <button class="btn-action" onclick="downloadModalPNG()">
+          <span>⬇️</span> PNG stikerni yuklab olish
+        </button>
+
+        <button class="btn-action" onclick="addModalToCanvas()">
+          <span>🎨</span> Stiker doskasiga qo'shish
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dynamic Island Toast -->
+  <div class="ios-toast" id="iosToast">
+    <img class="toast-icon" id="toastIcon" src="" alt="Icon" />
+    <div class="toast-content">
+      <div class="toast-title" id="toastTitle">Nusxalandi!</div>
+      <div class="toast-desc" id="toastDesc">Xotiraga saqlandi.</div>
+    </div>
+  </div>
+
+  <!-- Database & Logic Script -->
+  <script>
+    const EMOJI_CDN_BASE = "https://cdn.jsdelivr.net/npm/emoji-datasource-apple@16.0.0/img/apple/64/";
+    const EMOJI_DATA = [{"u": "🇦🇨", "i": "1f1e6-1f1e8.png", "c": "Flags", "n": "Ascension Island Flag", "s": "flag-ac", "k": "flag-ac "}, {"u": "🇦🇩", "i": "1f1e6-1f1e9.png", "c": "Flags", "n": "Andorra Flag", "s": "flag-ad", "k": "flag-ad "}, {"u": "🇦🇪", "i": "1f1e6-1f1ea.png", "c": "Flags", "n": "United Arab Emirates Flag", "s": "flag-ae", "k": "flag-ae "}, {"u": "🇦🇫", "i": "1f1e6-1f1eb.png", "c": "Flags", "n": "Afghanistan Flag", "s": "flag-af", "k": "flag-af "}, {"u": "🇦🇬", "i": "1f1e6-1f1ec.png", "c": "Flags", "n": "Antigua & Barbuda Flag", "s": "flag-ag", "k": "flag-ag "}, {"u": "🇦🇮", "i": "1f1e6-1f1ee.png", "c": "Flags", "n": "Anguilla Flag", "s": "flag-ai", "k": "flag-ai "}, {"u": "🇦🇱", "i": "1f1e6-1f1f1.png", "c": "Flags", "n": "Albania Flag", "s": "flag-al", "k": "flag-al "}, {"u": "🇦🇲", "i": "1f1e6-1f1f2.png", "c": "Flags", "n": "Armenia Flag", "s": "flag-am", "k": "flag-am "}, {"u": "🇦🇴", "i": "1f1e6-1f1f4.png", "c": "Flags", "n": "Angola Flag", "s": "flag-ao", "k": "flag-ao "}, {"u": "🇦🇶", "i": "1f1e6-1f1f6.png", "c": "Flags", "n": "Antarctica Flag", "s": "flag-aq", "k": "flag-aq "}, {"u": "🇦🇷", "i": "1f1e6-1f1f7.png", "c": "Flags", "n": "Argentina Flag", "s": "flag-ar", "k": "flag-ar "}, {"u": "🇦🇸", "i": "1f1e6-1f1f8.png", "c": "Flags", "n": "American Samoa Flag", "s": "flag-as", "k": "flag-as "}, {"u": "🇦🇹", "i": "1f1e6-1f1f9.png", "c": "Flags", "n": "Austria Flag", "s": "flag-at", "k": "flag-at "}, {"u": "🇦🇺", "i": "1f1e6-1f1fa.png", "c": "Flags", "n": "Australia Flag", "s": "flag-au", "k": "flag-au "}, {"u": "🇦🇼", "i": "1f1e6-1f1fc.png", "c": "Flags", "n": "Aruba Flag", "s": "flag-aw", "k": "flag-aw "}, {"u": "🇦🇽", "i": "1f1e6-1f1fd.png", "c": "Flags", "n": "Åland Islands Flag", "s": "flag-ax", "k": "flag-ax "}, {"u": "🇦🇿", "i": "1f1e6-1f1ff.png", "c": "Flags", "n": "Azerbaijan Flag", "s": "flag-az", "k": "flag-az "}, {"u": "🇧🇦", "i": "1f1e7-1f1e6.png", "c": "Flags", "n": "Bosnia & Herzegovina Flag", "s": "flag-ba", "k": "flag-ba "}, {"u": "🇧🇧", "i": "1f1e7-1f1e7.png", "c": "Flags", "n": "Barbados Flag", "s": "flag-bb", "k": "flag-bb "}, {"u": "🇧🇩", "i": "1f1e7-1f1e9.png", "c": "Flags", "n": "Bangladesh Flag", "s": "flag-bd", "k": "flag-bd "}, {"u": "🇧🇪", "i": "1f1e7-1f1ea.png", "c": "Flags", "n": "Belgium Flag", "s": "flag-be", "k": "flag-be "}, {"u": "🇧🇫", "i": "1f1e7-1f1eb.png", "c": "Flags", "n": "Burkina Faso Flag", "s": "flag-bf", "k": "flag-bf "}, {"u": "🇧🇬", "i": "1f1e7-1f1ec.png", "c": "Flags", "n": "Bulgaria Flag", "s": "flag-bg", "k": "flag-bg "}, {"u": "🇧🇭", "i": "1f1e7-1f1ed.png", "c": "Flags", "n": "Bahrain Flag", "s": "flag-bh", "k": "flag-bh "}, {"u": "🇧🇮", "i": "1f1e7-1f1ee.png", "c": "Flags", "n": "Burundi Flag", "s": "flag-bi", "k": "flag-bi "}, {"u": "🇧🇯", "i": "1f1e7-1f1ef.png", "c": "Flags", "n": "Benin Flag", "s": "flag-bj", "k": "flag-bj "}, {"u": "🇧🇱", "i": "1f1e7-1f1f1.png", "c": "Flags", "n": "St. Barthélemy Flag", "s": "flag-bl", "k": "flag-bl "}, {"u": "🇧🇲", "i": "1f1e7-1f1f2.png", "c": "Flags", "n": "Bermuda Flag", "s": "flag-bm", "k": "flag-bm "}, {"u": "🇧🇳", "i": "1f1e7-1f1f3.png", "c": "Flags", "n": "Brunei Flag", "s": "flag-bn", "k": "flag-bn "}, {"u": "🇧🇴", "i": "1f1e7-1f1f4.png", "c": "Flags", "n": "Bolivia Flag", "s": "flag-bo", "k": "flag-bo "}, {"u": "🇧🇶", "i": "1f1e7-1f1f6.png", "c": "Flags", "n": "Caribbean Netherlands Flag", "s": "flag-bq", "k": "flag-bq "}, {"u": "🇧🇷", "i": "1f1e7-1f1f7.png", "c": "Flags", "n": "Brazil Flag", "s": "flag-br", "k": "flag-br "}, {"u": "🇧🇸", "i": "1f1e7-1f1f8.png", "c": "Flags", "n": "Bahamas Flag", "s": "flag-bs", "k": "flag-bs "}, {"u": "🇧🇹", "i": "1f1e7-1f1f9.png", "c": "Flags", "n": "Bhutan Flag", "s": "flag-bt", "k": "flag-bt "}, {"u": "🇧🇻", "i": "1f1e7-1f1fb.png", "c": "Flags", "n": "Bouvet Island Flag", "s": "flag-bv", "k": "flag-bv "}, {"u": "🇧🇼", "i": "1f1e7-1f1fc.png", "c": "Flags", "n": "Botswana Flag", "s": "flag-bw", "k": "flag-bw "}, {"u": "🇧🇾", "i": "1f1e7-1f1fe.png", "c": "Flags", "n": "Belarus Flag", "s": "flag-by", "k": "flag-by "}, {"u": "🇧🇿", "i": "1f1e7-1f1ff.png", "c": "Flags", "n": "Belize Flag", "s": "flag-bz", "k": "flag-bz "}, {"u": "🇨🇦", "i": "1f1e8-1f1e6.png", "c": "Flags", "n": "Canada Flag", "s": "flag-ca", "k": "flag-ca "}, {"u": "🇨🇨", "i": "1f1e8-1f1e8.png", "c": "Flags", "n": "Cocos (Keeling) Islands Flag", "s": "flag-cc", "k": "flag-cc "}, {"u": "🇨🇩", "i": "1f1e8-1f1e9.png", "c": "Flags", "n": "Congo - Kinshasa Flag", "s": "flag-cd", "k": "flag-cd "}, {"u": "🇨🇫", "i": "1f1e8-1f1eb.png", "c": "Flags", "n": "Central African Republic Flag", "s": "flag-cf", "k": "flag-cf "}, {"u": "🇨🇬", "i": "1f1e8-1f1ec.png", "c": "Flags", "n": "Congo - Brazzaville Flag", "s": "flag-cg", "k": "flag-cg "}, {"u": "🇨🇭", "i": "1f1e8-1f1ed.png", "c": "Flags", "n": "Switzerland Flag", "s": "flag-ch", "k": "flag-ch "}, {"u": "🇨🇮", "i": "1f1e8-1f1ee.png", "c": "Flags", "n": "Côte D’Ivoire Flag", "s": "flag-ci", "k": "flag-ci "}, {"u": "🇨🇰", "i": "1f1e8-1f1f0.png", "c": "Flags", "n": "Cook Islands Flag", "s": "flag-ck", "k": "flag-ck "}, {"u": "🇨🇱", "i": "1f1e8-1f1f1.png", "c": "Flags", "n": "Chile Flag", "s": "flag-cl", "k": "flag-cl "}, {"u": "🇨🇲", "i": "1f1e8-1f1f2.png", "c": "Flags", "n": "Cameroon Flag", "s": "flag-cm", "k": "flag-cm "}, {"u": "🇨🇳", "i": "1f1e8-1f1f3.png", "c": "Flags", "n": "China Flag", "s": "cn", "k": "cn flag-cn "}, {"u": "🇨🇴", "i": "1f1e8-1f1f4.png", "c": "Flags", "n": "Colombia Flag", "s": "flag-co", "k": "flag-co "}, {"u": "🇨🇵", "i": "1f1e8-1f1f5.png", "c": "Flags", "n": "Clipperton Island Flag", "s": "flag-cp", "k": "flag-cp "}, {"u": "🇨🇶", "i": "1f1e8-1f1f6.png", "c": "Flags", "n": "Sark Flag", "s": "flag-sark", "k": "flag-sark "}, {"u": "🇨🇷", "i": "1f1e8-1f1f7.png", "c": "Flags", "n": "Costa Rica Flag", "s": "flag-cr", "k": "flag-cr "}, {"u": "🇨🇺", "i": "1f1e8-1f1fa.png", "c": "Flags", "n": "Cuba Flag", "s": "flag-cu", "k": "flag-cu "}, {"u": "🇨🇻", "i": "1f1e8-1f1fb.png", "c": "Flags", "n": "Cape Verde Flag", "s": "flag-cv", "k": "flag-cv "}, {"u": "🇨🇼", "i": "1f1e8-1f1fc.png", "c": "Flags", "n": "Curaçao Flag", "s": "flag-cw", "k": "flag-cw "}, {"u": "🇨🇽", "i": "1f1e8-1f1fd.png", "c": "Flags", "n": "Christmas Island Flag", "s": "flag-cx", "k": "flag-cx "}, {"u": "🇨🇾", "i": "1f1e8-1f1fe.png", "c": "Flags", "n": "Cyprus Flag", "s": "flag-cy", "k": "flag-cy "}, {"u": "🇨🇿", "i": "1f1e8-1f1ff.png", "c": "Flags", "n": "Czechia Flag", "s": "flag-cz", "k": "flag-cz "}, {"u": "🇩🇪", "i": "1f1e9-1f1ea.png", "c": "Flags", "n": "Germany Flag", "s": "de", "k": "de flag-de "}, {"u": "🇩🇬", "i": "1f1e9-1f1ec.png", "c": "Flags", "n": "Diego Garcia Flag", "s": "flag-dg", "k": "flag-dg "}, {"u": "🇩🇯", "i": "1f1e9-1f1ef.png", "c": "Flags", "n": "Djibouti Flag", "s": "flag-dj", "k": "flag-dj "}, {"u": "🇩🇰", "i": "1f1e9-1f1f0.png", "c": "Flags", "n": "Denmark Flag", "s": "flag-dk", "k": "flag-dk "}, {"u": "🇩🇲", "i": "1f1e9-1f1f2.png", "c": "Flags", "n": "Dominica Flag", "s": "flag-dm", "k": "flag-dm "}, {"u": "🇩🇴", "i": "1f1e9-1f1f4.png", "c": "Flags", "n": "Dominican Republic Flag", "s": "flag-do", "k": "flag-do "}, {"u": "🇩🇿", "i": "1f1e9-1f1ff.png", "c": "Flags", "n": "Algeria Flag", "s": "flag-dz", "k": "flag-dz "}, {"u": "🇪🇦", "i": "1f1ea-1f1e6.png", "c": "Flags", "n": "Ceuta & Melilla Flag", "s": "flag-ea", "k": "flag-ea "}, {"u": "🇪🇨", "i": "1f1ea-1f1e8.png", "c": "Flags", "n": "Ecuador Flag", "s": "flag-ec", "k": "flag-ec "}, {"u": "🇪🇪", "i": "1f1ea-1f1ea.png", "c": "Flags", "n": "Estonia Flag", "s": "flag-ee", "k": "flag-ee "}, {"u": "🇪🇬", "i": "1f1ea-1f1ec.png", "c": "Flags", "n": "Egypt Flag", "s": "flag-eg", "k": "flag-eg "}, {"u": "🇪🇭", "i": "1f1ea-1f1ed.png", "c": "Flags", "n": "Western Sahara Flag", "s": "flag-eh", "k": "flag-eh "}, {"u": "🇪🇷", "i": "1f1ea-1f1f7.png", "c": "Flags", "n": "Eritrea Flag", "s": "flag-er", "k": "flag-er "}, {"u": "🇪🇸", "i": "1f1ea-1f1f8.png", "c": "Flags", "n": "Spain Flag", "s": "es", "k": "es flag-es "}, {"u": "🇪🇹", "i": "1f1ea-1f1f9.png", "c": "Flags", "n": "Ethiopia Flag", "s": "flag-et", "k": "flag-et "}, {"u": "🇪🇺", "i": "1f1ea-1f1fa.png", "c": "Flags", "n": "European Union Flag", "s": "flag-eu", "k": "flag-eu "}, {"u": "🇫🇮", "i": "1f1eb-1f1ee.png", "c": "Flags", "n": "Finland Flag", "s": "flag-fi", "k": "flag-fi "}, {"u": "🇫🇯", "i": "1f1eb-1f1ef.png", "c": "Flags", "n": "Fiji Flag", "s": "flag-fj", "k": "flag-fj "}, {"u": "🇫🇰", "i": "1f1eb-1f1f0.png", "c": "Flags", "n": "Falkland Islands Flag", "s": "flag-fk", "k": "flag-fk "}, {"u": "🇫🇲", "i": "1f1eb-1f1f2.png", "c": "Flags", "n": "Micronesia Flag", "s": "flag-fm", "k": "flag-fm "}, {"u": "🇫🇴", "i": "1f1eb-1f1f4.png", "c": "Flags", "n": "Faroe Islands Flag", "s": "flag-fo", "k": "flag-fo "}, {"u": "🇫🇷", "i": "1f1eb-1f1f7.png", "c": "Flags", "n": "France Flag", "s": "fr", "k": "fr flag-fr "}, {"u": "🇬🇦", "i": "1f1ec-1f1e6.png", "c": "Flags", "n": "Gabon Flag", "s": "flag-ga", "k": "flag-ga "}, {"u": "🇬🇧", "i": "1f1ec-1f1e7.png", "c": "Flags", "n": "United Kingdom Flag", "s": "gb", "k": "gb uk flag-gb "}, {"u": "🇬🇩", "i": "1f1ec-1f1e9.png", "c": "Flags", "n": "Grenada Flag", "s": "flag-gd", "k": "flag-gd "}, {"u": "🇬🇪", "i": "1f1ec-1f1ea.png", "c": "Flags", "n": "Georgia Flag", "s": "flag-ge", "k": "flag-ge "}, {"u": "🇬🇫", "i": "1f1ec-1f1eb.png", "c": "Flags", "n": "French Guiana Flag", "s": "flag-gf", "k": "flag-gf "}, {"u": "🇬🇬", "i": "1f1ec-1f1ec.png", "c": "Flags", "n": "Guernsey Flag", "s": "flag-gg", "k": "flag-gg "}, {"u": "🇬🇭", "i": "1f1ec-1f1ed.png", "c": "Flags", "n": "Ghana Flag", "s": "flag-gh", "k": "flag-gh "}, {"u": "🇬🇮", "i": "1f1ec-1f1ee.png", "c": "Flags", "n": "Gibraltar Flag", "s": "flag-gi", "k": "flag-gi "}, {"u": "🇬🇱", "i": "1f1ec-1f1f1.png", "c": "Flags", "n": "Greenland Flag", "s": "flag-gl", "k": "flag-gl "}, {"u": "🇬🇲", "i": "1f1ec-1f1f2.png", "c": "Flags", "n": "Gambia Flag", "s": "flag-gm", "k": "flag-gm "}, {"u": "🇬🇳", "i": "1f1ec-1f1f3.png", "c": "Flags", "n": "Guinea Flag", "s": "flag-gn", "k": "flag-gn "}, {"u": "🇬🇵", "i": "1f1ec-1f1f5.png", "c": "Flags", "n": "Guadeloupe Flag", "s": "flag-gp", "k": "flag-gp "}, {"u": "🇬🇶", "i": "1f1ec-1f1f6.png", "c": "Flags", "n": "Equatorial Guinea Flag", "s": "flag-gq", "k": "flag-gq "}, {"u": "🇬🇷", "i": "1f1ec-1f1f7.png", "c": "Flags", "n": "Greece Flag", "s": "flag-gr", "k": "flag-gr "}, {"u": "🇬🇸", "i": "1f1ec-1f1f8.png", "c": "Flags", "n": "South Georgia & South Sandwich Islands Flag", "s": "flag-gs", "k": "flag-gs "}, {"u": "🇬🇹", "i": "1f1ec-1f1f9.png", "c": "Flags", "n": "Guatemala Flag", "s": "flag-gt", "k": "flag-gt "}, {"u": "🇬🇺", "i": "1f1ec-1f1fa.png", "c": "Flags", "n": "Guam Flag", "s": "flag-gu", "k": "flag-gu "}, {"u": "🇬🇼", "i": "1f1ec-1f1fc.png", "c": "Flags", "n": "Guinea-Bissau Flag", "s": "flag-gw", "k": "flag-gw "}, {"u": "🇬🇾", "i": "1f1ec-1f1fe.png", "c": "Flags", "n": "Guyana Flag", "s": "flag-gy", "k": "flag-gy "}, {"u": "🇭🇰", "i": "1f1ed-1f1f0.png", "c": "Flags", "n": "Hong Kong Sar China Flag", "s": "flag-hk", "k": "flag-hk "}, {"u": "🇭🇲", "i": "1f1ed-1f1f2.png", "c": "Flags", "n": "Heard & Mcdonald Islands Flag", "s": "flag-hm", "k": "flag-hm "}, {"u": "🇭🇳", "i": "1f1ed-1f1f3.png", "c": "Flags", "n": "Honduras Flag", "s": "flag-hn", "k": "flag-hn "}, {"u": "🇭🇷", "i": "1f1ed-1f1f7.png", "c": "Flags", "n": "Croatia Flag", "s": "flag-hr", "k": "flag-hr "}, {"u": "🇭🇹", "i": "1f1ed-1f1f9.png", "c": "Flags", "n": "Haiti Flag", "s": "flag-ht", "k": "flag-ht "}, {"u": "🇭🇺", "i": "1f1ed-1f1fa.png", "c": "Flags", "n": "Hungary Flag", "s": "flag-hu", "k": "flag-hu "}, {"u": "🇮🇨", "i": "1f1ee-1f1e8.png", "c": "Flags", "n": "Canary Islands Flag", "s": "flag-ic", "k": "flag-ic "}, {"u": "🇮🇩", "i": "1f1ee-1f1e9.png", "c": "Flags", "n": "Indonesia Flag", "s": "flag-id", "k": "flag-id "}, {"u": "🇮🇪", "i": "1f1ee-1f1ea.png", "c": "Flags", "n": "Ireland Flag", "s": "flag-ie", "k": "flag-ie "}, {"u": "🇮🇱", "i": "1f1ee-1f1f1.png", "c": "Flags", "n": "Israel Flag", "s": "flag-il", "k": "flag-il "}, {"u": "🇮🇲", "i": "1f1ee-1f1f2.png", "c": "Flags", "n": "Isle Of Man Flag", "s": "flag-im", "k": "flag-im "}, {"u": "🇮🇳", "i": "1f1ee-1f1f3.png", "c": "Flags", "n": "India Flag", "s": "flag-in", "k": "flag-in "}, {"u": "🇮🇴", "i": "1f1ee-1f1f4.png", "c": "Flags", "n": "British Indian Ocean Territory Flag", "s": "flag-io", "k": "flag-io "}, {"u": "🇮🇶", "i": "1f1ee-1f1f6.png", "c": "Flags", "n": "Iraq Flag", "s": "flag-iq", "k": "flag-iq "}, {"u": "🇮🇷", "i": "1f1ee-1f1f7.png", "c": "Flags", "n": "Iran Flag", "s": "flag-ir", "k": "flag-ir "}, {"u": "🇮🇸", "i": "1f1ee-1f1f8.png", "c": "Flags", "n": "Iceland Flag", "s": "flag-is", "k": "flag-is "}, {"u": "🇮🇹", "i": "1f1ee-1f1f9.png", "c": "Flags", "n": "Italy Flag", "s": "it", "k": "it flag-it "}, {"u": "🇯🇪", "i": "1f1ef-1f1ea.png", "c": "Flags", "n": "Jersey Flag", "s": "flag-je", "k": "flag-je "}, {"u": "🇯🇲", "i": "1f1ef-1f1f2.png", "c": "Flags", "n": "Jamaica Flag", "s": "flag-jm", "k": "flag-jm "}, {"u": "🇯🇴", "i": "1f1ef-1f1f4.png", "c": "Flags", "n": "Jordan Flag", "s": "flag-jo", "k": "flag-jo "}, {"u": "🇯🇵", "i": "1f1ef-1f1f5.png", "c": "Flags", "n": "Japan Flag", "s": "jp", "k": "jp flag-jp "}, {"u": "🇰🇪", "i": "1f1f0-1f1ea.png", "c": "Flags", "n": "Kenya Flag", "s": "flag-ke", "k": "flag-ke "}, {"u": "🇰🇬", "i": "1f1f0-1f1ec.png", "c": "Flags", "n": "Kyrgyzstan Flag", "s": "flag-kg", "k": "flag-kg qirg'iziston bayroq"}, {"u": "🇰🇭", "i": "1f1f0-1f1ed.png", "c": "Flags", "n": "Cambodia Flag", "s": "flag-kh", "k": "flag-kh "}, {"u": "🇰🇮", "i": "1f1f0-1f1ee.png", "c": "Flags", "n": "Kiribati Flag", "s": "flag-ki", "k": "flag-ki "}, {"u": "🇰🇲", "i": "1f1f0-1f1f2.png", "c": "Flags", "n": "Comoros Flag", "s": "flag-km", "k": "flag-km "}, {"u": "🇰🇳", "i": "1f1f0-1f1f3.png", "c": "Flags", "n": "St. Kitts & Nevis Flag", "s": "flag-kn", "k": "flag-kn "}, {"u": "🇰🇵", "i": "1f1f0-1f1f5.png", "c": "Flags", "n": "North Korea Flag", "s": "flag-kp", "k": "flag-kp "}, {"u": "🇰🇷", "i": "1f1f0-1f1f7.png", "c": "Flags", "n": "South Korea Flag", "s": "kr", "k": "kr flag-kr "}, {"u": "🇰🇼", "i": "1f1f0-1f1fc.png", "c": "Flags", "n": "Kuwait Flag", "s": "flag-kw", "k": "flag-kw "}, {"u": "🇰🇾", "i": "1f1f0-1f1fe.png", "c": "Flags", "n": "Cayman Islands Flag", "s": "flag-ky", "k": "flag-ky "}, {"u": "🇰🇿", "i": "1f1f0-1f1ff.png", "c": "Flags", "n": "Kazakhstan Flag", "s": "flag-kz", "k": "flag-kz qozog'iston bayroq"}, {"u": "🇱🇦", "i": "1f1f1-1f1e6.png", "c": "Flags", "n": "Laos Flag", "s": "flag-la", "k": "flag-la "}, {"u": "🇱🇧", "i": "1f1f1-1f1e7.png", "c": "Flags", "n": "Lebanon Flag", "s": "flag-lb", "k": "flag-lb "}, {"u": "🇱🇨", "i": "1f1f1-1f1e8.png", "c": "Flags", "n": "St. Lucia Flag", "s": "flag-lc", "k": "flag-lc "}, {"u": "🇱🇮", "i": "1f1f1-1f1ee.png", "c": "Flags", "n": "Liechtenstein Flag", "s": "flag-li", "k": "flag-li "}, {"u": "🇱🇰", "i": "1f1f1-1f1f0.png", "c": "Flags", "n": "Sri Lanka Flag", "s": "flag-lk", "k": "flag-lk "}, {"u": "🇱🇷", "i": "1f1f1-1f1f7.png", "c": "Flags", "n": "Liberia Flag", "s": "flag-lr", "k": "flag-lr "}, {"u": "🇱🇸", "i": "1f1f1-1f1f8.png", "c": "Flags", "n": "Lesotho Flag", "s": "flag-ls", "k": "flag-ls "}, {"u": "🇱🇹", "i": "1f1f1-1f1f9.png", "c": "Flags", "n": "Lithuania Flag", "s": "flag-lt", "k": "flag-lt "}, {"u": "🇱🇺", "i": "1f1f1-1f1fa.png", "c": "Flags", "n": "Luxembourg Flag", "s": "flag-lu", "k": "flag-lu "}, {"u": "🇱🇻", "i": "1f1f1-1f1fb.png", "c": "Flags", "n": "Latvia Flag", "s": "flag-lv", "k": "flag-lv "}, {"u": "🇱🇾", "i": "1f1f1-1f1fe.png", "c": "Flags", "n": "Libya Flag", "s": "flag-ly", "k": "flag-ly "}, {"u": "🇲🇦", "i": "1f1f2-1f1e6.png", "c": "Flags", "n": "Morocco Flag", "s": "flag-ma", "k": "flag-ma "}, {"u": "🇲🇨", "i": "1f1f2-1f1e8.png", "c": "Flags", "n": "Monaco Flag", "s": "flag-mc", "k": "flag-mc "}, {"u": "🇲🇩", "i": "1f1f2-1f1e9.png", "c": "Flags", "n": "Moldova Flag", "s": "flag-md", "k": "flag-md "}, {"u": "🇲🇪", "i": "1f1f2-1f1ea.png", "c": "Flags", "n": "Montenegro Flag", "s": "flag-me", "k": "flag-me "}, {"u": "🇲🇫", "i": "1f1f2-1f1eb.png", "c": "Flags", "n": "St. Martin Flag", "s": "flag-mf", "k": "flag-mf "}, {"u": "🇲🇬", "i": "1f1f2-1f1ec.png", "c": "Flags", "n": "Madagascar Flag", "s": "flag-mg", "k": "flag-mg "}, {"u": "🇲🇭", "i": "1f1f2-1f1ed.png", "c": "Flags", "n": "Marshall Islands Flag", "s": "flag-mh", "k": "flag-mh "}, {"u": "🇲🇰", "i": "1f1f2-1f1f0.png", "c": "Flags", "n": "North Macedonia Flag", "s": "flag-mk", "k": "flag-mk "}, {"u": "🇲🇱", "i": "1f1f2-1f1f1.png", "c": "Flags", "n": "Mali Flag", "s": "flag-ml", "k": "flag-ml "}, {"u": "🇲🇲", "i": "1f1f2-1f1f2.png", "c": "Flags", "n": "Myanmar (Burma) Flag", "s": "flag-mm", "k": "flag-mm "}, {"u": "🇲🇳", "i": "1f1f2-1f1f3.png", "c": "Flags", "n": "Mongolia Flag", "s": "flag-mn", "k": "flag-mn "}, {"u": "🇲🇴", "i": "1f1f2-1f1f4.png", "c": "Flags", "n": "Macao Sar China Flag", "s": "flag-mo", "k": "flag-mo "}, {"u": "🇲🇵", "i": "1f1f2-1f1f5.png", "c": "Flags", "n": "Northern Mariana Islands Flag", "s": "flag-mp", "k": "flag-mp "}, {"u": "🇲🇶", "i": "1f1f2-1f1f6.png", "c": "Flags", "n": "Martinique Flag", "s": "flag-mq", "k": "flag-mq "}, {"u": "🇲🇷", "i": "1f1f2-1f1f7.png", "c": "Flags", "n": "Mauritania Flag", "s": "flag-mr", "k": "flag-mr "}, {"u": "🇲🇸", "i": "1f1f2-1f1f8.png", "c": "Flags", "n": "Montserrat Flag", "s": "flag-ms", "k": "flag-ms "}, {"u": "🇲🇹", "i": "1f1f2-1f1f9.png", "c": "Flags", "n": "Malta Flag", "s": "flag-mt", "k": "flag-mt "}, {"u": "🇲🇺", "i": "1f1f2-1f1fa.png", "c": "Flags", "n": "Mauritius Flag", "s": "flag-mu", "k": "flag-mu "}, {"u": "🇲🇻", "i": "1f1f2-1f1fb.png", "c": "Flags", "n": "Maldives Flag", "s": "flag-mv", "k": "flag-mv "}, {"u": "🇲🇼", "i": "1f1f2-1f1fc.png", "c": "Flags", "n": "Malawi Flag", "s": "flag-mw", "k": "flag-mw "}, {"u": "🇲🇽", "i": "1f1f2-1f1fd.png", "c": "Flags", "n": "Mexico Flag", "s": "flag-mx", "k": "flag-mx "}, {"u": "🇲🇾", "i": "1f1f2-1f1fe.png", "c": "Flags", "n": "Malaysia Flag", "s": "flag-my", "k": "flag-my "}, {"u": "🇲🇿", "i": "1f1f2-1f1ff.png", "c": "Flags", "n": "Mozambique Flag", "s": "flag-mz", "k": "flag-mz "}, {"u": "🇳🇦", "i": "1f1f3-1f1e6.png", "c": "Flags", "n": "Namibia Flag", "s": "flag-na", "k": "flag-na "}, {"u": "🇳🇨", "i": "1f1f3-1f1e8.png", "c": "Flags", "n": "New Caledonia Flag", "s": "flag-nc", "k": "flag-nc "}, {"u": "🇳🇪", "i": "1f1f3-1f1ea.png", "c": "Flags", "n": "Niger Flag", "s": "flag-ne", "k": "flag-ne "}, {"u": "🇳🇫", "i": "1f1f3-1f1eb.png", "c": "Flags", "n": "Norfolk Island Flag", "s": "flag-nf", "k": "flag-nf "}, {"u": "🇳🇬", "i": "1f1f3-1f1ec.png", "c": "Flags", "n": "Nigeria Flag", "s": "flag-ng", "k": "flag-ng "}, {"u": "🇳🇮", "i": "1f1f3-1f1ee.png", "c": "Flags", "n": "Nicaragua Flag", "s": "flag-ni", "k": "flag-ni "}, {"u": "🇳🇱", "i": "1f1f3-1f1f1.png", "c": "Flags", "n": "Netherlands Flag", "s": "flag-nl", "k": "flag-nl "}, {"u": "🇳🇴", "i": "1f1f3-1f1f4.png", "c": "Flags", "n": "Norway Flag", "s": "flag-no", "k": "flag-no "}, {"u": "🇳🇵", "i": "1f1f3-1f1f5.png", "c": "Flags", "n": "Nepal Flag", "s": "flag-np", "k": "flag-np "}, {"u": "🇳🇷", "i": "1f1f3-1f1f7.png", "c": "Flags", "n": "Nauru Flag", "s": "flag-nr", "k": "flag-nr "}, {"u": "🇳🇺", "i": "1f1f3-1f1fa.png", "c": "Flags", "n": "Niue Flag", "s": "flag-nu", "k": "flag-nu "}, {"u": "🇳🇿", "i": "1f1f3-1f1ff.png", "c": "Flags", "n": "New Zealand Flag", "s": "flag-nz", "k": "flag-nz "}, {"u": "🇴🇲", "i": "1f1f4-1f1f2.png", "c": "Flags", "n": "Oman Flag", "s": "flag-om", "k": "flag-om "}, {"u": "🇵🇦", "i": "1f1f5-1f1e6.png", "c": "Flags", "n": "Panama Flag", "s": "flag-pa", "k": "flag-pa "}, {"u": "🇵🇪", "i": "1f1f5-1f1ea.png", "c": "Flags", "n": "Peru Flag", "s": "flag-pe", "k": "flag-pe "}, {"u": "🇵🇫", "i": "1f1f5-1f1eb.png", "c": "Flags", "n": "French Polynesia Flag", "s": "flag-pf", "k": "flag-pf "}, {"u": "🇵🇬", "i": "1f1f5-1f1ec.png", "c": "Flags", "n": "Papua New Guinea Flag", "s": "flag-pg", "k": "flag-pg "}, {"u": "🇵🇭", "i": "1f1f5-1f1ed.png", "c": "Flags", "n": "Philippines Flag", "s": "flag-ph", "k": "flag-ph "}, {"u": "🇵🇰", "i": "1f1f5-1f1f0.png", "c": "Flags", "n": "Pakistan Flag", "s": "flag-pk", "k": "flag-pk "}, {"u": "🇵🇱", "i": "1f1f5-1f1f1.png", "c": "Flags", "n": "Poland Flag", "s": "flag-pl", "k": "flag-pl "}, {"u": "🇵🇲", "i": "1f1f5-1f1f2.png", "c": "Flags", "n": "St. Pierre & Miquelon Flag", "s": "flag-pm", "k": "flag-pm "}, {"u": "🇵🇳", "i": "1f1f5-1f1f3.png", "c": "Flags", "n": "Pitcairn Islands Flag", "s": "flag-pn", "k": "flag-pn "}, {"u": "🇵🇷", "i": "1f1f5-1f1f7.png", "c": "Flags", "n": "Puerto Rico Flag", "s": "flag-pr", "k": "flag-pr "}, {"u": "🇵🇸", "i": "1f1f5-1f1f8.png", "c": "Flags", "n": "Palestinian Territories Flag", "s": "flag-ps", "k": "flag-ps "}, {"u": "🇵🇹", "i": "1f1f5-1f1f9.png", "c": "Flags", "n": "Portugal Flag", "s": "flag-pt", "k": "flag-pt "}, {"u": "🇵🇼", "i": "1f1f5-1f1fc.png", "c": "Flags", "n": "Palau Flag", "s": "flag-pw", "k": "flag-pw "}, {"u": "🇵🇾", "i": "1f1f5-1f1fe.png", "c": "Flags", "n": "Paraguay Flag", "s": "flag-py", "k": "flag-py "}, {"u": "🇶🇦", "i": "1f1f6-1f1e6.png", "c": "Flags", "n": "Qatar Flag", "s": "flag-qa", "k": "flag-qa "}, {"u": "🇷🇪", "i": "1f1f7-1f1ea.png", "c": "Flags", "n": "Réunion Flag", "s": "flag-re", "k": "flag-re "}, {"u": "🇷🇴", "i": "1f1f7-1f1f4.png", "c": "Flags", "n": "Romania Flag", "s": "flag-ro", "k": "flag-ro "}, {"u": "🇷🇸", "i": "1f1f7-1f1f8.png", "c": "Flags", "n": "Serbia Flag", "s": "flag-rs", "k": "flag-rs "}, {"u": "🇷🇺", "i": "1f1f7-1f1fa.png", "c": "Flags", "n": "Russia Flag", "s": "ru", "k": "ru flag-ru "}, {"u": "🇷🇼", "i": "1f1f7-1f1fc.png", "c": "Flags", "n": "Rwanda Flag", "s": "flag-rw", "k": "flag-rw "}, {"u": "🇸🇦", "i": "1f1f8-1f1e6.png", "c": "Flags", "n": "Saudi Arabia Flag", "s": "flag-sa", "k": "flag-sa "}, {"u": "🇸🇧", "i": "1f1f8-1f1e7.png", "c": "Flags", "n": "Solomon Islands Flag", "s": "flag-sb", "k": "flag-sb "}, {"u": "🇸🇨", "i": "1f1f8-1f1e8.png", "c": "Flags", "n": "Seychelles Flag", "s": "flag-sc", "k": "flag-sc "}, {"u": "🇸🇩", "i": "1f1f8-1f1e9.png", "c": "Flags", "n": "Sudan Flag", "s": "flag-sd", "k": "flag-sd "}, {"u": "🇸🇪", "i": "1f1f8-1f1ea.png", "c": "Flags", "n": "Sweden Flag", "s": "flag-se", "k": "flag-se "}, {"u": "🇸🇬", "i": "1f1f8-1f1ec.png", "c": "Flags", "n": "Singapore Flag", "s": "flag-sg", "k": "flag-sg "}, {"u": "🇸🇭", "i": "1f1f8-1f1ed.png", "c": "Flags", "n": "St. Helena Flag", "s": "flag-sh", "k": "flag-sh "}, {"u": "🇸🇮", "i": "1f1f8-1f1ee.png", "c": "Flags", "n": "Slovenia Flag", "s": "flag-si", "k": "flag-si "}, {"u": "🇸🇯", "i": "1f1f8-1f1ef.png", "c": "Flags", "n": "Svalbard & Jan Mayen Flag", "s": "flag-sj", "k": "flag-sj "}, {"u": "🇸🇰", "i": "1f1f8-1f1f0.png", "c": "Flags", "n": "Slovakia Flag", "s": "flag-sk", "k": "flag-sk "}, {"u": "🇸🇱", "i": "1f1f8-1f1f1.png", "c": "Flags", "n": "Sierra Leone Flag", "s": "flag-sl", "k": "flag-sl "}, {"u": "🇸🇲", "i": "1f1f8-1f1f2.png", "c": "Flags", "n": "San Marino Flag", "s": "flag-sm", "k": "flag-sm "}, {"u": "🇸🇳", "i": "1f1f8-1f1f3.png", "c": "Flags", "n": "Senegal Flag", "s": "flag-sn", "k": "flag-sn "}, {"u": "🇸🇴", "i": "1f1f8-1f1f4.png", "c": "Flags", "n": "Somalia Flag", "s": "flag-so", "k": "flag-so "}, {"u": "🇸🇷", "i": "1f1f8-1f1f7.png", "c": "Flags", "n": "Suriname Flag", "s": "flag-sr", "k": "flag-sr "}, {"u": "🇸🇸", "i": "1f1f8-1f1f8.png", "c": "Flags", "n": "South Sudan Flag", "s": "flag-ss", "k": "flag-ss "}, {"u": "🇸🇹", "i": "1f1f8-1f1f9.png", "c": "Flags", "n": "São Tomé & Príncipe Flag", "s": "flag-st", "k": "flag-st "}, {"u": "🇸🇻", "i": "1f1f8-1f1fb.png", "c": "Flags", "n": "El Salvador Flag", "s": "flag-sv", "k": "flag-sv "}, {"u": "🇸🇽", "i": "1f1f8-1f1fd.png", "c": "Flags", "n": "Sint Maarten Flag", "s": "flag-sx", "k": "flag-sx "}, {"u": "🇸🇾", "i": "1f1f8-1f1fe.png", "c": "Flags", "n": "Syria Flag", "s": "flag-sy", "k": "flag-sy "}, {"u": "🇸🇿", "i": "1f1f8-1f1ff.png", "c": "Flags", "n": "Eswatini Flag", "s": "flag-sz", "k": "flag-sz "}, {"u": "🇹🇦", "i": "1f1f9-1f1e6.png", "c": "Flags", "n": "Tristan Da Cunha Flag", "s": "flag-ta", "k": "flag-ta "}, {"u": "🇹🇨", "i": "1f1f9-1f1e8.png", "c": "Flags", "n": "Turks & Caicos Islands Flag", "s": "flag-tc", "k": "flag-tc "}, {"u": "🇹🇩", "i": "1f1f9-1f1e9.png", "c": "Flags", "n": "Chad Flag", "s": "flag-td", "k": "flag-td "}, {"u": "🇹🇫", "i": "1f1f9-1f1eb.png", "c": "Flags", "n": "French Southern Territories Flag", "s": "flag-tf", "k": "flag-tf "}, {"u": "🇹🇬", "i": "1f1f9-1f1ec.png", "c": "Flags", "n": "Togo Flag", "s": "flag-tg", "k": "flag-tg "}, {"u": "🇹🇭", "i": "1f1f9-1f1ed.png", "c": "Flags", "n": "Thailand Flag", "s": "flag-th", "k": "flag-th "}, {"u": "🇹🇯", "i": "1f1f9-1f1ef.png", "c": "Flags", "n": "Tajikistan Flag", "s": "flag-tj", "k": "flag-tj tojikiston bayroq"}, {"u": "🇹🇰", "i": "1f1f9-1f1f0.png", "c": "Flags", "n": "Tokelau Flag", "s": "flag-tk", "k": "flag-tk "}, {"u": "🇹🇱", "i": "1f1f9-1f1f1.png", "c": "Flags", "n": "Timor-Leste Flag", "s": "flag-tl", "k": "flag-tl "}, {"u": "🇹🇲", "i": "1f1f9-1f1f2.png", "c": "Flags", "n": "Turkmenistan Flag", "s": "flag-tm", "k": "flag-tm "}, {"u": "🇹🇳", "i": "1f1f9-1f1f3.png", "c": "Flags", "n": "Tunisia Flag", "s": "flag-tn", "k": "flag-tn "}, {"u": "🇹🇴", "i": "1f1f9-1f1f4.png", "c": "Flags", "n": "Tonga Flag", "s": "flag-to", "k": "flag-to "}, {"u": "🇹🇷", "i": "1f1f9-1f1f7.png", "c": "Flags", "n": "Türkiye Flag", "s": "flag-tr", "k": "flag-tr turkiya bayroq"}, {"u": "🇹🇹", "i": "1f1f9-1f1f9.png", "c": "Flags", "n": "Trinidad & Tobago Flag", "s": "flag-tt", "k": "flag-tt "}, {"u": "🇹🇻", "i": "1f1f9-1f1fb.png", "c": "Flags", "n": "Tuvalu Flag", "s": "flag-tv", "k": "flag-tv "}, {"u": "🇹🇼", "i": "1f1f9-1f1fc.png", "c": "Flags", "n": "Taiwan Flag", "s": "flag-tw", "k": "flag-tw "}, {"u": "🇹🇿", "i": "1f1f9-1f1ff.png", "c": "Flags", "n": "Tanzania Flag", "s": "flag-tz", "k": "flag-tz "}, {"u": "🇺🇦", "i": "1f1fa-1f1e6.png", "c": "Flags", "n": "Ukraine Flag", "s": "flag-ua", "k": "flag-ua "}, {"u": "🇺🇬", "i": "1f1fa-1f1ec.png", "c": "Flags", "n": "Uganda Flag", "s": "flag-ug", "k": "flag-ug "}, {"u": "🇺🇲", "i": "1f1fa-1f1f2.png", "c": "Flags", "n": "U.S. Outlying Islands Flag", "s": "flag-um", "k": "flag-um "}, {"u": "🇺🇳", "i": "1f1fa-1f1f3.png", "c": "Flags", "n": "United Nations Flag", "s": "flag-un", "k": "flag-un "}, {"u": "🇺🇸", "i": "1f1fa-1f1f8.png", "c": "Flags", "n": "United States Flag", "s": "us", "k": "us flag-us "}, {"u": "🇺🇾", "i": "1f1fa-1f1fe.png", "c": "Flags", "n": "Uruguay Flag", "s": "flag-uy", "k": "flag-uy "}, {"u": "🇺🇿", "i": "1f1fa-1f1ff.png", "c": "Flags", "n": "Uzbekistan Flag", "s": "flag-uz", "k": "flag-uz o'zbekiston uzbekistan bayroq vatan"}, {"u": "🇻🇦", "i": "1f1fb-1f1e6.png", "c": "Flags", "n": "Vatican City Flag", "s": "flag-va", "k": "flag-va "}, {"u": "🇻🇨", "i": "1f1fb-1f1e8.png", "c": "Flags", "n": "St. Vincent & Grenadines Flag", "s": "flag-vc", "k": "flag-vc "}, {"u": "🇻🇪", "i": "1f1fb-1f1ea.png", "c": "Flags", "n": "Venezuela Flag", "s": "flag-ve", "k": "flag-ve "}, {"u": "🇻🇬", "i": "1f1fb-1f1ec.png", "c": "Flags", "n": "British Virgin Islands Flag", "s": "flag-vg", "k": "flag-vg "}, {"u": "🇻🇮", "i": "1f1fb-1f1ee.png", "c": "Flags", "n": "U.S. Virgin Islands Flag", "s": "flag-vi", "k": "flag-vi "}, {"u": "🇻🇳", "i": "1f1fb-1f1f3.png", "c": "Flags", "n": "Vietnam Flag", "s": "flag-vn", "k": "flag-vn "}, {"u": "🇻🇺", "i": "1f1fb-1f1fa.png", "c": "Flags", "n": "Vanuatu Flag", "s": "flag-vu", "k": "flag-vu "}, {"u": "🇼🇫", "i": "1f1fc-1f1eb.png", "c": "Flags", "n": "Wallis & Futuna Flag", "s": "flag-wf", "k": "flag-wf "}, {"u": "🇼🇸", "i": "1f1fc-1f1f8.png", "c": "Flags", "n": "Samoa Flag", "s": "flag-ws", "k": "flag-ws "}, {"u": "🇽🇰", "i": "1f1fd-1f1f0.png", "c": "Flags", "n": "Kosovo Flag", "s": "flag-xk", "k": "flag-xk "}, {"u": "🇾🇪", "i": "1f1fe-1f1ea.png", "c": "Flags", "n": "Yemen Flag", "s": "flag-ye", "k": "flag-ye "}, {"u": "🇾🇹", "i": "1f1fe-1f1f9.png", "c": "Flags", "n": "Mayotte Flag", "s": "flag-yt", "k": "flag-yt "}, {"u": "🇿🇦", "i": "1f1ff-1f1e6.png", "c": "Flags", "n": "South Africa Flag", "s": "flag-za", "k": "flag-za "}, {"u": "🇿🇲", "i": "1f1ff-1f1f2.png", "c": "Flags", "n": "Zambia Flag", "s": "flag-zm", "k": "flag-zm "}, {"u": "🇿🇼", "i": "1f1ff-1f1fc.png", "c": "Flags", "n": "Zimbabwe Flag", "s": "flag-zw", "k": "flag-zw "}, {"u": "🎌", "i": "1f38c.png", "c": "Flags", "n": "Crossed Flags", "s": "crossed_flags", "k": "crossed_flags "}, {"u": "🏁", "i": "1f3c1.png", "c": "Flags", "n": "Chequered Flag", "s": "checkered_flag", "k": "checkered_flag "}, {"u": "🏳️‍🌈", "i": "1f3f3-fe0f-200d-1f308.png", "c": "Flags", "n": "Rainbow Flag", "s": "rainbow-flag", "k": "rainbow-flag "}, {"u": "🏳️‍⚧️", "i": "1f3f3-fe0f-200d-26a7-fe0f.png", "c": "Flags", "n": "Transgender Flag", "s": "transgender_flag", "k": "transgender_flag "}, {"u": "🏳️", "i": "1f3f3-fe0f.png", "c": "Flags", "n": "White Flag", "s": "waving_white_flag", "k": "waving_white_flag "}, {"u": "🏴‍☠️", "i": "1f3f4-200d-2620-fe0f.png", "c": "Flags", "n": "Pirate Flag", "s": "pirate_flag", "k": "pirate_flag "}, {"u": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "i": "1f3f4-e0067-e0062-e0065-e006e-e0067-e007f.png", "c": "Flags", "n": "England Flag", "s": "flag-england", "k": "flag-england "}, {"u": "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "i": "1f3f4-e0067-e0062-e0073-e0063-e0074-e007f.png", "c": "Flags", "n": "Scotland Flag", "s": "flag-scotland", "k": "flag-scotland "}, {"u": "🏴󠁧󠁢󠁷󠁬󠁳󠁿", "i": "1f3f4-e0067-e0062-e0077-e006c-e0073-e007f.png", "c": "Flags", "n": "Wales Flag", "s": "flag-wales", "k": "flag-wales "}, {"u": "🏴", "i": "1f3f4.png", "c": "Flags", "n": "Waving Black Flag", "s": "waving_black_flag", "k": "waving_black_flag "}, {"u": "🚩", "i": "1f6a9.png", "c": "Flags", "n": "Triangular Flag On Post", "s": "triangular_flag_on_post", "k": "triangular_flag_on_post "}];
+
+    // State
+    let currentEmoji = null;
+    let recentsList = JSON.parse(localStorage.getItem('ios_recent_emojis') || '[]');
+    let currentTheme = localStorage.getItem('ios_theme') || 'dark';
+
+    // Elements
+    const categoryGrid = document.getElementById('categoryGrid');
+    const searchInput = document.getElementById('searchInput');
+    const clearSearch = document.getElementById('clearSearch');
+    const searchMeta = document.getElementById('searchMeta');
+    const searchResultText = document.getElementById('searchResultText');
+    const emptyState = document.getElementById('emptyState');
+    const emojiModal = document.getElementById('emojiModal');
+    const modalImg = document.getElementById('modalImg');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalCode = document.getElementById('modalCode');
+    const modalCategory = document.getElementById('modalCategory');
+    const modalCharIcon = document.getElementById('modalCharIcon');
+    const iosToast = document.getElementById('iosToast');
+    const toastTitle = document.getElementById('toastTitle');
+    const toastDesc = document.getElementById('toastDesc');
+    const toastIcon = document.getElementById('toastIcon');
+    const stickerCanvas = document.getElementById('stickerCanvas');
+    const canvasPlaceholder = document.getElementById('canvasPlaceholder');
+
+    // Init Theme
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    updateThemeIcon();
+
+    function toggleTheme() {
+      currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      localStorage.setItem('ios_theme', currentTheme);
+      updateThemeIcon();
+    }
+
+    function updateThemeIcon() {
+      const icon = document.getElementById('themeIcon');
+      icon.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
+    }
+
+    function switchView(view) {
+      document.getElementById('tabCatalog').classList.toggle('active', view === 'catalog');
+      document.getElementById('tabStudio').classList.toggle('active', view === 'studio');
+      document.getElementById('catalogView').classList.toggle('active', view === 'catalog');
+      document.getElementById('studioView').classList.toggle('active', view === 'studio');
+      document.getElementById('searchWrap').style.display = view === 'catalog' ? 'block' : 'none';
+      document.getElementById('categoryNav').style.display = view === 'catalog' ? 'flex' : 'none';
+    }
+
+    function renderEmojis(list) {
+      categoryGrid.innerHTML = list.map(item => createEmojiCard(item)).join('');
+    }
+
+    function createEmojiCard(item) {
+      const imgUrl = EMOJI_CDN_BASE + item.i;
+      const safeTitle = item.n.replace(/"/g, '&quot;');
+      const payload = encodeURIComponent(JSON.stringify(item));
+      return `
+        <div class="emoji-card" title="${safeTitle}" onclick="handleEmojiClick('${payload}')">
+          <img src="${imgUrl}" alt="${safeTitle}" loading="lazy" width="40" height="40" />
+        </div>
+      `;
+    }
+
+    function handleEmojiClick(payload) {
+      const item = JSON.parse(decodeURIComponent(payload));
+      openEmojiModal(item);
+    }
+
+    // Search Logic
+    let searchTimeout = null;
+    searchInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim().toLowerCase();
+      clearSearch.classList.toggle('visible', val.length > 0);
+
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        performSearch(val);
+      }, 150);
+    });
+
+    function clearSearchInput() {
+      searchInput.value = '';
+      clearSearch.classList.remove('visible');
+      searchMeta.classList.remove('visible');
+      emptyState.style.display = 'none';
+      renderEmojis(EMOJI_DATA);
+    }
+
+    function performSearch(query) {
+      if (!query) {
+        clearSearchInput();
+        return;
+      }
+
+      searchMeta.classList.add('visible');
+
+      const matched = EMOJI_DATA.filter(e => {
+        return e.n.toLowerCase().includes(query) ||
+               e.s.toLowerCase().includes(query) ||
+               (e.k && e.k.toLowerCase().includes(query));
+      });
+
+      searchResultText.textContent = `"${query}" bo'yicha ${matched.length} ta stiker topildi`;
+
+      if (matched.length === 0) {
+        emptyState.style.display = 'block';
+        categoryGrid.innerHTML = '';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      renderEmojis(matched);
+    }
+
+    // Recents Management
+    function renderRecents() {
+      const secRecents = document.getElementById('section-recents');
+      const gridRecents = document.getElementById('grid-recents');
+      const filteredRecents = recentsList.filter(r => EMOJI_DATA.some(e => e.i === r.i));
+      if (!filteredRecents.length) {
+        secRecents.style.display = 'none';
+        return;
+      }
+
+      secRecents.style.display = 'block';
+      gridRecents.innerHTML = filteredRecents.map(item => createEmojiCard(item)).join('');
+    }
+
+    function addToRecents(emoji) {
+      recentsList = recentsList.filter(e => e.i !== emoji.i);
+      recentsList.unshift(emoji);
+      if (recentsList.length > 24) recentsList.pop();
+      localStorage.setItem('ios_recent_emojis', JSON.stringify(recentsList));
+      renderRecents();
+    }
+
+    function clearRecents() {
+      recentsList = [];
+      localStorage.removeItem('ios_recent_emojis');
+      renderRecents();
+      showToast("Tozalandi", "So'nggi emojilar ro'yxati tozalandi.");
+    }
+
+    // Action Modal
+    function openEmojiModal(emoji) {
+      currentEmoji = emoji;
+      modalImg.src = EMOJI_CDN_BASE + emoji.i;
+      modalTitle.textContent = emoji.n;
+      modalCode.textContent = emoji.s;
+      modalCharIcon.textContent = emoji.u;
+      emojiModal.classList.add('active');
+      addToRecents(emoji);
+    }
+
+    function closeModal(e) {
+      if (e && e.target !== emojiModal && !e.target.classList.contains('modal-close-btn')) return;
+      emojiModal.classList.remove('active');
+    }
+
+    async function copyModalUnicode() {
+      if (!currentEmoji) return;
+      try {
+        await navigator.clipboard.writeText(currentEmoji.u);
+        showToast("Emoji nusxalandi! 📋", currentEmoji.u + " matn ko'rinishida nusxalandi.", EMOJI_CDN_BASE + currentEmoji.i);
+        closeModal();
+      } catch (err) {
+        alert("Nusxalash imkoni bo'lmadi: " + err);
+      }
+    }
+
+    async function copyModalStickerPNG() {
+      if (!currentEmoji) return;
+      const imgUrl = EMOJI_CDN_BASE + currentEmoji.i;
+      showToast("Nusxalanmoqda...", "Stiker tayyorlanmoqda...", imgUrl);
+
+      try {
+        const response = await fetch(imgUrl);
+        const blob = await response.blob();
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        showToast("Stiker nusxalandi! 🖼️", "Telegram yoki boshqa ilovalarga rasm qilib joylang.", imgUrl);
+        closeModal();
+      } catch (err) {
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || 64;
+            canvas.height = img.naturalHeight || 64;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            canvas.toBlob(async (b) => {
+              if (b) {
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]);
+                showToast("Stiker nusxalandi! 🖼️", "Xotiraga rasm sifatida olindi.", imgUrl);
+                closeModal();
+              } else {
+                copyModalUnicode();
+              }
+            }, 'image/png');
+          };
+          img.src = imgUrl;
+        } catch(e2) {
+          copyModalUnicode();
+        }
+      }
+    }
+
+    function downloadModalPNG() {
+      if (!currentEmoji) return;
+      const imgUrl = EMOJI_CDN_BASE + currentEmoji.i;
+      const a = document.createElement('a');
+      a.href = imgUrl;
+      a.download = `ios_${currentEmoji.s}.png`;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast("Yuklab olinmoqda ⬇️", `${currentEmoji.n} shaffof PNG stiker saqlandi.`, imgUrl);
+      closeModal();
+    }
+
+    let toastTimeout = null;
+    function showToast(title, desc, iconUrl) {
+      toastTitle.textContent = title;
+      toastDesc.textContent = desc;
+      if (iconUrl) {
+        toastIcon.src = iconUrl;
+        toastIcon.style.display = 'block';
+      } else {
+        toastIcon.style.display = 'none';
+      }
+
+      iosToast.classList.add('show');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        iosToast.classList.remove('show');
+      }, 3200);
+    }
+
+    // Sticker Studio Canvas
+    let stickerIdCounter = 0;
+    let selectedSticker = null;
+
+    function addModalToCanvas() {
+      if (!currentEmoji) return;
+      closeModal();
+      switchView('studio');
+      addStickerToCanvas(currentEmoji);
+    }
+
+    function addStickerToCanvas(emoji) {
+      canvasPlaceholder.style.display = 'none';
+      const id = ++stickerIdCounter;
+      const el = document.createElement('div');
+      el.className = 'canvas-sticker selected';
+      el.id = 'stk-' + id;
+      el.style.width = '100px';
+      el.style.height = '100px';
+      el.style.left = (stickerCanvas.clientWidth / 2 - 50 + (Math.random() * 40 - 20)) + 'px';
+      el.style.top = (stickerCanvas.clientHeight / 2 - 50 + (Math.random() * 40 - 20)) + 'px';
+      el.dataset.rotation = '0';
+      el.dataset.scale = '1';
+
+      el.innerHTML = `
+        <div class="sticker-controls">
+          <button class="ctrl-btn" onclick="rotateSticker(${id}, -15)" title="Chapga burish">↺</button>
+          <button class="ctrl-btn" onclick="rotateSticker(${id}, 15)" title="O'ngga burish">↻</button>
+          <button class="ctrl-btn" onclick="scaleSticker(${id}, 1.2)" title="Kattalashtirish">+</button>
+          <button class="ctrl-btn" onclick="scaleSticker(${id}, 0.8)" title="Kichiklashtirish">-</button>
+          <button class="ctrl-btn" style="color:#FF453A;" onclick="deleteSticker(${id})" title="O'chirish">&times;</button>
+        </div>
+        <img src="${EMOJI_CDN_BASE + emoji.i}" alt="" crossOrigin="anonymous" />
+      `;
+
+      stickerCanvas.appendChild(el);
+      selectSticker(el);
+      initDrag(el);
+      showToast("Stiker qo'shildi! 🎨", "Surish va o'lchamini o'zgartirishingiz mumkin.", EMOJI_CDN_BASE + emoji.i);
+    }
+
+    function selectSticker(el) {
+      document.querySelectorAll('.canvas-sticker').forEach(s => s.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedSticker = el;
+    }
+
+    function deselectStickers(e) {
+      if (e.target === stickerCanvas || e.target === canvasPlaceholder) {
+        document.querySelectorAll('.canvas-sticker').forEach(s => s.classList.remove('selected'));
+        selectedSticker = null;
+      }
+    }
+
+    function initDrag(el) {
+      let isDragging = false;
+      let startX, startY, initialLeft, initialTop;
+
+      const onStart = (e) => {
+        if (e.target.closest('.sticker-controls')) return;
+        selectSticker(el);
+        isDragging = true;
+        const pageX = e.touches ? e.touches[0].pageX : e.pageX;
+        const pageY = e.touches ? e.touches[0].pageY : e.pageY;
+        startX = pageX;
+        startY = pageY;
+        initialLeft = parseFloat(el.style.left) || 0;
+        initialTop = parseFloat(el.style.top) || 0;
+      };
+
+      const onMove = (e) => {
+        if (!isDragging) return;
+        const pageX = e.touches ? e.touches[0].pageX : e.pageX;
+        const pageY = e.touches ? e.touches[0].pageY : e.pageY;
+        const dx = pageX - startX;
+        const dy = pageY - startY;
+        el.style.left = (initialLeft + dx) + 'px';
+        el.style.top = (initialTop + dy) + 'px';
+      };
+
+      const onEnd = () => {
+        isDragging = false;
+      };
+
+      el.addEventListener('mousedown', onStart);
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onEnd);
+
+      el.addEventListener('touchstart', onStart, { passive: true });
+      window.addEventListener('touchmove', onMove, { passive: true });
+      window.addEventListener('touchend', onEnd);
+    }
+
+    function rotateSticker(id, deg) {
+      const el = document.getElementById('stk-' + id);
+      if (!el) return;
+      let rot = (parseFloat(el.dataset.rotation) || 0) + deg;
+      el.dataset.rotation = rot;
+      applyTransform(el);
+    }
+
+    function scaleSticker(id, factor) {
+      const el = document.getElementById('stk-' + id);
+      if (!el) return;
+      let scale = (parseFloat(el.dataset.scale) || 1) * factor;
+      scale = Math.max(0.4, Math.min(scale, 3.5));
+      el.dataset.scale = scale;
+      applyTransform(el);
+    }
+
+    function applyTransform(el) {
+      const rot = el.dataset.rotation || 0;
+      const scale = el.dataset.scale || 1;
+      const img = el.querySelector('img');
+      if (img) {
+        img.style.transform = `rotate(${rot}deg) scale(${scale})`;
+      }
+    }
+
+    function deleteSticker(id) {
+      const el = document.getElementById('stk-' + id);
+      if (el) {
+        el.remove();
+        if (!stickerCanvas.querySelector('.canvas-sticker')) {
+          canvasPlaceholder.style.display = 'flex';
+        }
+      }
+    }
+
+    function setCanvasBg(bg, el) {
+      document.querySelectorAll('.bg-circle').forEach(c => c.classList.remove('selected'));
+      if (el) el.classList.add('selected');
+      stickerCanvas.style.background = bg;
+    }
+
+    function clearCanvas() {
+      const stickers = stickerCanvas.querySelectorAll('.canvas-sticker');
+      stickers.forEach(s => s.remove());
+      canvasPlaceholder.style.display = 'flex';
+      showToast("Tozalandi", "Doskadagi barcha stikerlar o'chirildi.");
+    }
+
+    async function exportCanvasPNG() {
+      const stickers = stickerCanvas.querySelectorAll('.canvas-sticker');
+      if (!stickers.length) {
+        alert("Avval doskaga stiker qo'shing!");
+        return;
+      }
+
+      document.querySelectorAll('.canvas-sticker').forEach(s => s.classList.remove('selected'));
+
+      const canvas = document.createElement('canvas');
+      const rect = stickerCanvas.getBoundingClientRect();
+      canvas.width = rect.width * 2;
+      canvas.height = rect.height * 2;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(2, 2);
+
+      const bg = stickerCanvas.style.background;
+      if (bg && bg !== 'transparent' && !bg.includes('rgba(0, 0, 0, 0)')) {
+        if (bg.includes('linear-gradient')) {
+          const grad = ctx.createLinearGradient(0, 0, rect.width, rect.height);
+          grad.addColorStop(0, '#0A84FF');
+          grad.addColorStop(1, '#5E5CE6');
+          ctx.fillStyle = grad;
+        } else {
+          ctx.fillStyle = bg;
+        }
+        ctx.fillRect(0, 0, rect.width, rect.height);
+      }
+
+      for (const st of stickers) {
+        const img = st.querySelector('img');
+        const sRect = st.getBoundingClientRect();
+        const x = sRect.left - rect.left;
+        const y = sRect.top - rect.top;
+        const w = sRect.width;
+        const h = sRect.height;
+        const rot = (parseFloat(st.dataset.rotation) || 0) * Math.PI / 180;
+        const scale = parseFloat(st.dataset.scale) || 1;
+
+        ctx.save();
+        ctx.translate(x + w / 2, y + h / 2);
+        ctx.rotate(rot);
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        ctx.restore();
+      }
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `ios_custom_sticker_${Date.now()}.png`;
+          a.click();
+          showToast("Muvaffaqiyatli saqlandi! ⬇️", "Siz yaratgan stiker PNG formatida yuklandi.");
+        }
+      }, 'image/png');
+    }
+
+    // Boot
+    renderEmojis(EMOJI_DATA);
+    renderRecents();
+  </script>
+</body>
+</html>
