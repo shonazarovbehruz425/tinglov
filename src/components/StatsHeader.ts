@@ -76,21 +76,9 @@ export class StatsHeader {
           </button>
         </div>
 
-        <!-- Center: Search Bar -->
+        <!-- Center: Search Bar Skeleton -->
         <div class="header-center-search" id="headerCenterSearch">
-          <div class="header-search-box">
-            <input
-              type="text"
-              class="header-search-input"
-              id="topHeaderSearchInput"
-              placeholder="${t.searchPlaceholder}"
-              autocomplete="off"
-              disabled
-            />
-            <button class="header-search-btn" id="topHeaderSearchBtn" title="${t.searchPlaceholder}" disabled>
-              <i class="ph ph-magnifying-glass"></i>
-            </button>
-          </div>
+          <div class="header-search-box header-skel-search skeleton-shimmer"></div>
         </div>
 
         <!-- Right: Stats & Profile Skeleton -->
@@ -115,7 +103,6 @@ export class StatsHeader {
               <div class="header-skel-name-line skeleton-shimmer"></div>
               <div class="header-skel-handle-line skeleton-shimmer"></div>
             </div>
-            <i class="ph ph-caret-down user-dropdown-caret" style="opacity: 0.25;"></i>
           </div>
         </div>
       </header>

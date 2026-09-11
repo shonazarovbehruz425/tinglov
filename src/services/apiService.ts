@@ -220,7 +220,7 @@ class ApiService {
 
   public async waitForAuth(): Promise<MeResponse | null> {
     if (!this.authReadyPromise) {
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000));
       this.authReadyPromise = Promise.race([this.getMe(), timeoutPromise]);
     }
     return this.authReadyPromise;
@@ -676,7 +676,7 @@ class ApiService {
     // 1. Check backend HttpOnly cookie session (cross-tab & persistent across tab closes)
     try {
       const abortCtrl = new AbortController();
-      const timeoutId = setTimeout(() => abortCtrl.abort(), 3000);
+      const timeoutId = setTimeout(() => abortCtrl.abort(), 2000);
       const res = await fetch('/api/auth/me', {
         method: 'GET',
         credentials: 'include',

@@ -12885,20 +12885,30 @@ body:not(.in-admin-mode) .app-skeleton-box {
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.03) 0%,
-    rgba(255, 255, 255, 0.08) 50%,
-    rgba(255, 255, 255, 0.03) 100%
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.13) 50%,
+    rgba(255, 255, 255, 0.05) 100%
   ) !important;
   background-size: 200% 100% !important;
-  animation: tinglovShimmer 1.5s infinite ease-in-out !important;
+  animation: tinglovShimmer 1.4s infinite ease-in-out !important;
 }
 
 [data-theme="light"] .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(0, 0, 0, 0.04) 0%,
-    rgba(0, 0, 0, 0.09) 50%,
-    rgba(0, 0, 0, 0.04) 100%
+    rgba(0, 0, 0, 0.05) 0%,
+    rgba(0, 0, 0, 0.12) 50%,
+    rgba(0, 0, 0, 0.05) 100%
+  ) !important;
+  background-size: 200% 100% !important;
+}
+
+[data-theme="oled"] .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.16) 50%,
+    rgba(255, 255, 255, 0.06) 100%
   ) !important;
   background-size: 200% 100% !important;
 }
@@ -12912,8 +12922,20 @@ body:not(.in-admin-mode) .app-skeleton-box {
   pointer-events: auto;
 }
 
+.header-skel-search {
+  width: 100% !important;
+  height: 40px !important;
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-sizing: border-box !important;
+}
+
+[data-theme="light"] .header-skel-search {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
 .header-skel-pill {
-  width: 124px !important;
+  width: 120px !important;
   height: 38px !important;
   border-radius: var(--radius-pill) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -12939,7 +12961,7 @@ body:not(.in-admin-mode) .app-skeleton-box {
 .header-skel-round {
   width: 40px !important;
   height: 40px !important;
-  border-radius: 50% !important;
+  border-radius: var(--radius-pill) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   flex-shrink: 0;
 }
@@ -12963,9 +12985,9 @@ body:not(.in-admin-mode) .app-skeleton-box {
 }
 
 .header-skel-avatar {
-  width: 38px !important;
-  height: 38px !important;
-  border-radius: 50% !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: var(--radius-pill) !important;
   flex-shrink: 0;
 }
 

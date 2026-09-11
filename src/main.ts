@@ -685,21 +685,53 @@ class MovieListenApp implements RouterDelegate {
     }
 
     // 2. Himoyalangan yo'llar (/dashboard, /library, /practice, /profile, /settings):
-    // Serverdan eng so'nggi ma'lumotlar olinayotganda toza skeleton ko'rsatamiz:
+    // Stale-While-Revalidate (SWR): Agar keshda foydalanuvchi ma'lumoti bo'lsa,
+    // sahifani reload qilganda 0ms ichida haqiqiy ma'lumotlarni ko'rsatamiz (soxta/kechikuvchi skeleton ko'rsatmasdan).
+    // Serverdan eng so'nggi ma'lumotlar fonda yuklanadi va jim yangilanadi.
+    const hasCachedAuth = apiService.isAuthenticated();
+    const hasCachedScenes = storageService.getAllScenes().length > 0;
+
     if (rawPath === '/dashboard' || rawPath === '/library' || rawHash === 'dashboard' || rawHash === 'library') {
-      this.switchView('library', true);
-      this.setLibraryBusyState(true);
-      this.statsHeader.renderSkeleton();
-      this.levelSelector.renderSkeleton();
+      this.switchView('library', false);
+      if (hasCachedAuth) {
+        this.statsHeader.update();
+      } else {
+        this.statsHeader.renderSkeleton();
+      }
+
+      if (hasCachedScenes) {
+        this.levelSelector.render();
+        this.setLibraryBusyState(false);
+      } else {
+        this.levelSelector.renderSkeleton();
+        this.setLibraryBusyState(true);
+      }
     } else if (rawPath === '/profile' || rawHash === 'profile') {
-      this.switchView('profile', true);
-      this.statsHeader.renderSkeleton();
+      this.switchView('profile', false);
+      if (hasCachedAuth) {
+        this.statsHeader.update();
+        this.profileView.render();
+      } else {
+        this.statsHeader.renderSkeleton();
+      }
     } else if (rawPath === '/settings' || rawHash === 'settings') {
-      this.switchView('settings', true);
-      this.statsHeader.renderSkeleton();
+      this.switchView('settings', false);
+      if (hasCachedAuth) {
+        this.statsHeader.update();
+        this.settingsView.render();
+      } else {
+        this.statsHeader.renderSkeleton();
+      }
+    } else if (rawPath === '/practice' || rawHash === 'practice') {
+      if (hasCachedAuth) {
+        this.statsHeader.update();
+      } else {
+        this.statsHeader.renderSkeleton();
+      }
     }
 
     try {
+      // Serverdagi eng so'nggi real ma'lumotlarni fonda revalidatsiya qilamiz:
       const [authResult] = await Promise.allSettled([
         apiService.waitForAuth(),
         this.loadServerScenes(),
