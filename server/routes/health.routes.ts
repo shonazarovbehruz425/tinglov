@@ -1,6 +1,5 @@
-// MIGRATION: server/index.ts dagi health/ping endpoint'lari (135-176 qatorlar)
-// shu faylga ko'chirildi. Qadam: index.ts da eski alohida app.get/.head
-// qatorlarini o'chirib, `app.use(healthRoutes)` bilan ulash.
+// server/index.ts dagi health/ping endpoint'lari shu faylga ko'chirildi.
+// index.ts da `app.use(healthRoutes)` bilan ulanadi.
 // MUHIM: bu router `app.use('/api', apiLimiter)` DAN OLDIN ulanishi kerak
 // (UptimeRobot / uptime monitorlari hech qachon 429 olmasligi uchun).
 

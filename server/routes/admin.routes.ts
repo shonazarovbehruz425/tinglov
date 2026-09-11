@@ -1,11 +1,15 @@
-// MIGRATION: server/index.ts dagi Admin endpoint'lari (766-1011 qatorlar)
-// shu faylga ko'chirildi. Qadam: index.ts da eski app.get/post/delete
-// qatorlarini o'chirib, `app.use(adminRoutes)` bilan ulash.
-// (Route'lar to'liq yo'l bilan berilgan: /api/admin/*, /api/scenes,
-//  /api/admin/config — shuning uchun mount prefix kerak emas.)
+// server/index.ts dagi Admin endpoint'lari shu faylga ko'chirildi. Route'lar
+// to'liq yo'l bilan berilgan — index.ts da PREFIXSIZ ulanadi: app.use(adminRoutes);
+// (/api/admin/* va public /api/admin/config + /api/scenes shu yerda — index.ts
+//  da dublikat nusxa qoldirilmaydi.)
+// ADMIN_PATH / CLOUDFLARE_R2_URL va boot-time admin credential guard ham shu
+// faylda YAGONA manba — index.ts (static SPA inject + startup log) bu
+// eksportlarni import qiladi.
+// Middleware tartibi kanonik index.ts bilan AYNAN bir xil:
+//   login → adminLoginLimiter, requireCsrf; qolgan admin route'lari → requireAdminAuth, requireCsrf
 
 import { Router, type Request, type Response } from 'express';
-import crypto, { randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
   generateAdminToken,
@@ -36,11 +40,11 @@ function normalizeRoutePath(rawPath: string | undefined): string {
   return p;
 }
 
-const ADMIN_PATH = normalizeRoutePath(process.env.ADMIN_PATH || process.env.VITE_ADMIN_PATH || '/admin');
+export const ADMIN_PATH = normalizeRoutePath(process.env.ADMIN_PATH || process.env.VITE_ADMIN_PATH || '/admin');
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
-const CLOUDFLARE_R2_URL = (process.env.CLOUDFLARE_R2_URL || process.env.VITE_CLOUDFLARE_R2_URL || '').trim().replace(/\/+$/, '');
+export const CLOUDFLARE_R2_URL = (process.env.CLOUDFLARE_R2_URL || process.env.VITE_CLOUDFLARE_R2_URL || '').trim().replace(/\/+$/, '');
 
 // Boot-time admin credential validation (no hardcoded fallbacks)
 // Bu fayl import qilinganida (server boot) bajariladi — index.ts patterni bilan aynan bir xil.

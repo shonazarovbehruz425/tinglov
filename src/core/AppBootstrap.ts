@@ -37,6 +37,18 @@ export class AppBootstrap {
     this.router.start();
   }
 
+  /**
+   * Wire the plumbing without triggering an immediate synchronous route
+   * resolution. `session.init()` installs the single auth listener and
+   * `router.attachHistoryListeners()` binds popstate/hashchange, but the very
+   * first route is left to the caller — so the app can run its two-phase
+   * (waitForAuth) initial resolution before anything is rendered.
+   */
+  public attach(): void {
+    this.session.init();
+    this.router.attachHistoryListeners();
+  }
+
   public getSnapshot() {
     return this.session.getSnapshot();
   }

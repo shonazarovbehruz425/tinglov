@@ -8,7 +8,7 @@
 
 | # | Himoya | Maqsad | Qayerda amalga oshirilgan | Kalit parametrlar |
 |---|--------|--------|---------------------------|-------------------|
-| 1 | **Content-Security-Policy (CSP)** | XSS, injection, clickjacking, data exfiltration ni bloklash | `index.html` `<meta http-equiv="Content-Security-Policy">` + `server/index.ts` `Content-Security-Policy` header | `default-src 'self'`; `script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net`; `object-src 'none'`; `base-uri 'self'`; `frame-ancestors 'none'` |
+| 1 | **Content-Security-Policy (CSP)** | XSS, injection, clickjacking, data exfiltration ni bloklash | `shared/securityHeaders.ts` kanonik manbadan 3 nusxa (byte-identical): `index.html` `<meta http-equiv="Content-Security-Policy">` + `vite.config.ts` + `server/index.ts` middleware | `default-src 'self'`; `script-src 'self' https://unpkg.com https://cdn.jsdelivr.net` (`'unsafe-inline'` yo‘q — inline scriptlar `public/js/boot.js` da); `object-src 'none'`; `base-uri 'self'`; `frame-ancestors 'none'` |
 | 2 | **CSRF (Cross-Site Request Forgery)** | Begona saytdan POST/DELETE ni bloklash | `server/index.ts` — `XSRF-TOKEN` cookie + `x-csrf-token` / `x-xsrf-token` header | `httpOnly:false` (JS o‘qiydi), `SameSite:strict`, 24 soat TTL; Bearer token bo‘lsa CSRF tekshirilmaydi (browser CSRF ga immunitet) |
 | 3 | **JWT Autentifikatsiya** | Foydalanuvchi/admin sessiyasi | `server/auth.ts` — `jsonwebtoken` HS256 | `JWT_SECRET` ≥32 belgi (prod da majburiy), `token` cookie `httpOnly:true, SameSite:lax, Secure:prod, 30d`, user JWT `7d`, admin JWT `24h` |
 | 4 | **CAPTCHA (HMAC)** | Brute-force ni sekinlashtirish | `server/rateLimiter.ts` — `crypto.createHmac('sha256', CAPTCHA_SECRET)` | Savol `3-14 ± 1-10`, token `base64url(payload).signature`, 5 daq TTL, **single-use** (replay blok), `timingSafeEqual` |
@@ -16,8 +16,8 @@
 | 6 | **HSTS + Security Headers** | MITM, MIME sniffing, clickjacking, referrer leak | `server/index.ts` middleware + `vercel.json` + `vite.config.ts` | `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(self), ...` |
 | 7 | **Bcrypt Parol Xeshlash** | Parol o‘g‘irlanishida himoya | `server/auth.ts` — `bcryptjs` 10 rounds | Hech qachon plain saqlanmaydi, `password_hash` maydoni `sanitizeUser` da filtrlanadi |
 | 8 | **Validatsiya & Sanitizatsiya** | Injection, XSS, noto‘g‘ri ma’lumot | `src/utils/validation.ts` (Zod), `src/utils/sanitize.ts` (DOMPurify) | `registerSchema`/`loginSchema` strict, `escapeHtml` render da, `sanitizeLastPositions` (200 key limit, 120 char key) |
-| 9 | **CORS & Trust Proxy** | Noto‘g‘ri origin / IP spoofing | `server/index.ts` — `app.set('trust proxy', 1)`, `cors({origin:true, credentials:true})` | `req.ip` — eng o‘ng ishonchli hop, `X-Forwarded-For` chap qismi spoof qilinmaydi |
-| 10 | **Anti-Clickjacking** | Iframe ichida o‘g‘irlash | `index.html` style `body{display:none}` + `if(self===top)` framebuster | `X-Frame-Options: DENY` + `frame-ancestors 'none'` bilan defense-in-depth |
+| 9 | **CORS & Trust Proxy** | Noto‘g‘ri origin / IP spoofing | `server/index.ts` — `app.set('trust proxy', 1)`, CORS `ALLOWED_ORIGINS` env allowlist funksiyasi (`ALLOWED_ORIGINS.includes(origin)`) + `credentials:true` | `req.ip` — eng o‘ng ishonchli hop, `X-Forwarded-For` chap qismi spoof qilinmaydi |
+| 10 | **Anti-Clickjacking** | Iframe ichida o‘g‘irlash | `index.html` pre-paint `<style>` `body{display:none}` + `public/js/boot.js` (sinxron head script) `if(self===top)` framebuster | `X-Frame-Options: DENY` + `frame-ancestors 'none'` bilan defense-in-depth |
 
 ---
 
@@ -25,10 +25,10 @@
 
 ### 2.1 CSP (Content Security Policy)
 
-**Header (server):**
+**Header (server)** — kanonik manba: `shared/securityHeaders.ts`; `index.html` `<meta>`, `vite.config.ts` va server middleware shu fayldan byte-identical 3 nusxa oladi:
 ```
 default-src 'self';
-script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net;
+script-src 'self' https://unpkg.com https://cdn.jsdelivr.net;
 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com;
 font-src 'self' data: https://fonts.gstatic.com https://unpkg.com;
 img-src 'self' data: https: blob: https://*.r2.dev https://*.r2.cloudflarestorage.com;
@@ -40,7 +40,8 @@ object-src 'none';
 base-uri 'self';
 ```
 
-- `unsafe-inline` — Vite inline style/script uchun zarur, lekin `default-src 'self'` bilan cheklangan.
+- `script-src`da `unsafe-inline` YO‘Q — inline scriptlar `public/js/boot.js` ga ko‘chirilgan (sinxron head script), tashqi scriptlar faqat `unpkg.com` / `cdn.jsdelivr.net` allowlistidan.
+- `style-src`da `unsafe-inline` hujjatlashtirilgan sabab bilan QOLGAN: pre-paint anti-clickjack `<style>` + `innerHTML` style attributelari + Vite dev CSS inject; `default-src 'self'` bilan cheklangan.
 - `object-src 'none'` — Flash/Java applet blok.
 - `base-uri 'self'` — `<base>` injection blok.
 

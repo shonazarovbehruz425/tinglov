@@ -28,21 +28,29 @@ import { AdminView } from './components/AdminView';
 import { onboardingStepper } from './components/OnboardingStepper';
 import { initCursorGlow } from './utils/cursorGlow';
 import { escapeHtml, isValidYouTubeVideoId } from './utils/sanitize';
+import { AppRouter, type RouterDelegate, type RouteName } from './core/Router';
+import { sessionManager } from './core/SessionManager';
+import { AppBootstrap } from './core/AppBootstrap';
 
 type AppViewMode = 'landing' | 'library' | 'practice' | 'profile' | 'settings' | 'auth' | 'admin';
 
-class MovieListenApp {
+class MovieListenApp implements RouterDelegate {
   private currentScene: Scene | null = null;
   private currentSentenceIndex: number = 0;
   private currentView: AppViewMode = 'landing';
   private sessionAccuracies: number[] = [];
   private sessionWpms: number[] = [];
   private sceneStartTime: number = Date.now();
-  private isAuthReady: boolean = false;
   private advanceTimeoutId: number | null = null;
   private autoPlayTimeoutId: number | null = null;
   /** Element that had focus before a modal opened — restored on close (a11y). */
   private modalTriggerFocus: HTMLElement | null = null;
+
+  // Routing + session plumbing (delegated to src/core scaffold).
+  // AppRouter is the routing engine; MovieListenApp is its RouterDelegate.
+  // sessionManager is the single source of truth for auth-readiness.
+  private router!: AppRouter;
+  private bootstrap!: AppBootstrap;
 
   // UI Components
   private statsHeader!: StatsHeader;
@@ -67,7 +75,7 @@ class MovieListenApp {
     this.initDOM();
     this.initComponents();
     this.bindKeyboardShortcuts();
-    this.initRouter();
+    this.wireRouter();
     this.initA11yEnhancements();
 
     // Initialize cursor-position tracking glow for CTA buttons
@@ -420,8 +428,12 @@ class MovieListenApp {
       }
     }).catch(() => {});
 
-    // React to auth state changes (e.g. sign out or Google OAuth sign in)
-    apiService.onAuthChange((user) => {
+    // React to auth state changes (e.g. sign out or Google OAuth sign in).
+    // Consolidated onto sessionManager (the single auth-state source): this is the
+    // ONLY change listener now — SessionManager.init() holds the single
+    // apiService.onAuthChange subscription and forwards here. `{ immediate: false }`
+    // preserves the previous onAuthChange semantics (react to changes, not on-register).
+    sessionManager.subscribe((user) => {
       if (!user) {
         // If user signed out while in protected app views, return to landing page
         if (this.currentView !== 'landing' && this.currentView !== 'auth' && this.currentView !== 'admin') {
@@ -455,21 +467,21 @@ class MovieListenApp {
         // If the user refreshed while on /practice, /profile, or /settings, keep them on that page!
         if (this.currentView === 'auth' || (hadOAuthToken && (isAuthOrLanding || this.currentView === 'landing'))) {
           if (!isAuthOrLanding && (rawPath === '/practice' || rawPath.startsWith('/practice/') || rawPath === '/profile' || rawPath === '/settings')) {
-            this.routeCurrentUrl(false);
+            this.router.resolve(false);
           } else {
             this.showLibrary(true);
           }
         }
       }
-    });
+    }, { immediate: false });
 
-    // NOTE: initRouter() is invoked exactly once from the constructor.
-    // Registering it here previously duplicated the popstate/hashchange
-    // listeners and ran the initial routing twice.
+    // NOTE: routing/listeners are wired exactly once via wireRouter() from the
+    // constructor (AppRouter.attachHistoryListeners() is itself idempotent), so the
+    // popstate/hashchange handlers are never registered twice.
   }
 
   private checkAndEnforceAuth(): boolean {
-    if (this.isAuthReady && !apiService.isAuthenticated()) {
+    if (sessionManager.isReady() && !apiService.isAuthenticated()) {
       this.showAuthPage('login', false);
       return false;
     }
@@ -611,33 +623,37 @@ class MovieListenApp {
     }
   }
 
-  private initRouter(): void {
-    window.addEventListener('popstate', () => {
-      this.routeCurrentUrl(false);
+  private wireRouter(): void {
+    // AppRouter is now the single routing engine. It owns route analysis and the
+    // popstate/hashchange listeners; MovieListenApp only implements RouterDelegate.
+    // The auth-readiness flag lives in sessionManager (single source of truth).
+    this.router = new AppRouter({ isAuthReady: () => sessionManager.isReady() });
+    this.bootstrap = new AppBootstrap({
+      router: this.router,
+      session: sessionManager,
+      delegate: this,
     });
+    // Bind listeners + start the ONE auth subscription (SessionManager.init),
+    // but defer the first route so routeInitialUrl() can run the two-phase
+    // waitForAuth bootstrap before anything renders.
+    this.bootstrap.attach();
 
-    window.addEventListener('hashchange', () => {
-      this.routeCurrentUrl(false);
-    });
-
-    // Handle initial route on startup with asynchronous auth restoration
+    // Handle initial route on startup with asynchronous auth restoration.
     this.routeInitialUrl();
   }
 
   private async routeInitialUrl(): Promise<void> {
     const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
     const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-    const adminPath = apiService.getAdminRoutePath();
-    const adminHash = adminPath.replace(/^\//, '').toLowerCase();
-    const isPublic = rawPath === '/' || rawPath === '/login' || rawPath === '/register' || rawPath === adminPath || rawHash === 'landing' || rawHash === 'login' || rawHash === 'register' || rawHash === adminHash;
-
-    if (isPublic) {
+    // isPublic is now evaluated by the router with byte-for-byte identical logic,
+    // keeping the rawPath/rawHash locals for the branch bodies below.
+    if (this.router.isPublicBootRoute()) {
       // 1. If public route (landing, login, register, admin), route immediately
-      this.routeCurrentUrl(false);
+      this.router.resolve(false);
 
       // Check session in background to update header stats if user is already logged in
       apiService.waitForAuth().then((data) => {
-        this.isAuthReady = true;
+        sessionManager.markReady();
         if (data) {
           storageService.syncWithServer(data);
           this.statsHeader.update();
@@ -647,7 +663,7 @@ class MovieListenApp {
           }
         }
       }).catch(() => {
-        this.isAuthReady = true;
+        sessionManager.markReady();
       });
       return;
     }
@@ -655,8 +671,8 @@ class MovieListenApp {
     // 2. Protected routes (/dashboard, /library, /practice, /profile, /settings):
     // If we already have persistent cached user credentials, render immediately (0ms latency!)
     if (apiService.isAuthenticated()) {
-      this.isAuthReady = true;
-      this.routeCurrentUrl(false);
+      sessionManager.markReady();
+      this.router.resolve(false);
 
       // Always fetch freshest data from server on reload and update UI smoothly
       apiService.waitForAuth().then((data) => {
@@ -682,125 +698,103 @@ class MovieListenApp {
 
     try {
       const data = await apiService.waitForAuth();
-      this.isAuthReady = true;
+      sessionManager.markReady();
 
       if (data || apiService.isAuthenticated()) {
         if (data) {
           storageService.syncWithServer(data);
         }
         this.statsHeader.update();
-        this.routeCurrentUrl(false);
+        this.router.resolve(false);
       } else {
         // Genuinely not authenticated, redirect to login
         this.checkAndEnforceAuth();
       }
     } catch {
-      this.isAuthReady = true;
+      sessionManager.markReady();
       if (apiService.isAuthenticated()) {
-        this.routeCurrentUrl(false);
+        this.router.resolve(false);
       } else {
         this.checkAndEnforceAuth();
       }
     }
   }
 
-  private routeCurrentUrl(pushHistory: boolean = false): void {
-    // 0. Clean up OAuth hash (#access_token=...) from address bar so URL is always clean!
-    if (window.location.hash.includes('access_token=') || window.location.hash.includes('error=')) {
-      window.history.replaceState(null, '', window.location.pathname || '/');
-    }
+  // ---------------------------------------------------------------------------
+  // RouterDelegate implementation.
+  // AppRouter performs route analysis + the auth guard (honoring the two-phase
+  // waitForAuth readiness tracked by sessionManager); these hooks only render the
+  // matching view via the pre-existing showX methods and always forward the
+  // `push` (history) flag so push-vs-replace behaviour is unchanged.
+  // ---------------------------------------------------------------------------
 
-    // Handle OAuth error params if returned by Supabase or Google (e.g. bad_oauth_state)
+  public onLanding(push: boolean): void {
+    this.showLandingPage(push);
+  }
+
+  public onLogin(push: boolean): void {
+    this.showAuthPage('login', push);
+  }
+
+  public onRegister(push: boolean): void {
+    this.showAuthPage('register', push);
+  }
+
+  public onDashboard(push: boolean): void {
+    this.showLibrary(push);
+  }
+
+  public onLibrary(push: boolean): void {
+    this.showLibrary(push);
+  }
+
+  public onProfile(push: boolean): void {
+    this.showProfilePage(push);
+  }
+
+  public onSettings(push: boolean): void {
+    this.showSettingsPage(push);
+  }
+
+  public onAdmin(push: boolean): void {
+    this.showAdminPage(push);
+  }
+
+  public onUnauthorized(_target: RouteName): void {
+    // Preserve checkAndEnforceAuth(): send the visitor to login WITHOUT pushing a
+    // new history entry (the original code redirected with pushHistory = false).
+    this.showAuthPage('login', false);
+  }
+
+  public onAuthError(message: string): void {
+    // OAuth error params: open the login page (no history push) then surface the
+    // error — identical to the previous in-router special case that lived here.
+    this.showAuthPage('login', false);
+    setTimeout(() => {
+      this.authView.showAlert(`Google orqali kirishda xatolik: ${message}`, 'error');
+    }, 150);
+  }
+
+  public onPractice(push: boolean): void {
+    // Auth is already enforced by AppRouter before this runs. Reproduce the old
+    // /practice branch exactly: resolve ?scene= or /practice/:id (fallback: first
+    // scene) and carry any incoming friend-challenge payload into startScene().
     const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.has('error') || searchParams.has('error_description') || searchParams.has('error_code')) {
-      const errorMsg = searchParams.get('error_description') || searchParams.get('error') || 'Kirishda xatolik yuz berdi';
-      window.history.replaceState(null, '', '/login');
-      this.showAuthPage('login', false);
-      setTimeout(() => {
-        this.authView.showAlert(`Google orqali kirishda xatolik: ${decodeURIComponent(errorMsg).replace(/\+/g, ' ')}`, 'error');
-      }, 150);
-      return;
-    }
-
     const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
-    const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-
-    // 0. Dynamic Admin Route Check (configured via Render.com env: ADMIN_PATH or VITE_ADMIN_PATH)
-    const adminPath = apiService.getAdminRoutePath();
-    const normalizedAdminPath = adminPath.startsWith('/') ? adminPath : '/' + adminPath;
-    const adminHash = normalizedAdminPath.replace(/^\//, '').toLowerCase();
-    if (rawPath === normalizedAdminPath || rawHash === adminHash) {
-      this.showAdminPage(pushHistory);
+    let sceneId = searchParams.get('scene');
+    if (!sceneId && rawPath.startsWith('/practice/')) {
+      sceneId = decodeURIComponent(rawPath.replace(/^\/practice\//, '').split('/')[0]);
+    }
+    const allScenes = storageService.getAllScenes();
+    const targetScene = (sceneId ? allScenes.find((s) => s.id === sceneId) : null) || allScenes[0];
+    if (targetScene) {
+      const challengePayload = storageService.parseChallengePayload(searchParams);
+      this.startScene(targetScene, 0, push, challengePayload);
       return;
     }
-
-    // 1. Explicit Auth routes (/login, /register, /auth)
-    if (rawPath === '/login' || rawHash === 'login' || rawPath === '/auth') {
-      if (apiService.isAuthenticated()) {
-        this.showLibrary(pushHistory);
-        return;
-      }
-      this.showAuthPage('login', pushHistory);
-      return;
-    }
-    if (rawPath === '/register' || rawHash === 'register') {
-      if (apiService.isAuthenticated()) {
-        this.showLibrary(pushHistory);
-        return;
-      }
-      this.showAuthPage('register', pushHistory);
-      return;
-    }
-
-    // 2. Landing Page at Root (/)
-    if (rawPath === '/' && (!rawHash || rawHash === 'landing')) {
-      this.showLandingPage(pushHistory);
-      return;
-    }
-
-    // 3. Settings View (/settings)
-    if (rawPath === '/settings' || rawHash === 'settings') {
-      if (!this.checkAndEnforceAuth()) return;
-      this.showSettingsPage(pushHistory);
-      return;
-    }
-
-    // 4. Profile View (/profile)
-    if (rawPath === '/profile' || rawHash === 'profile') {
-      if (!this.checkAndEnforceAuth()) return;
-      this.showProfilePage(pushHistory);
-      return;
-    }
-
-    // 5. Practice View (/practice?scene=... or /practice/...)
-    if (rawPath === '/practice' || rawPath.startsWith('/practice/') || rawHash.startsWith('practice')) {
-      if (!this.checkAndEnforceAuth()) return;
-      let sceneId = searchParams.get('scene');
-      if (!sceneId && rawPath.startsWith('/practice/')) {
-        sceneId = decodeURIComponent(rawPath.replace(/^\/practice\//, '').split('/')[0]);
-      }
-      const allScenes = storageService.getAllScenes();
-      const targetScene = (sceneId ? allScenes.find(s => s.id === sceneId) : null) || allScenes[0];
-      if (targetScene) {
-        const challengePayload = storageService.parseChallengePayload(searchParams);
-        this.startScene(targetScene, 0, pushHistory, challengePayload);
-        return;
-      }
-    }
-
-    // 6. Dashboard / Library View (/dashboard or /library)
-    if (rawPath === '/dashboard' || rawPath === '/library' || rawHash === 'dashboard' || rawHash === 'library') {
-      if (!this.checkAndEnforceAuth()) return;
-      this.showLibrary(pushHistory);
-      return;
-    }
-
-    // 7. Fallback:
-    if (apiService.isAuthenticated()) {
-      this.showLibrary(pushHistory);
-    } else {
-      this.showLandingPage(pushHistory);
-    }
+    // No playable scene: the original switch fell through to the authenticated
+    // fallback (auth is guaranteed here), which opened the library.
+    this.showLibrary(push);
   }
 
   private updateUrl(url: string, title?: string): void {

@@ -1,8 +1,12 @@
-// MIGRATION: server/index.ts dagi CSRF sozlamalari va tekshiruv middleware'lari
-// (112-225 qatorlar) shu faylga ko'chirildi. Qadam:
-//   import { csrfIssueMiddleware, requireCsrf, CSRF_COOKIE_NAME } from './middleware/csrf';
-//   app.use(csrfIssueMiddleware);                      // cookie yo'qsa avtomatik berish
-//   // route'larda: router.post('/login', requireCsrf, loginHandler)
+// server/index.ts dagi CSRF sozlamalari (cookie issue + requireCsrf) va
+// GET /api/csrf-token endpoint'i shu faylga ko'chirildi. CSRF_COOKIE_NAME
+// konstantasi va cookie opsionlari shu yerda YAGONA manba hisoblanadi.
+//
+// index.ts da ulanishi:
+//   import { csrfIssueMiddleware, csrfTokenHandler } from './middleware/csrf';
+//   app.use(csrfIssueMiddleware);            // cookie yo'qsa avtomatik berish
+//   app.get('/api/csrf-token', csrfTokenHandler);
+// Route'larda: router.post('/login', requireCsrf, loginHandler)
 
 import crypto from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
@@ -31,16 +35,32 @@ function setCsrfCookie(res: Response, token: string): void {
 }
 
 /**
- * csrfIssueMiddleware — agar CSRF cookie mavjud bo'lmasa avtomatik tarzda beradi.
- * Barcha so'rovlarga nisbatan ishlatiladi.
+ * Mavjud CSRF cookie tokenini qaytaradi; yo'q bo'lsa yangi token yaratib,
+ * cookie'ni beradi. csrfIssueMiddleware va csrfTokenHandler shu yagona
+ * mantiqdan foydalanadi (index.ts dagi ikki inline nusxa bilan aynan bir xil).
  */
-export function csrfIssueMiddleware(req: Request, res: Response, next: NextFunction): void {
+export function getOrCreateCsrfToken(req: Request, res: Response): string {
   let csrfToken = req.cookies?.[CSRF_COOKIE_NAME];
   if (!csrfToken) {
     csrfToken = generateCsrfToken();
     setCsrfCookie(res, csrfToken);
   }
+  return csrfToken;
+}
+
+/**
+ * csrfIssueMiddleware — agar CSRF cookie mavjud bo'lmasa avtomatik tarzda beradi.
+ * Barcha so'rovlarga nisbatan ishlatiladi.
+ */
+export function csrfIssueMiddleware(req: Request, res: Response, next: NextFunction): void {
+  getOrCreateCsrfToken(req, res);
   next();
+}
+
+/** GET /api/csrf-token — joriy CSRF tokenni qaytaradi (yo'qsa yangisini beradi). */
+export function csrfTokenHandler(req: Request, res: Response): void {
+  const token = getOrCreateCsrfToken(req, res);
+  res.json({ csrfToken: token });
 }
 
 /**
@@ -54,6 +74,7 @@ export function requireCsrf(req: Request, res: Response, next: NextFunction): vo
     return next();
   }
 
+  // Authorization Bearer header is immune to browser CSRF attacks
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
     return next();
   }

@@ -59,10 +59,34 @@ export class SessionManager {
     return this.ready;
   }
 
-  /** Holat o'zgarganda chaqiriladigan listener ni ro'yxatdan o'tkazadi. */
-  public subscribe(listener: AuthStateListener): () => void {
+  /**
+   * Boot-time readiness latch. MovieListenApp flips this to `true` once its
+   * initial `waitForAuth()` resolution has completed (the two-phase auth
+   * bootstrap previously tracked this with a private `isAuthReady` field).
+   * Centralising it here makes SessionManager the single source of truth for
+   * auth state; the AppRouter guard reads it via `isReady()`.
+   */
+  public markReady(): void {
+    this.ready = true;
+  }
+
+  /**
+   * Holat o'zgarganda chaqiriladigan listener ni ro'yxatdan o'tkazadi.
+   *
+   * `options.immediate` defaults to `true` (fires once with the current state,
+   * preserving the original contract). Pass `{ immediate: false }` to react only
+   * to *changes* — this mirrors the previous `apiService.onAuthChange(...)`
+   * semantics and lets MovieListenApp consolidate onto a single auth listener
+   * without re-running its boot-time reaction on registration.
+   */
+  public subscribe(
+    listener: AuthStateListener,
+    options?: { immediate?: boolean }
+  ): () => void {
     this.listeners.add(listener);
-    listener(this.currentUser); // darhol joriy holat bilan chaqiramiz
+    if (options?.immediate !== false) {
+      listener(this.currentUser);
+    }
     return () => {
       this.listeners.delete(listener);
     };

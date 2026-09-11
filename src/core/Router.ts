@@ -1,13 +1,16 @@
 /**
  * src/core/Router.ts
  * ---------------------------------------------------------------------------
- * Ilova ichki routing logikasi. Hozirgi src/main.ts dagi `routeCurrentUrl` /
- * `routeInitialUrl` / popstate+hashchange tinglovchilari mantiqiga mos keladi.
+ * Ilova ichki routing engine. src/main.ts dagi `routeCurrentUrl` /
+ * `routeInitialUrl` / popstate+hashchange tinglovchilari mantiqini to'liq
+ * o'ziga oldi: AppRouter yo'lni tahlil qiladi, auth guard (ikki-bosqichli
+ * `waitForAuth` sharti bilan) ni bajaradi va `RouterDelegate` orqali mos view'ni
+ * chaqiradi.
  *
- * Router MovieListenApp dan ajratilgan: u faqat yo'lni tahlil qiladi, auth
- * guard ni bajaradi va `RouterDelegate` orqali mos view'ni chaqiradi.
- * main.ts hali o'zgartirilmagan — kelajakda `appRouter.setDelegate(app)` orqali
- * ulash mumkin.
+ * MovieListenApp `RouterDelegate` ni amalga oshiradi va `AppBootstrap` orqali
+ * ulanadi. Xatti-harakat oldingi main.ts bilan aynan mos: OAuth hash/param
+ * tozalash, dinamik ADMIN_PATH, file:// fallback va document.title yangilash
+ * delegate/updateUrl tomonida saqlanadi.
  */
 
 import { apiService } from '../services/apiService';
@@ -60,24 +63,55 @@ export interface RouterDelegate {
   onAdmin(push: boolean): void;
   /** Himoyalangan route ga ruxsatsiz kirishda (login ga yo'naltirish uchun). */
   onUnauthorized(target: RouteName): void;
+  /**
+   * OAuth qaytishida `?error=`/`?error_description=`/`?error_code=` parametrleri
+   * bo'lsa chaqiriladi (main.ts dagi "Google orqali kirishda xatolik" alertini
+   * saqlab qolish uchun). Ixtiyoriy — delegate uni login sahifasini ochib,
+   * keyin alert ko'rsatish orqali amalga oshiradi.
+   */
+  onAuthError?(message: string): void;
+}
+
+export interface AppRouterOptions {
+  /** Dinamik ADMIN_PATH manbasi (default: apiService.getAdminRoutePath). */
+  getAdminPath?: () => string;
+  /**
+   * `waitForAuth` ikki-bosqichli init tugmasi. Himoyalangan route'larda
+   * auth yakunlanmaguncha foydalanuvchini login'ga otmaslik uchun ishlatiladi
+   * (main.ts dagi eski `isAuthReady` mantiqini aynan saqlaydi).
+   */
+  isAuthReady?: () => boolean;
 }
 
 export class AppRouter {
   private delegate: RouterDelegate | null = null;
-  private started = false;
+  private listenersAttached = false;
+  private resolved = false;
+  private readonly getAdminPath: () => string;
+  private readonly isAuthReady: () => boolean;
 
-  constructor(private readonly getAdminPath: () => string = () => apiService.getAdminRoutePath()) {}
+  constructor(options: AppRouterOptions = {}) {
+    this.getAdminPath = options.getAdminPath ?? (() => apiService.getAdminRoutePath());
+    this.isAuthReady = options.isAuthReady ?? (() => true);
+  }
 
   public setDelegate(delegate: RouterDelegate): void {
     this.delegate = delegate;
   }
 
-  /** popstate/hashchange tinglovchilarini bir marta ulaydi va bosh yo'lni hal qiladi. */
-  public start(): void {
-    if (this.started) return;
-    this.started = true;
+  /** popstate/hashchange tinglovchilarini faqat BIR marta ulaydi (idempotent). */
+  public attachHistoryListeners(): void {
+    if (this.listenersAttached) return;
+    this.listenersAttached = true;
     window.addEventListener('popstate', () => this.resolve(false));
     window.addEventListener('hashchange', () => this.resolve(false));
+  }
+
+  /** Tinglovchilarni ulaydi va bosh yo'lni (sync) hal qiladi. */
+  public start(): void {
+    this.attachHistoryListeners();
+    if (this.resolved) return;
+    this.resolved = true;
     this.resolve(false);
   }
 
@@ -111,96 +145,140 @@ export class AppRouter {
     return p.startsWith('/') ? p : '/' + p;
   }
 
+  /**
+   * Himoyalangan route uchun main.ts `checkAndEnforceAuth()` semantikasini
+   * aynan qaytaradi:
+   *  - autentifikatsiya bo'lsa → davom et (true)
+   *  - auth yakunlangan (`isAuthReady`) va kirilmagan → onUnauthorized (login ga
+   *    yo'naltirish delegate da) va to'xta (false)
+   *  - auth hali yakunlanmagan (ikki-bosqichli waitForAuth) → hech narsa
+   *    qilmay to'xta (false) — bu eski xatti-harakatni saqlaydi va avval
+   *    scaffold'da yo'q edi (premature redirect ning oldini oladi).
+   */
+  private enforce(target: RouteName): boolean {
+    if (apiService.isAuthenticated()) return true;
+    if (this.isAuthReady()) {
+      this.delegate?.onUnauthorized(target);
+    }
+    return false;
+  }
+
+  /**
+   * Boshlang'ich (initial) yo'l ochiqmi — ya'ni server auth tugashini kutmasdan
+   * birinchi navigation ni darhol qilish mumkinmi. main.ts dagi `routeInitialUrl`
+   * hisoblagan `isPublic` shartini aynan takrorlaydi.
+   */
+  public isPublicBootRoute(): boolean {
+    const rawPath = this.normalizePath(window.location.pathname);
+    const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+    const adminPath = this.resolveAdminPath();
+    const adminHash = adminPath.replace(/^\//, '').toLowerCase();
+    return (
+      rawPath === '/' ||
+      rawPath === '/login' ||
+      rawPath === '/register' ||
+      rawPath === adminPath ||
+      rawHash === 'landing' ||
+      rawHash === 'login' ||
+      rawHash === 'register' ||
+      rawHash === adminHash
+    );
+  }
+
   /** Joriy URL ni tahlil qiladi, auth guard ni bajaradi va delegate ni chaqiradi. */
   public resolve(push: boolean): RouteName {
-    // OAuth hash tozalash (access_token= / error=)
+    const delegate = this.delegate;
+
+    // OAuth hash tozalash (access_token= / error=) — main.ts routeCurrentUrl 0-qadam
     if (window.location.hash.includes('access_token=') || window.location.hash.includes('error=')) {
       window.history.replaceState(null, '', window.location.pathname || '/');
     }
 
+    // OAuth xatolik parametrleri (?error= / ?error_description= / ?error_code=)
+    // Supabase/Google qaytargan xatolikni login sahifasida alert ko'rsatish.
+    // (Scaffold'da yo'q edi — main.ts xatti-harakatini saqlash uchun qo'shildi.)
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.has('error') || searchParams.has('error_description') || searchParams.has('error_code')) {
+      const errorMsg = searchParams.get('error_description') || searchParams.get('error') || 'Kirishda xatolik yuz berdi';
+      window.history.replaceState(null, '', '/login');
+      if (delegate?.onAuthError) {
+        delegate.onAuthError(decodeURIComponent(errorMsg).replace(/\+/g, ' '));
+      } else {
+        delegate?.onLogin(false);
+      }
+      return 'login';
+    }
+
     const rawPath = this.normalizePath(window.location.pathname);
     const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-    // search params faqat /practice uchun kerak (scene id)
-    const search = new URLSearchParams(window.location.search);
 
-    // 0. Dynamic Admin Route
+    // 0. Dynamic Admin Route (ADMIN_PATH env orqali) — auth talab qilmaydi
     const adminPath = this.resolveAdminPath();
     const adminHash = adminPath.replace(/^\//, '').toLowerCase();
     if (rawPath === adminPath || rawHash === adminHash) {
-      this.delegate?.onAdmin(push);
+      delegate?.onAdmin(push);
       return 'admin';
     }
 
-    // 1. Auth routes
+    // 1. Explicit Auth routes (/login, /register, /auth)
     if (rawPath === '/login' || rawHash === 'login' || rawPath === '/auth') {
       if (apiService.isAuthenticated()) {
-        this.delegate?.onDashboard(push);
+        delegate?.onDashboard(push);
         return 'dashboard';
       }
-      this.delegate?.onLogin(push);
+      delegate?.onLogin(push);
       return 'login';
     }
     if (rawPath === '/register' || rawHash === 'register') {
       if (apiService.isAuthenticated()) {
-        this.delegate?.onDashboard(push);
+        delegate?.onDashboard(push);
         return 'dashboard';
       }
-      this.delegate?.onRegister(push);
+      delegate?.onRegister(push);
       return 'register';
     }
 
-    // 2. Landing
+    // 2. Landing Page at Root (/)
     if (rawPath === '/' && (!rawHash || rawHash === 'landing')) {
-      this.delegate?.onLanding(push);
+      delegate?.onLanding(push);
       return 'landing';
     }
 
-    // 3. Settings
+    // 3. Settings View (/settings) — protected
     if (rawPath === '/settings' || rawHash === 'settings') {
-      if (!apiService.isAuthenticated()) {
-        this.delegate?.onUnauthorized('settings');
-        return 'login';
-      }
-      this.delegate?.onSettings(push);
+      if (!this.enforce('settings')) return 'login';
+      delegate?.onSettings(push);
       return 'settings';
     }
 
-    // 4. Profile
+    // 4. Profile View (/profile) — protected
     if (rawPath === '/profile' || rawHash === 'profile') {
-      if (!apiService.isAuthenticated()) {
-        this.delegate?.onUnauthorized('profile');
-        return 'login';
-      }
-      this.delegate?.onProfile(push);
+      if (!this.enforce('profile')) return 'login';
+      delegate?.onProfile(push);
       return 'profile';
     }
 
-    // 5. Practice
+    // 5. Practice View (/practice?scene=... or /practice/...) — protected
+    //    (scene + challenge extraction delegate.onPractice ichida)
     if (rawPath === '/practice' || rawPath.startsWith('/practice/') || rawHash.startsWith('practice')) {
-      if (!apiService.isAuthenticated()) {
-        this.delegate?.onUnauthorized('practice');
-        return 'login';
-      }
-      this.delegate?.onPractice(push);
+      if (!this.enforce('practice')) return 'login';
+      delegate?.onPractice(push);
       return 'practice';
     }
 
-    // 6. Dashboard / Library
+    // 6. Dashboard / Library View (/dashboard or /library) — protected
     if (rawPath === '/dashboard' || rawPath === '/library' || rawHash === 'dashboard' || rawHash === 'library') {
-      if (!apiService.isAuthenticated()) {
-        this.delegate?.onUnauthorized('dashboard');
-        return 'login';
-      }
-      this.delegate?.onLibrary(push);
+      if (!this.enforce('library')) return 'login';
+      delegate?.onLibrary(push);
       return 'library';
     }
 
-    // 7. Fallback
+    // 7. Fallback: auth bo'lsa dashboard, aks holda landing
     if (apiService.isAuthenticated()) {
-      this.delegate?.onDashboard(push);
-      return 'library';
+      delegate?.onDashboard(push);
+      return 'dashboard';
     }
-    this.delegate?.onLanding(push);
+    delegate?.onLanding(push);
     return 'landing';
   }
 }

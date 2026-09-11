@@ -5,10 +5,29 @@
  * va Content-Security-Policy (CSP) qiymati.
  *
  * - Bu fayldagi qiymatlar server middleware (server/middleware/securityHeaders.ts)
- *   tomonidan ishlatiladi va kelajakda index.html <meta http-equiv="Content-Security-Policy">
- *   bilan bir xil bo'lishi kerak.
- * - index.html meta CSP bilan mos: `frame-ancestors 'none'` va `form-action 'self'`
- *   kiritilgan.
+ *   tomonidan ishlatiladi.
+ * - KANONIK manba — SHU FAYL. Uchta iste'molchi BYTE-for-BYTE shu qiymatni
+ *   qo'llaydi: (1) server CSP header (bu fayl orqali), (2) index.html
+ *   <meta http-equiv="Content-Security-Policy">, (3) vite.config.ts
+ *   SECURITY_HEADERS (dev/preview). Bularning biri o'zgartirilsa, uchtalari
+ *   ham shu darhol moslanadi.
+ *
+ * - CSP hardening (skript direktivasi): 'unsafe-inline' OLIB TASHLANDI. Barcha
+ *   inline script bloklari (dark-mode init + anti-clickjacking framebuster)
+ *   mazmuni saqlanib public/js/boot.js ga ko'chirildi va index.html <head>
+ *   ichida SINXRON ulanadi. Dastur bundle'lari va CDN skriptlari (unpkg,
+ *   jsdelivr) external — brauzerda inline scriptga ehtiyoj qolmadi.
+ *
+ * - CSP style-src: 'unsafe-inline' SAQLANADI (hujjatlashtirilgan qaror):
+ *   1) index.html dagi pre-paint <style id="antiClickjack"> body-hidden
+ *      anti-FOUC/clickjacking mexanizmi inline <style> talab qiladi;
+ *   2) src/ komponentlari innerHTML orqali son-sanoqsiz style="…" atributi
+ *      generatsiya qiladi — style attribute'lar 'unsafe-inline'siz CSP
+ *       tomonidan bloklanadi (olib tashlash UI'ni buzadi);
+ *   3) Vite dev rejim CSS'ni JS yaratgan <style> teg'lari orqali inject
+ *      qiladi (prod build CSS'ni external fayllarga chiqaradi).
+ *   Element .style / setProperty API chaqiriqlari CSP tekshiruviga tushmaydi;
+ *   tekshiruv faqat markup attribute'lari va <style> bloklariga qo'llanadi.
  *
  * Ogohlantirish: Bu fayl HAM server (Node) HAM brauzer (DOM) muhitida ishlaydi,
  * shuning uchun faqat toza string/obyekt eksport qiladi — hech qanday DOM/Node
@@ -24,12 +43,15 @@ export const PERMISSIONS_POLICY_VALUE =
   "camera=(), microphone=(self), geolocation=(), payment=()";
 
 /**
- * To'liq Content-Security-Policy qiymati.
- * `frame-ancestors 'none'` va `form-action 'self'` index.html meta CSP bilan mos.
+ * To'liq Content-Security-Policy qiymati — KANONIK.
+ * Skript direktivasida inline ruxsat yo'q (qarang: fayl boshidagi hardening
+ * izohi); style direktivasida esa hujjatlashtirilgan sabablarga ko'ra saqlangan.
+ * Uch iste'molchi (server header, index.html meta, vite.config) shu qatorni
+ * o'zgartirmasdan ishlatadi.
  */
 export const CSP_POLICY = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net",
+  "script-src 'self' https://unpkg.com https://cdn.jsdelivr.net",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
   "font-src 'self' data: https://fonts.gstatic.com https://unpkg.com",
   "img-src 'self' data: https: blob: https://*.r2.dev https://*.r2.cloudflarestorage.com",
@@ -37,9 +59,9 @@ export const CSP_POLICY = [
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://storage.googleapis.com https://*.r2.dev https://*.r2.cloudflarestorage.com https://unpkg.com https://fonts.googleapis.com https:",
   "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com",
   "frame-ancestors 'none'",
-  "form-action 'self'",
   "object-src 'none'",
   "base-uri 'self'",
+  "form-action 'self'",
 ].join('; ') + ';';
 
 export interface SecurityHeaderMap {

@@ -1,10 +1,12 @@
-// MIGRATION: server/index.ts dagi Auth endpoint'lari (371-637 qatorlar:
-// register, login, session, logout, /api/auth/me) shu faylga ko'chirildi.
-// Qadam: index.ts da eski app.post('/api/auth/...') qatorlarini o'chirib,
-//   import { authRoutes } from './routes/auth.routes';
-//   app.use('/api/auth', authRoutes);
-// bilan ulash. (registerLimiter, checkAuthRateLimit, requireCsrf, apiLimiter
-//   middleware'lari index.ts tartibida saqlanadi yoki shu routerga qo'shiladi.)
+// server/index.ts dagi Auth endpoint'lari (register, login, session, logout,
+// /api/auth/me) shu faylga ko'chirildi. index.ts da RELATIVE mount bilan
+// ulanadi: app.use('/api/auth', authRoutes);
+// Middleware tartibi kanonik index.ts bilan AYNAN bir xil:
+//   register → registerLimiter, requireCsrf
+//   login    → checkAuthRateLimit, requireCsrf
+//   session  → apiLimiter, requireCsrf
+//   logout   → requireCsrf
+//   me       → requireAuth
 
 import { Router, type Request, type Response } from 'express';
 import crypto from 'node:crypto';
@@ -33,7 +35,6 @@ import {
   recordAuthFailure,
   resetAuthFailure,
   getClientIp,
-  generateCaptchaChallenge,
   verifyCaptchaSolution,
 } from '../rateLimiter';
 import { requireCsrf } from '../middleware/csrf';
@@ -313,8 +314,8 @@ const logoutHandler = (_req: Request, res: Response) => {
 // 3. Current User Profile
 const meHandler = (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
-  const savedWords = getUserSavedWordsSafe(user.id);
-  const completedScenes = getUserCompletedScenesSafe(user.id);
+  const savedWords = getUserSavedWords(user.id);
+  const completedScenes = getUserCompletedScenes(user.id);
   const completedSceneIds = Array.from(new Set(completedScenes.map((s) => s.scene_id)));
 
   let lastPositions: Record<string, number> = {};
@@ -332,15 +333,6 @@ const meHandler = (req: AuthenticatedRequest, res: Response) => {
     lastPositions,
   });
 };
-
-// getUserSavedWords / getUserCompletedScenes larni signaturasiga mos chaqirish uchun yordamchi
-// (importlari fayl boshiga ko'chirildi — tozalik uchun)
-function getUserSavedWordsSafe(userId: number) {
-  return getUserSavedWords(userId);
-}
-function getUserCompletedScenesSafe(userId: number) {
-  return getUserCompletedScenes(userId);
-}
 
 export const authRoutes = Router();
 

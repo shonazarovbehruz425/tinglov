@@ -7,9 +7,32 @@
     <title>Tinglov — Kino va Multfilm orqali Listening</title>
 
     <!-- Content Security Policy (CSP) for XSS & Injection Protection -->
+    <!--
+      CSP qattiq holatga keltirildi (hardening) — YAGONA KANONIK MANBA:
+      shared/securityHeaders.ts (CSP_POLICY). Bu meta, shared fayl va
+      vite.config.ts qiymatlari BYTE-for-BYTE bir xil.
+
+      - SKRIPT DIREKTIVASI (birinchi): 'unsafe-inline' OLIB TASHLANDI. Barcha
+        inline script bloklari (dark-mode init + anti-clickjacking framebuster)
+        mazmuni saqlangan holda /js/boot.js ga ko'chirildi va head ichida
+        sinxron ulanadi. Dastur kodi (dist/assets/*.js) va tashqi CDN
+        skriptlari (unpkg, jsdelivr) — hammasi external, shuning uchun dev
+        (Vite /@vite/client) va prod'da inline skriptga ehtiyoj qolmaydi.
+      - style-src: 'unsafe-inline' SAQLANADI (hujjatlashtirilgan qaror):
+        1) quyidagi pre-paint <style id="antiClickjack"> — body-hidden
+           anti-FOUC/clickjacking usuli inline <style> talab qiladi;
+        2) src/ komponentlari innerHTML orqali son-sanoqsiz style="…"
+           atributlari generatsiya qiladi (style attribute'lar style-src
+           'unsafe-inline'siz bloklanadi — olib tashlash UI'ni buzadi);
+        3) Vite dev rejimda CSS'ni JS yaratgan <style> teg'lar orqali
+           inject qiladi (prod build CSS'ni external fayllarga chiqaradi).
+      Eslatma: element.style / setProperty API'si CSP ga bo'ysunmaydi;
+      faqat markup'dagi style attribute va <style> bloklar shu ruxsatni
+      talab qiladi.
+    -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com https://unpkg.com; img-src 'self' data: https: blob:; media-src 'self' blob: data: https://cdn.jsdelivr.net https://storage.googleapis.com https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://storage.googleapis.com https://unpkg.com https://fonts.googleapis.com; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self';"
+      content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com https://unpkg.com; img-src 'self' data: https: blob: https://*.r2.dev https://*.r2.cloudflarestorage.com; media-src 'self' blob: data: https://cdn.jsdelivr.net https://storage.googleapis.com https://*.r2.dev https://*.r2.cloudflarestorage.com https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://storage.googleapis.com https://*.r2.dev https://*.r2.cloudflarestorage.com https://unpkg.com https://fonts.googleapis.com https:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';"
     />
 
     <!-- HTTP Security Meta Tags (MIME Sniffing, XSS & Referrer Protection) -->
@@ -29,27 +52,16 @@
       crossorigin="anonymous"
     ></script>
 
-    <!-- Instant Dark Mode Init -->
-    <script>
-      (function() {
-        try {
-          if (localStorage.getItem('movielisten_theme') === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-          }
-        } catch (e) {}
-      })();
-    </script>
-
-    <!-- Anti-Clickjacking Defense-in-Depth (OWASP Framebuster) -->
+    <!--
+      Anti-Clickjacking pre-paint maskasi (inline <style> — style-src
+      'unsafe-inline' siyosati yuqoridagi izohda asoslangan).
+      Boot skript sinxron: render'dan OLDIN ishlashi shart — theme flash va
+      iframe bosqichi oldini olish uchun defer/async ISHLATILMAIDI.
+      Ikkala eski inline script bloki mazmuni saqlanib public/js/boot.js ga
+      ko'chirildi (skript direktivasi hardening).
+    -->
     <style id="antiClickjack">body{display:none !important;}</style>
-    <script>
-      if (self === top) {
-        var antiClickjack = document.getElementById('antiClickjack');
-        if (antiClickjack) antiClickjack.parentNode.removeChild(antiClickjack);
-      } else {
-        top.location = self.location;
-      }
-    </script>
+    <script src="/js/boot.js"></script>
   </head>
   <body class="learnify-theme">
     <div id="app"></div>

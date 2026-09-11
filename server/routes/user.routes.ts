@@ -1,9 +1,8 @@
-// MIGRATION: server/index.ts dagi User endpoint'lari (639-764 qatorlar:
-// /api/user/sync, /api/user/words, /api/leaderboard) shu faylga ko'chirildi.
-// Qadam: index.ts da eski app.post('/api/user/...') / app.get('/api/leaderboard')
-// qatorlarini o'chirib, `app.use(userRoutes)` bilan ulash.
-// (Route'lar to'liq yo'l bilan berilgan: /api/user/sync, /api/user/words,
-//  /api/leaderboard — shuning uchun mount prefix kerak emas.)
+// server/index.ts dagi User endpoint'lari (/api/user/sync, /api/user/words,
+// /api/leaderboard) shu faylga ko'chirildi. Route'lar to'liq yo'l bilan
+// berilgan — index.ts da PREFIXSIZ ulanadi: app.use(userRoutes);
+// Middleware tartibi kanonik index.ts bilan AYNAN bir xil:
+//   sync → requireAuth, requireCsrf | words → requireAuth, requireCsrf | leaderboard → (public)
 
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';

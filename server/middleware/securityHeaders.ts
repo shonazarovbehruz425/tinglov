@@ -1,8 +1,6 @@
-// MIGRATION: server/index.ts dagi "Security Headers" middleware (88-110 qatorlar)
-// shu faylga ko'chirildi. Qadam: index.ts da eski anonim middleware o'rniga
-//   import { securityHeadersMiddleware } from './middleware/securityHeaders';
-//   app.use(securityHeadersMiddleware);
-// yozib ulash (shared/securityHeaders dan qiymatlar olinadi).
+// server/index.ts dagi "Security Headers" inline middleware shu faylga
+// ko'chirildi. Qiymatlar yagona manba — shared/securityHeaders.ts dan olinadi
+// (kanonik index.ts CSP'si bilan bir xil).
 
 import type { Request, Response, NextFunction } from 'express';
 import { SECURITY_HEADERS } from '../../shared/securityHeaders';

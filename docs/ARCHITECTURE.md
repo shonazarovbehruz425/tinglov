@@ -91,7 +91,7 @@ flowchart LR
     Services2 --> Data2
 ```
 
-- **MovieListenApp** (`src/main.ts`, 1186 qator) — markaziy orkestrator: router, view switcher, klaviatura yorliqlari, Supabase `onAuthStateChange` listener.
+- **MovieListenApp** (`src/main.ts`, ~1190 qator) — nozik orchestrator: `RouterDelegate` ni amalga oshiradi; routing `src/core/Router.ts` dagi **`AppRouter`** ga, auth/session holati esa `src/core/SessionManager.ts` dagi singleton **`SessionManager`** ga topshirilgan (eskicha `initRouter`/`popstate` monoliti yo'q), boot ish oqimi `src/core/AppBootstrap.ts` da.
 - **Component modeli:** Har bir view klass sifatida (`StatsHeader`, `LevelSelector`, `AnimatedStage`, `DictationInput` va h.k.), `setCallbacks()` orqali event bog‘lanadi, `render()` DOM ni yangilaydi.
 - **StorageService** (`storageService.ts`, 618 qator): `localStorage` da `UserStats`, `customScenes`, `highScores` saqlaydi, `syncWithServer()` da server bilan merge qiladi (XP max, scene union, word union), debounced `syncToCloud()` (1200ms), offline queue (`PENDING_SYNC_KEY`).
 - **ApiService** (`apiService.ts`, 1283 qator): Token in-memory, session `localStorage` cache, CSRF headerlar, Supabase + backend parallel sync, admin metodlari.
@@ -149,11 +149,14 @@ flowchart TB
     HealthHandler --> Response
 ```
 
-- **Fayllar:**
-  - `server/index.ts` (926 qator) — barcha route handlerlar, CSP, CSRF, keep-alive, SPA fallback.
+- **Fayllar (modulli — endi server/index.ts monolit EMAS):**
+  - `server/index.ts` (174 qator) — faqat boot: Express `app`, middleware zanjiri tartibi, `app.use(securityHeadersMiddleware)`, SPA fallback, keep-alive self-ping (12min) va `server/routes/*` ni ulash. Route handlerlari endi alohida modullarda.
+  - `server/routes/` — yo‘nalishlar bo‘yicha router modullari: `auth.routes.ts`, `user.routes.ts`, `admin.routes.ts`, `health.routes.ts`.
+  - `server/middleware/` — `securityHeaders.ts` (qiymatlar `shared/securityHeaders.ts` dan), `csrf.ts`.
   - `server/auth.ts` (150 qator) — `hashPassword`, `generateToken` (7d), `generateAdminToken` (24h), `requireAuth`, `requireAdminAuth`.
   - `server/db.ts` (377 qator) — `DatabaseSync` + WAL + 4 jadval + migratsiyalar + barcha CRUD.
   - `server/rateLimiter.ts` (531 qator) — Redis + memory fallback, CAPTCHA HMAC, `apiLimiter`, `registerLimiter`, `adminLoginLimiter`, `checkAuthRateLimit`.
+  - `src/core/` — frontend yadro modullari: `Router.ts` (`AppRouter`), `SessionManager.ts` (singleton), `AppBootstrap.ts`. CSP/header kanonik manbasi: `shared/securityHeaders.ts` (server, `vite.config.ts` va `index.html` meta uchun yagona manba).
 
 ### 3.1 Ma'lumotlar Oqimi — Auth
 
@@ -272,7 +275,7 @@ erDiagram
 
 | Qatlam | Fayl | Mexanizm |
 |--------|------|----------|
-| CSP | `index.html` meta + `server/index.ts` header | `default-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'` |
+| CSP | Kanonik: `shared/securityHeaders.ts` → server header (`server/middleware/securityHeaders.ts`) + `index.html` meta + `vite.config.ts` (uchchisi BIR XIL) | `default-src 'self'`; `script-src`da `'unsafe-inline'` YO'Q (inline skriptlar `public/js/boot.js`ga ko'chirildi, sinxron); `style-src`da `'unsafe-inline'` saqlangan (pre-paint anti-clickjack `<style>`, innerHTML `style=` atributlari, Vite dev CSS-inject — sabablari fayl izohida hujjatlangan); `frame-ancestors 'none'`, `object-src 'none'`, `form-action 'self'` |
 | CSRF | `server/index.ts` | `XSRF-TOKEN` (httpOnly:false) + `x-csrf-token` header verify, Bearer exempt |
 | HSTS | `server/index.ts` + `vercel.json` | `max-age=31536000; includeSubDomains; preload` |
 | JWT | `server/auth.ts` | `HS256`, `token` (7d, SameSite:lax), `admin_token` (24h, SameSite:strict) |
