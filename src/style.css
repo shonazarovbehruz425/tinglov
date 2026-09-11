@@ -2515,6 +2515,54 @@ body {
   aspect-ratio: 16 / 9;
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
   border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Center play/pause flash indicator */
+.video-center-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.6);
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: rgba(15, 17, 21, 0.78);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 20;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.video-center-indicator.animate-flash {
+  animation: videoCenterFlash 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes videoCenterFlash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  70% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.35);
+  }
 }
 
 .cinema-video-player-element {
@@ -2595,6 +2643,7 @@ body {
   flex-direction: column;
   gap: 0.65rem;
   z-index: 15;
+  cursor: default;
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 

@@ -38,6 +38,10 @@ export class AnimatedStage {
   private videoElement: HTMLVideoElement | null = null;
   private ytIframeElement: HTMLIFrameElement | null = null;
   private animFrameId: number | null = null;
+  private isSentenceCompleted: boolean = false;
+  private isManualPaused: boolean = false;
+  private loopTimerId: number | null = null;
+  private ytCurrentTime: number = 0;
   private challengePayload: ChallengePayload | null = null;
   private onChallengeRequest: (() => void) | null = null;
 
@@ -78,6 +82,9 @@ export class AnimatedStage {
     this.sentenceIndex = sentenceIndex;
     this.totalSentences = totalSentences;
     this.isSubtitleRevealed = false;
+    this.isSentenceCompleted = false;
+    this.isManualPaused = false;
+    this.clearLoopTimer();
     this.stopVideoTracking();
     this.render();
   }
@@ -116,11 +123,117 @@ export class AnimatedStage {
     return 60;
   }
 
+  public setSentenceCompleted(completed: boolean): void {
+    this.isSentenceCompleted = completed;
+    if (completed) {
+      this.clearLoopTimer();
+    }
+  }
+
+  public getSentenceCompleted(): boolean {
+    return this.isSentenceCompleted;
+  }
+
+  public clearLoopTimer(): void {
+    if (this.loopTimerId !== null) {
+      window.clearTimeout(this.loopTimerId);
+      this.loopTimerId = null;
+    }
+  }
+
+  public setIsManualPaused(paused: boolean): void {
+    this.isManualPaused = paused;
+  }
+
+  public togglePlayPause(): void {
+    if (this.isSpeaking) {
+      this.pausePlayback(true);
+      this.flashActionIndicator('pause');
+    } else {
+      this.resumePlayback();
+      this.flashActionIndicator('play');
+    }
+  }
+
+  public pausePlayback(isManual: boolean = true): void {
+    if (isManual) {
+      this.isManualPaused = true;
+    }
+    this.clearLoopTimer();
+    this.stopVideoTracking();
+
+    if (this.videoElement) {
+      try {
+        this.videoElement.pause();
+      } catch {}
+    }
+
+    if (this.ytIframeElement) {
+      const targetOrigin = 'https://www.youtube-nocookie.com';
+      this.ytIframeElement.contentWindow?.postMessage(JSON.stringify({
+        event: 'command',
+        func: 'pauseVideo',
+        args: []
+      }), targetOrigin);
+    }
+
+    this.setSpeakingState(false);
+  }
+
+  public resumePlayback(): void {
+    if (!this.currentSentence) return;
+    this.isManualPaused = false;
+    this.clearLoopTimer();
+
+    const startTime = this.currentSentence.startTime;
+    const endTime = this.currentSentence.endTime;
+
+    let curTime = startTime;
+    if (this.videoElement) {
+      curTime = this.videoElement.currentTime;
+    } else if (this.ytIframeElement) {
+      curTime = this.ytCurrentTime;
+    }
+
+    // If already at or very close to the end (within 0.2s) or before start, restart from start
+    if (curTime >= endTime - 0.2 || curTime < startTime) {
+      this.playVideoSegment(startTime, endTime);
+    } else {
+      this.playVideoSegment(curTime, endTime);
+    }
+  }
+
+  private scheduleAutoLoop(startTime: number, endTime: number): void {
+    this.clearLoopTimer();
+    // Gentle natural interval: 1.2s gives user comfortable thinking time between repetitions
+    this.loopTimerId = window.setTimeout(() => {
+      this.loopTimerId = null;
+      if (!this.isSentenceCompleted && !this.isManualPaused && this.currentSentence) {
+        this.playVideoSegment(startTime, endTime);
+      }
+    }, 1200);
+  }
+
+  private flashActionIndicator(action: 'play' | 'pause'): void {
+    const indicator = this.container.querySelector<HTMLElement>('#videoCenterIndicator');
+    if (!indicator) return;
+    const icon = indicator.querySelector('i');
+    if (icon) {
+      icon.className = `ph ph-${action === 'play' ? 'play-fill' : 'pause-fill'}`;
+    }
+    indicator.classList.remove('animate-flash');
+    void indicator.offsetWidth; // Trigger DOM reflow to restart CSS animation
+    indicator.classList.add('animate-flash');
+  }
+
   public playVideoSegment(startTime: number, endTime: number, onEnd?: () => void): void {
+    this.stopVideoTracking();
+    this.clearLoopTimer();
+    this.isManualPaused = false;
+
     // 1. YouTube Player Mode
     const validYtVideoId = isValidYouTubeVideoId(this.currentScene?.youtubeVideoId);
     if (validYtVideoId && this.ytIframeElement) {
-      this.stopVideoTracking();
       this.setSpeakingState(true);
 
       const iframe = this.ytIframeElement;
@@ -141,14 +254,53 @@ export class AnimatedStage {
       iframe.contentWindow?.postMessage(seekMsg, targetOrigin);
       iframe.contentWindow?.postMessage(playMsg, targetOrigin);
 
-      const startTimestamp = Date.now();
+      iframe.contentWindow?.postMessage(JSON.stringify({
+        event: 'listening'
+      }), targetOrigin);
+
+      let startTimestamp = Date.now() + 500; // 500ms initial buffer tolerance
+      let isYtPlaying = false;
+      this.ytCurrentTime = startTime;
+
+      const onYtMessage = (e: MessageEvent) => {
+        if (!e.origin.includes('youtube')) return;
+        try {
+          const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+          if (data.event === 'onStateChange') {
+            if (data.info === 1) { // PLAYING
+              isYtPlaying = true;
+              startTimestamp = Date.now();
+            } else if (data.info === 2) { // PAUSED
+              isYtPlaying = false;
+            }
+          }
+          if (data.info?.currentTime !== undefined && typeof data.info.currentTime === 'number') {
+            this.ytCurrentTime = data.info.currentTime;
+          }
+        } catch {}
+      };
+
+      window.addEventListener('message', onYtMessage);
 
       const trackYtProgress = () => {
-        const elapsed = (Date.now() - startTimestamp) / 1000;
-        const estimatedCurrentTime = startTime + (elapsed * this.speed);
-        this.updateTimelineProgress(estimatedCurrentTime);
+        if (this.isManualPaused) {
+          window.removeEventListener('message', onYtMessage);
+          return;
+        }
 
-        if (estimatedCurrentTime >= endTime) {
+        const now = Date.now();
+        if (now < startTimestamp && !isYtPlaying) {
+          this.animFrameId = requestAnimationFrame(trackYtProgress);
+          return;
+        }
+
+        const elapsed = Math.max(0, (now - startTimestamp) / 1000);
+        const estimatedCurrentTime = startTime + (elapsed * this.speed);
+        const currentPos = this.ytCurrentTime > startTime ? this.ytCurrentTime : estimatedCurrentTime;
+        this.updateTimelineProgress(currentPos);
+
+        if (currentPos >= endTime) {
+          window.removeEventListener('message', onYtMessage);
           const pauseMsg = JSON.stringify({
             event: 'command',
             func: 'pauseVideo',
@@ -157,7 +309,13 @@ export class AnimatedStage {
           iframe.contentWindow?.postMessage(pauseMsg, targetOrigin);
           this.stopVideoTracking();
           this.setSpeakingState(false);
+          this.updateTimelineProgress(endTime);
           onEnd?.();
+
+          // Auto-loop continuously until user completes the sentence or manually pauses
+          if (!this.isSentenceCompleted && !this.isManualPaused) {
+            this.scheduleAutoLoop(this.currentSentence?.startTime ?? startTime, this.currentSentence?.endTime ?? endTime);
+          }
         } else {
           this.animFrameId = requestAnimationFrame(trackYtProgress);
         }
@@ -174,47 +332,61 @@ export class AnimatedStage {
       return;
     }
 
-    this.stopVideoTracking();
     const video = this.videoElement;
-
-    video.pause();
     video.playbackRate = this.speed;
 
-    const startPlayback = () => {
-      video.play().then(() => {
-        this.setSpeakingState(true);
+    const startTracking = () => {
+      this.setSpeakingState(true);
 
-        const checkTime = () => {
-          if (!this.videoElement) return;
-          this.updateTimelineProgress(this.videoElement.currentTime);
+      const checkTime = () => {
+        if (!this.videoElement || this.isManualPaused) return;
 
-          if (this.videoElement.currentTime >= endTime || this.videoElement.paused) {
-            this.videoElement.pause();
-            this.stopVideoTracking();
-            this.setSpeakingState(false);
-            onEnd?.();
-          } else {
-            this.animFrameId = requestAnimationFrame(checkTime);
+        const cur = this.videoElement.currentTime;
+        this.updateTimelineProgress(cur);
+
+        // ONLY stop when reached or passed sentence endTime (never stop prematurely on buffer/pause)
+        if (cur >= endTime) {
+          this.videoElement.pause();
+          this.stopVideoTracking();
+          this.setSpeakingState(false);
+          this.updateTimelineProgress(endTime);
+          onEnd?.();
+
+          // Continuous auto-loop until user completes the sentence or manually pauses
+          if (!this.isSentenceCompleted && !this.isManualPaused) {
+            this.scheduleAutoLoop(this.currentSentence?.startTime ?? startTime, this.currentSentence?.endTime ?? endTime);
           }
-        };
+        } else {
+          this.animFrameId = requestAnimationFrame(checkTime);
+        }
+      };
 
-        this.animFrameId = requestAnimationFrame(checkTime);
-      }).catch(() => {
-        this.setSpeakingState(false);
-        onEnd?.();
-      });
+      this.stopVideoTracking();
+      this.animFrameId = requestAnimationFrame(checkTime);
     };
 
-    if (Math.abs(video.currentTime - startTime) < 0.1) {
-      startPlayback();
-    } else {
-      const onSeeked = () => {
-        video.removeEventListener('seeked', onSeeked);
-        startPlayback();
-      };
-      video.addEventListener('seeked', onSeeked, { once: true });
-      video.currentTime = startTime;
-    }
+    const beginPlay = () => {
+      try {
+        if (Math.abs(video.currentTime - startTime) > 0.05) {
+          video.currentTime = startTime;
+        }
+      } catch {}
+
+      video.playbackRate = this.speed;
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          startTracking();
+        }).catch(() => {
+          this.setSpeakingState(false);
+          this.stopVideoTracking();
+        });
+      } else {
+        startTracking();
+      }
+    };
+
+    beginPlay();
   }
 
   public seekRelative(deltaSeconds: number): void {
@@ -227,10 +399,8 @@ export class AnimatedStage {
   }
 
   public stopPlayback(): void {
-    if (this.animFrameId !== null) {
-      cancelAnimationFrame(this.animFrameId);
-      this.animFrameId = null;
-    }
+    this.clearLoopTimer();
+    this.stopVideoTracking();
     if (this.ytIframeElement) {
       const pauseMsg = JSON.stringify({
         event: 'command',
@@ -240,7 +410,9 @@ export class AnimatedStage {
       this.ytIframeElement.contentWindow?.postMessage(pauseMsg, '*');
     }
     if (this.videoElement) {
-      this.videoElement.pause();
+      try {
+        this.videoElement.pause();
+      } catch {}
     }
     this.setSpeakingState(false);
   }
@@ -256,7 +428,19 @@ export class AnimatedStage {
     this.isSpeaking = speaking;
     const replayIcon = this.container.querySelector('#stageReplayBtn i');
     if (replayIcon) {
-      replayIcon.className = `ph ph-${speaking ? 'pause' : 'play'}`;
+      replayIcon.className = `ph ph-${speaking ? 'pause-fill' : 'play-fill'}`;
+    }
+    const replaySpan = this.container.querySelector('#stageReplayBtn span');
+    if (replaySpan) {
+      const isUz = i18n.getLanguage() === 'uz';
+      replaySpan.textContent = speaking ? (isUz ? 'To‘xtatish' : 'Pause') : i18n.t().replay;
+    }
+    const replayBtn = this.container.querySelector<HTMLButtonElement>('#stageReplayBtn');
+    if (replayBtn) {
+      const isUz = i18n.getLanguage() === 'uz';
+      const tooltip = speaking ? (isUz ? 'To‘xtatish (Space)' : 'Pause (Space)') : `${i18n.t().replay} (Space / Tab)`;
+      replayBtn.title = tooltip;
+      replayBtn.setAttribute('aria-label', tooltip);
     }
   }
 
@@ -469,6 +653,11 @@ export class AnimatedStage {
             <span>${escapeHtml(this.currentSentence.character)}</span>
           </div>
 
+          <!-- Video Play/Pause Tap Action Indicator -->
+          <div class="video-center-indicator" id="videoCenterIndicator" aria-hidden="true">
+            <i class="ph ph-play-fill"></i>
+          </div>
+
           <!-- In-Video Floating Subtitle Overlay -->
           <div class="video-subtitles-overlay ${this.isSubtitleRevealed && this.subtitleMode !== 'off' ? 'visible' : ''}" id="videoSubtitleOverlay" aria-live="polite">
             ${this.isSubtitleRevealed && this.subtitleMode !== 'off' ? `
@@ -596,7 +785,19 @@ export class AnimatedStage {
 
     if (this.videoElement && this.currentScene && !isValidYouTubeVideoId(this.currentScene.youtubeVideoId)) {
       videoStreamService.attachSmartVideoStream(this.videoElement, this.currentScene);
-      this.videoElement.currentTime = this.currentSentence.startTime;
+      const targetStartTime = this.currentSentence.startTime;
+      const applyInitialSeek = () => {
+        try {
+          if (this.videoElement && Math.abs(this.videoElement.currentTime - targetStartTime) > 0.05) {
+            this.videoElement.currentTime = targetStartTime;
+          }
+        } catch {}
+      };
+      if (this.videoElement.readyState >= 1) {
+        applyInitialSeek();
+      } else {
+        this.videoElement.addEventListener('loadedmetadata', applyInitialSeek, { once: true });
+      }
     }
     this.bindEvents();
   }
@@ -608,6 +809,24 @@ export class AnimatedStage {
     });
     this.container.querySelector('#bcLibraryLink')?.addEventListener('click', () => {
       this.onBackToLibrary?.();
+    });
+
+    // Tap / Click anywhere on the cinema video card to toggle play/pause smoothly
+    const videoCard = this.container.querySelector('.cinema-video-card');
+    videoCard?.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      // Do not toggle play/pause if clicking inside the scrubber bar or on interactive controls/links
+      if (
+        target.closest('.video-scrubber-overlay') ||
+        target.closest('button') ||
+        target.closest('a') ||
+        target.closest('.video-character-pill-overlay') ||
+        target.closest('.video-subtitles-overlay')
+      ) {
+        return;
+      }
+      this.togglePlayPause();
     });
 
     // Minimalist Focus Mode Toggle
@@ -636,9 +855,9 @@ export class AnimatedStage {
       }
     });
 
-    // Replay current segment
+    // Play / Pause / Replay current segment
     this.container.querySelector('#stageReplayBtn')?.addEventListener('click', () => {
-      this.onReplayRequest?.();
+      this.togglePlayPause();
     });
 
     // Previous sentence

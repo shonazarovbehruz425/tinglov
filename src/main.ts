@@ -1044,6 +1044,8 @@ class MovieListenApp implements RouterDelegate {
     // after a reload or on another device (synced via cloud sync).
     storageService.updateLastPosition(this.currentScene.id, this.currentSentenceIndex);
 
+    this.animatedStage.setSentenceCompleted(false);
+    this.animatedStage.clearLoopTimer();
     this.animatedStage.updateSceneAndSentence(
       this.currentScene,
       sentence,
@@ -1082,6 +1084,10 @@ class MovieListenApp implements RouterDelegate {
   private handleSentenceCompleted(accuracy: number, wpm: number, hintsUsed: number): void {
     this.sessionAccuracies.push(accuracy);
     if (wpm > 0) this.sessionWpms.push(wpm);
+
+    // Halt continuous auto-loop on the completed sentence immediately
+    this.animatedStage.setSentenceCompleted(true);
+    this.animatedStage.clearLoopTimer();
 
     // Reveal bilingual parallel subtitles on completion
     this.animatedStage.setSubtitleRevealed(true);
@@ -1263,15 +1269,14 @@ class MovieListenApp implements RouterDelegate {
         return;
       }
 
-      // Space: Replay current dialogue (only outside text inputs/buttons so it
+      // Space: Toggle Play/Pause current video dialogue (only outside text inputs/buttons so it
       // never blocks typing or button activation)
       if (e.code === 'Space' && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
         const target = e.target as HTMLElement | null;
         const isTyping = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable || target.tagName === 'BUTTON');
         if (this.currentScene && !isTyping && !isModalOpen) {
           e.preventDefault();
-          this.playCurrentDialogue();
-          this.dictationInput.focusInput();
+          this.animatedStage.togglePlayPause();
           return;
         }
       }
