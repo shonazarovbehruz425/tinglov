@@ -13210,5 +13210,419 @@ body:not(.in-admin-mode) .app-skeleton-box {
   will-change: opacity;
 }
 
+/* ==========================================================================
+   Mobile Phone Adaptive & Responsive Engine (iOS & Android Phones)
+   ========================================================================== */
+
+/* Universal Mobile & Safe Area Base */
+html,
+body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+/* Touch-optimized active states and smooth tap handling */
+button,
+a,
+input,
+select,
+textarea,
+.category-pill,
+.filter-btn-pill,
+.cinema-course-card {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent iOS Safari 16px auto-zoom on form focus */
+input,
+select,
+textarea,
+.dictation-big-textarea,
+.header-search-input,
+.admin-input,
+.admin-textarea {
+  font-size: 16px !important;
+}
+
+/* --------------------------------------------------------------------------
+   Tablet & Mobile Breakpoint (<= 768px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  /* Safe Area & Main Content */
+  .app-header {
+    padding-top: max(0.65rem, env(safe-area-inset-top));
+    padding-left: max(0.85rem, env(safe-area-inset-left));
+    padding-right: max(0.85rem, env(safe-area-inset-right));
+    gap: 0.6rem;
+  }
+
+  .app-main-content {
+    padding: 1rem max(0.75rem, env(safe-area-inset-left)) max(2rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-right));
+  }
+
+  /* Header Controls & Compact Profile */
+  .header-right {
+    gap: 0.45rem;
+  }
+
+  .user-profile-summary {
+    padding: 0.2rem;
+    max-width: none;
+  }
+
+  .user-profile-summary .user-names {
+    display: none;
+  }
+
+  .header-combined-stat-pill {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.78rem;
+    gap: 0.35rem;
+  }
+
+  .header-tools-cluster {
+    gap: 0.25rem;
+  }
+
+  .header-icon-round {
+    width: 34px;
+    height: 34px;
+    font-size: 1.05rem;
+  }
+
+  /* Hero Banner on Tablet/Mobile */
+  .featured-hero-banner {
+    border-radius: var(--radius-lg, 20px);
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-banner-content {
+    padding: 1.5rem 1.25rem;
+    gap: 1.25rem;
+  }
+
+  .hero-banner-title {
+    font-size: clamp(1.4rem, 5vw, 1.85rem);
+  }
+
+  .hero-banner-desc {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    margin-bottom: 1.15rem;
+  }
+
+  .hero-meta-row {
+    gap: 0.85rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.82rem;
+  }
+
+  .hero-action-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+    width: 100%;
+  }
+
+  .hero-primary-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.8rem 1.25rem;
+  }
+
+  .hero-progress-pill {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Catalog Header & Category Pills Swipeable Carousel */
+  .catalog-section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .catalog-section-title-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .catalog-header-actions-cluster {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .catalog-header-actions-cluster::-webkit-scrollbar {
+    display: none;
+  }
+
+  .category-pills-filter {
+    display: flex;
+    flex-wrap: nowrap;
+    width: max-content;
+    min-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 3px;
+  }
+
+  .category-pills-filter::-webkit-scrollbar {
+    display: none;
+  }
+
+  .category-pill {
+    padding: 0.45rem 0.95rem;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+  }
+
+  /* Secondary Filter Toolbar on Mobile */
+  .catalog-filters-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+    padding: 0.85rem 0.75rem;
+    margin: 1rem 0 1.25rem 0;
+    border-radius: 16px;
+  }
+
+  .filter-group-cluster {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+    width: 100%;
+  }
+
+  .filter-subgroup {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+    width: 100%;
+  }
+
+  .filter-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .filter-pill-box {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 3px 4px;
+    gap: 0.3rem;
+  }
+
+  .filter-pill-box::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-btn-pill {
+    flex-shrink: 0;
+    padding: 0.38rem 0.72rem;
+    font-size: 0.78rem;
+  }
+
+  .filter-vertical-divider {
+    display: none;
+  }
+
+  .filter-reset-action-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.6rem 1rem;
+    border-top: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    margin-top: 0.15rem;
+    font-size: 0.85rem;
+  }
+
+  /* Courses Grid */
+  .cinema-courses-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  /* Practice Player & Dictation */
+  .practice-main-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .cinema-video-card {
+    border-radius: 16px;
+  }
+
+  .dictation-input-panel {
+    padding: 1.15rem 1rem;
+    border-radius: 16px;
+  }
+
+  .dictation-big-textarea {
+    min-height: 80px;
+    padding: 0.75rem;
+    border-radius: 12px;
+  }
+
+  .word-slots-row {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .clean-word-slot {
+    padding: 0.25rem 0.55rem;
+    font-size: 0.8rem;
+  }
+
+  .dictation-controls-cluster {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .dictation-controls-cluster > div:last-child {
+    display: flex;
+    width: 100%;
+    gap: 0.4rem;
+  }
+
+  .dictation-controls-cluster > div:last-child button {
+    flex: 1;
+    justify-content: center;
+    padding: 0.55rem 0.6rem;
+    font-size: 0.82rem;
+  }
+
+  /* Modals on Mobile */
+  .modal-backdrop,
+  .auth-modal-backdrop,
+  .admin-modal {
+    padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  }
+
+  .modal-card,
+  .auth-modal-dialog,
+  .admin-modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: auto;
+    max-height: 88vh;
+    border-radius: 20px;
+    padding: 1.5rem 1.15rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* User Profile Dropdown on Mobile */
+  .user-profile-dropdown {
+    position: fixed !important;
+    top: auto !important;
+    bottom: max(1rem, env(safe-area-inset-bottom)) !important;
+    left: max(1rem, env(safe-area-inset-left)) !important;
+    right: max(1rem, env(safe-area-inset-right)) !important;
+    width: auto !important;
+    max-width: none !important;
+    border-radius: 20px !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
+    z-index: 300 !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Small Phones Breakpoint (<= 480px, e.g. iPhone SE, 13/14/15 Mini, Galaxy S)
+   -------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .app-header {
+    padding: 0.55rem 0.65rem;
+  }
+
+  .header-logo-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .header-logo-title {
+    font-size: 1.15rem;
+  }
+
+  #openVocabBtn {
+    padding: 0.4rem 0.65rem;
+    font-size: 0.78rem;
+  }
+
+  #openVocabBtn span {
+    display: none;
+  }
+
+  .hero-banner-content {
+    padding: 1.25rem 0.95rem;
+  }
+
+  .hero-banner-title {
+    font-size: 1.35rem;
+  }
+
+  .cinema-card-body {
+    padding: 0.95rem;
+  }
+
+  .cinema-card-title {
+    font-size: 1.05rem;
+  }
+
+  .catalog-empty-card {
+    padding: 2rem 1.2rem;
+  }
+
+  .catalog-empty-title {
+    font-size: 1.2rem;
+  }
+
+  .catalog-empty-desc {
+    font-size: 0.85rem;
+  }
+
+  .catalog-empty-reset-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.7rem 1.25rem;
+  }
+
+  .player-tabs-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .player-nav-tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+    width: 100%;
+  }
+
+  .player-nav-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .player-tab-pill {
+    padding: 0.45rem 0.85rem;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+}
+
 
 
