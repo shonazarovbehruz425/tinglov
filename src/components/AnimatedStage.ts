@@ -225,11 +225,34 @@ export class AnimatedStage {
 
   private scheduleAutoLoop(startTime: number, endTime: number): void {
     this.clearLoopTimer();
-    // Gentle natural interval: 1.2s gives user comfortable thinking time between repetitions
+
+    // For very short segments (≤4.5s), the dialogue likely hasn't started yet.
+    // Instead of trapping user in an infinite 4-second silent loop,
+    // auto-extend the endTime and keep playing forward.
+    if (this.currentSentence && (endTime - startTime) <= 4.5) {
+      const totalDur = this.getTotalDuration();
+      if (endTime < totalDur - 1) {
+        this.currentSentence.endTime = Math.min(totalDur, endTime + 4);
+        this.saveCurrentSceneChanges();
+        this.loopTimerId = window.setTimeout(() => {
+          this.loopTimerId = null;
+          if (!this.isSentenceCompleted && !this.isManualPaused && this.currentSentence) {
+            this.render();
+            this.playVideoSegment(endTime, this.currentSentence.endTime);
+          }
+        }, 300);
+        return;
+      }
+    }
+
+    // Normal-length replicas: gentle 1.2s pause then replay from start
     this.loopTimerId = window.setTimeout(() => {
       this.loopTimerId = null;
       if (!this.isSentenceCompleted && !this.isManualPaused && this.currentSentence) {
-        this.playVideoSegment(startTime, endTime);
+        this.playVideoSegment(
+          this.currentSentence.startTime,
+          this.currentSentence.endTime
+        );
       }
     }, 1200);
   }
