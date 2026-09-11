@@ -83,30 +83,11 @@ app.use(userRoutes);
 app.use(adminRoutes);
 
 // --------------------------------------------------------------------------
-// Global 404 (JSON) + Central Error Handler (with requestId tracing)
-// --------------------------------------------------------------------------
-app.use((req, res) => {
-  res.status(404).json({
-    error: 'So‘ralgan manzil topilmadi',
-    path: req.path,
-    requestId: (req as any).requestId || res.getHeader('X-Request-Id'),
-  });
-});
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(`[${(req as any).requestId || '-'}] Unhandled error:`, err?.message || err);
-  const status = err?.status && Number.isInteger(err.status) ? err.status : 500;
-  res.status(status).json({
-    error: status === 500 ? 'Serverda ichki xatolik yuz berdi' : (err?.message || 'So‘rovni bajarishda xatolik'),
-    requestId: (req as any).requestId || res.getHeader('X-Request-Id'),
-  });
-});
-
-// --------------------------------------------------------------------------
 // Static SPA Serving (Render.com Web Service & Production)
 // ADMIN_PATH / CLOUDFLARE_R2_URL yagona manbasidan foydalanadi
 // (server/routes/admin.routes.ts eksporti).
+// MUHIM: 404 handler'dan OLDIN turishi shart, aks holda barcha SPA marshrutlari
+// (/, /dashboard, /practice va static fayllar) 404 JSON qaytarib yuboradi!
 // --------------------------------------------------------------------------
 const distPath = path.resolve(process.cwd(), 'dist');
 if (fs.existsSync(distPath)) {
@@ -146,6 +127,28 @@ if (fs.existsSync(distPath)) {
     }
   });
 }
+
+// --------------------------------------------------------------------------
+// Global 404 (JSON) + Central Error Handler (with requestId tracing)
+// Faqat yuqoridagi static SPA va API routerlar tutmagan so‘rovlar uchun.
+// --------------------------------------------------------------------------
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'So‘ralgan manzil topilmadi',
+    path: req.path,
+    requestId: (req as any).requestId || res.getHeader('X-Request-Id'),
+  });
+});
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(`[${(req as any).requestId || '-'}] Unhandled error:`, err?.message || err);
+  const status = err?.status && Number.isInteger(err.status) ? err.status : 500;
+  res.status(status).json({
+    error: status === 500 ? 'Serverda ichki xatolik yuz berdi' : (err?.message || 'So‘rovni bajarishda xatolik'),
+    requestId: (req as any).requestId || res.getHeader('X-Request-Id'),
+  });
+});
 
 // --------------------------------------------------------------------------
 // Automatic Self-Ping Keep-Alive Heartbeat for Render.com Free Tier
