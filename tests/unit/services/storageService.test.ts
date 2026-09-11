@@ -869,4 +869,43 @@ describe('StorageService', () => {
       expect(service.getStats().level).toBe(getLevelProgress(1000).level);
     });
   });
+
+  describe('server scenes management and synchronization', () => {
+    it('incorporates server scenes cleanly into getAllScenes', () => {
+      const initialCount = service.getAllScenes().length;
+      const serverScene = makeScene('server_scene_1');
+      service.setServerScenes([serverScene]);
+
+      const scenes = service.getAllScenes();
+      expect(scenes.length).toBe(initialCount + 1);
+      expect(scenes.some((s) => s.id === 'server_scene_1')).toBe(true);
+    });
+
+    it('replaces previous server scenes when server scenes list updates', () => {
+      const initialCount = service.getAllScenes().length;
+      service.setServerScenes([makeScene('server_scene_1')]);
+      expect(service.getAllScenes().some((s) => s.id === 'server_scene_1')).toBe(true);
+
+      // Server deleted server_scene_1 and added server_scene_2
+      service.setServerScenes([makeScene('server_scene_2')]);
+      const updatedScenes = service.getAllScenes();
+      expect(updatedScenes.length).toBe(initialCount + 1);
+      expect(updatedScenes.some((s) => s.id === 'server_scene_1')).toBe(false);
+      expect(updatedScenes.some((s) => s.id === 'server_scene_2')).toBe(true);
+    });
+
+    it('does not duplicate scenes if server scene matches existing custom scene id', () => {
+      const customScene = makeScene('scene_x');
+      service.saveCustomScene(customScene);
+
+      const overrideScene = { ...makeScene('scene_x'), title: 'Overridden Title' };
+      service.setServerScenes([overrideScene]);
+
+      const scenes = service.getAllScenes();
+      expect(scenes.length).toBe(1);
+      const matched = scenes.find((s) => s.id === 'scene_x');
+      expect(matched?.title).toBe('Overridden Title');
+    });
+  });
 });
+

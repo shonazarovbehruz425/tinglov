@@ -22,6 +22,7 @@ function unescapeHtml(value: string): string {
 export class StorageService {
   private stats: UserStats;
   private customScenes: Scene[];
+  private serverScenes: Scene[] = [];
   private highScores: Record<string, HighScoreRecord[]>; // sceneId -> HighScoreRecord[]
   private syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private isSyncing = false;
@@ -313,7 +314,35 @@ export class StorageService {
   }
 
   public getAllScenes(): Scene[] {
-    return [...INITIAL_SCENES, ...this.customScenes];
+    const existingIds = new Set<string>();
+    const result: Scene[] = [];
+
+    // 1. Hardcoded initial scenes
+    for (const s of INITIAL_SCENES) {
+      existingIds.add(s.id);
+      result.push(s);
+    }
+
+    // 2. Server scenes (override initial if same id, or add as new)
+    for (const s of this.serverScenes) {
+      const existingIdx = result.findIndex(existing => existing.id === s.id);
+      if (existingIdx >= 0) {
+        result[existingIdx] = s;
+      } else {
+        existingIds.add(s.id);
+        result.push(s);
+      }
+    }
+
+    // 3. User-created local custom scenes (only if not already provided by server/initial)
+    for (const s of this.customScenes) {
+      if (!existingIds.has(s.id)) {
+        existingIds.add(s.id);
+        result.push(s);
+      }
+    }
+
+    return result;
   }
 
   public saveCustomScene(scene: Scene): void {
@@ -325,15 +354,12 @@ export class StorageService {
     }
   }
 
+  public setServerScenes(scenes: Scene[]): void {
+    this.serverScenes = Array.isArray(scenes) ? scenes : [];
+  }
+
   public mergeServerScenes(scenes: Scene[]): void {
-    scenes.forEach(scene => {
-      const idx = this.customScenes.findIndex(s => s.id === scene.id);
-      if (idx >= 0) {
-        this.customScenes[idx] = scene;
-      } else {
-        this.customScenes.push(scene);
-      }
-    });
+    this.setServerScenes(scenes);
   }
 
   public deleteCustomScene(sceneId: string): void {

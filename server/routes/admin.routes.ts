@@ -75,6 +75,9 @@ const configHandler = (_req: Request, res: Response) => {
 const scenesPublicHandler = (_req: Request, res: Response) => {
   try {
     const scenes = getAllAdminScenes();
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.json({ scenes });
   } catch (err: any) {
     res.status(500).json({ error: 'Darslarni yuklashda xatolik yuz berdi' });

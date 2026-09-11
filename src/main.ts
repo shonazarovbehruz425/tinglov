@@ -70,6 +70,7 @@ class MovieListenApp implements RouterDelegate {
   private shadowingModal!: ShadowingModal;
   private friendChallengeModal!: FriendChallengeModal;
   private authModal!: AuthModal;
+  private serverScenesPromise: Promise<Scene[]> | null = null;
 
   constructor() {
     this.initDOM();
@@ -384,49 +385,7 @@ class MovieListenApp implements RouterDelegate {
 
     // Warm up admin config and fetch global custom scenes from server
     apiService.fetchAdminConfig().catch(() => {});
-    apiService.getPublicScenes().then((serverScenes) => {
-      if (serverScenes && serverScenes.length > 0) {
-        const mappedScenes: Scene[] = [];
-        serverScenes.forEach((s: any) => {
-          try {
-            const parsedDialogues = typeof s.dialogues_json === 'string' ? JSON.parse(s.dialogues_json) : (s.dialogues || []);
-            const dialogues: DialogueSentence[] = parsedDialogues.map((d: any, idx: number) => ({
-              id: d.id || `line_${idx + 1}`,
-              character: d.character || 'Qahramon',
-              characterAvatar: '🎬',
-              startTime: Number(d.startTime) || 0,
-              endTime: Number(d.endTime) || (Number(d.startTime) || 0) + 3,
-              text: d.text || '',
-              cleanText: (d.text || '').replace(/[^\w\s]/g, '').toLowerCase().trim(),
-              uzbekTranslation: d.uzbekTranslation || d.translation || '',
-              wordDictionary: d.wordDictionary || {},
-            }));
-
-            mappedScenes.push({
-              id: s.id,
-              title: s.title,
-              movieName: s.title,
-              coverEmoji: '🎬',
-              coverImage: s.poster_url || undefined,
-              category: (s.category === 'Animation' ? 'Cartoon' : s.category === 'Anime' ? 'Anime' : 'Cinema') as any,
-              difficulty: (s.difficulty?.toLowerCase() || 'intermediate') as any,
-              duration: '1:30',
-              accent: (s.accent === 'British' ? 'British' : 'American'),
-              videoUrl: s.video_url,
-              dialogues,
-            });
-          } catch {
-            // Ignored
-          }
-        });
-        if (mappedScenes.length > 0) {
-          storageService.mergeServerScenes(mappedScenes);
-          if (this.currentView === 'library') {
-            this.levelSelector.render();
-          }
-        }
-      }
-    }).catch(() => {});
+    this.loadServerScenes().catch(() => {});
 
     // React to auth state changes (e.g. sign out or Google OAuth sign in).
     // Consolidated onto sessionManager (the single auth-state source): this is the
@@ -642,20 +601,77 @@ class MovieListenApp implements RouterDelegate {
     this.routeInitialUrl();
   }
 
+  public async loadServerScenes(forceRefresh: boolean = false): Promise<Scene[]> {
+    if (!this.serverScenesPromise || forceRefresh) {
+      this.serverScenesPromise = this.fetchServerScenes();
+    }
+    return this.serverScenesPromise;
+  }
+
+  private async fetchServerScenes(): Promise<Scene[]> {
+    try {
+      const serverScenes = await apiService.getPublicScenes();
+      const mappedScenes: Scene[] = [];
+      if (Array.isArray(serverScenes)) {
+        serverScenes.forEach((s: any) => {
+          try {
+            const parsedDialogues = typeof s.dialogues_json === 'string' ? JSON.parse(s.dialogues_json) : (s.dialogues || []);
+            const dialogues: DialogueSentence[] = (Array.isArray(parsedDialogues) ? parsedDialogues : []).map((d: any, idx: number) => ({
+              id: d.id || `line_${idx + 1}`,
+              character: d.character || 'Qahramon',
+              characterAvatar: '🎬',
+              startTime: Number(d.startTime) || 0,
+              endTime: Number(d.endTime) || (Number(d.startTime) || 0) + 3,
+              text: d.text || '',
+              cleanText: (d.text || '').replace(/[^\w\s]/g, '').toLowerCase().trim(),
+              uzbekTranslation: d.uzbekTranslation || d.translation || '',
+              wordDictionary: d.wordDictionary || {},
+            }));
+
+            mappedScenes.push({
+              id: s.id,
+              title: s.title,
+              movieName: s.title,
+              coverEmoji: '🎬',
+              coverImage: s.poster_url || undefined,
+              category: (s.category === 'Animation' ? 'Cartoon' : s.category === 'Anime' ? 'Anime' : 'Cinema') as any,
+              difficulty: (s.difficulty?.toLowerCase() || 'intermediate') as any,
+              duration: '1:30',
+              accent: (s.accent === 'British' ? 'British' : 'American'),
+              videoUrl: s.video_url,
+              dialogues,
+            });
+          } catch {
+            // Ignored
+          }
+        });
+      }
+      storageService.setServerScenes(mappedScenes);
+      if (this.currentView === 'library') {
+        this.levelSelector.render();
+      }
+      return mappedScenes;
+    } catch {
+      return [];
+    }
+  }
+
   private async routeInitialUrl(): Promise<void> {
     const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
     const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-    // isPublic is now evaluated by the router with byte-for-byte identical logic,
-    // keeping the rawPath/rawHash locals for the branch bodies below.
+
     if (this.router.isPublicBootRoute()) {
       // 1. If public route (landing, login, register, admin), route immediately
       this.router.resolve(false);
 
-      // Check session in background to update header stats if user is already logged in
-      apiService.waitForAuth().then((data) => {
+      // Check session and fetch server scenes in background to update header stats if user is already logged in
+      Promise.allSettled([
+        apiService.waitForAuth(),
+        this.loadServerScenes(),
+      ]).then(([authRes]) => {
         sessionManager.markReady();
-        if (data) {
-          storageService.syncWithServer(data);
+        if (authRes.status === 'fulfilled' && authRes.value) {
+          storageService.syncWithServer(authRes.value);
           this.statsHeader.update();
           // If already logged in and visitor is on login/register, navigate to dashboard
           if (rawPath === '/login' || rawPath === '/register' || rawHash === 'login' || rawHash === 'register') {
@@ -669,47 +685,33 @@ class MovieListenApp implements RouterDelegate {
     }
 
     // 2. Himoyalangan yo'llar (/dashboard, /library, /practice, /profile, /settings):
-    // Agar foydalanuvchi allaqachon login qilgan bo'lsa (localStorage keshida sessiya mavjud):
-    // Brauzer reload bo'lishi bilanoq real darslarni DARHOL chizamiz (0ms latency)!
-    // Tepada reload to'xtagandan keyin pastda yolg'ondan skelet chiqib turishi to'xtatildi.
-    if (apiService.isAuthenticated()) {
-      sessionManager.markReady();
-      this.router.resolve(false);
-
-      // Fondan eng so'nggi ma'lumotlarni tortib, fon rejimida yangilab qo'yamiz (Stale-While-Revalidate)
-      apiService.waitForAuth().then((data) => {
-        if (data) {
-          storageService.syncWithServer(data);
-          this.statsHeader.update();
-          if (this.currentView === 'library') {
-            this.levelSelector.render();
-          } else if (this.currentView === 'profile') {
-            this.profileView.render();
-          }
-        }
-      }).catch(() => {});
-      return;
-    }
-
-    // 3. Agar foydalanuvchi hali keshlanmagan bo'lsa (dastlabki kirish yoki cookie tekshirish payti):
+    // Serverdan eng so'nggi ma'lumotlar olinayotganda toza skeleton ko'rsatamiz:
     if (rawPath === '/dashboard' || rawPath === '/library' || rawHash === 'dashboard' || rawHash === 'library') {
       this.switchView('library');
       this.setLibraryBusyState(true);
       this.levelSelector.renderSkeleton();
+    } else if (rawPath === '/profile' || rawHash === 'profile') {
+      this.switchView('profile');
     }
 
     try {
-      const data = await apiService.waitForAuth();
+      const [authResult] = await Promise.allSettled([
+        apiService.waitForAuth(),
+        this.loadServerScenes(),
+      ]);
+
       sessionManager.markReady();
 
-      if (data || apiService.isAuthenticated()) {
-        if (data) {
-          storageService.syncWithServer(data);
-        }
-        this.statsHeader.update();
+      if (authResult.status === 'fulfilled' && authResult.value) {
+        storageService.syncWithServer(authResult.value);
+      }
+      this.statsHeader.update();
+
+      if (apiService.isAuthenticated()) {
         this.router.resolve(false);
         this.setLibraryBusyState(false);
       } else {
+        this.setLibraryBusyState(false);
         this.checkAndEnforceAuth();
       }
     } catch {
@@ -718,6 +720,7 @@ class MovieListenApp implements RouterDelegate {
         this.router.resolve(false);
         this.setLibraryBusyState(false);
       } else {
+        this.setLibraryBusyState(false);
         this.checkAndEnforceAuth();
       }
     }
@@ -792,7 +795,8 @@ class MovieListenApp implements RouterDelegate {
     const targetScene = (sceneId ? allScenes.find((s) => s.id === sceneId) : null) || allScenes[0];
     if (targetScene) {
       const challengePayload = storageService.parseChallengePayload(searchParams);
-      this.startScene(targetScene, 0, push, challengePayload);
+      const lastPos = storageService.getLastPosition(targetScene.id) || 0;
+      this.startScene(targetScene, lastPos, push, challengePayload);
       return;
     }
     // No playable scene: the original switch fell through to the authenticated

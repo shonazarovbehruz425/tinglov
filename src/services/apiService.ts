@@ -676,10 +676,15 @@ class ApiService {
     // 1. Check backend HttpOnly cookie session (cross-tab & persistent across tab closes)
     try {
       const abortCtrl = new AbortController();
-      const timeoutId = setTimeout(() => abortCtrl.abort(), 2500);
+      const timeoutId = setTimeout(() => abortCtrl.abort(), 3000);
       const res = await fetch('/api/auth/me', {
         method: 'GET',
         credentials: 'include',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
         signal: abortCtrl.signal,
       }).finally(() => clearTimeout(timeoutId));
       if (res.ok) {
@@ -687,6 +692,7 @@ class ApiService {
         if (data && data.user) {
           currentUser = data.user;
           this.currentUser = data.user;
+          this.saveUserToStorage(data.user);
           this.setToken('httponly_session');
           savedWords = data.savedWords || [];
           completedScenes = data.completedScenes || [];
@@ -1395,7 +1401,17 @@ class ApiService {
 
   public async getPublicScenes(): Promise<AdminSceneDto[]> {
     try {
-      const res = await fetch('/api/scenes');
+      const abortCtrl = new AbortController();
+      const timeoutId = setTimeout(() => abortCtrl.abort(), 3000);
+      const res = await fetch('/api/scenes', {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+        signal: abortCtrl.signal,
+      }).finally(() => clearTimeout(timeoutId));
       if (!res.ok) return [];
       const data = await res.json();
       return (data.scenes || []) as AdminSceneDto[];
