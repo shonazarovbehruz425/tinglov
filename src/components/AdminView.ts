@@ -47,6 +47,7 @@ export class AdminView {
   private searchQuery: string = '';
   private userFilter: AdminUserFilter = 'all';
   private healthLatencyMs: number | null = null;
+  private editingSceneId: string | null = null;
   private errorMsg: string | null = null;
   private successMsg: string | null = null;
   private onNavigateHomeCallback?: () => void;
@@ -807,11 +808,18 @@ export class AdminView {
                 <span>${scene.accent === 'British' ? 'British' : 'American'}</span>
               </span>
             </div>
-            <button class="admin-btn-del-scene admin-btn-danger" data-scene-id="${escapeHtml(scene.id)}" title="Darsni o‘chirish">
-              <svg viewBox="0 0 256 256" width="18" height="18" fill="currentColor" aria-hidden="true">
-                <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/>
-              </svg>
-            </button>
+            <div class="admin-scene-actions">
+              <button class="admin-btn-edit-scene" data-scene-id="${escapeHtml(scene.id)}" title="Darsni tahrirlash" aria-label="Darsni tahrirlash">
+                <svg viewBox="0 0 256 256" width="18" height="18" fill="currentColor" aria-hidden="true">
+                  <path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31l123.31-123.31A16,16,0,0,0,227.31,73.37ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z"/>
+                </svg>
+              </button>
+              <button class="admin-btn-del-scene admin-btn-danger" data-scene-id="${escapeHtml(scene.id)}" title="Darsni o‘chirish" aria-label="Darsni o‘chirish">
+                <svg viewBox="0 0 256 256" width="18" height="18" fill="currentColor" aria-hidden="true">
+                  <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/>
+                </svg>
+              </button>
+            </div>
           </div>
           <h4 class="admin-scene-title">${escapeHtml(scene.title)}</h4>
           <div class="admin-scene-meta">
@@ -1413,6 +1421,19 @@ export class AdminView {
       });
     }
 
+    // Scenes: Edit Scene
+    const editSceneBtns = this.container.querySelectorAll('.admin-btn-edit-scene');
+    editSceneBtns.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const sceneId = (e.currentTarget as HTMLElement).getAttribute('data-scene-id');
+        if (!sceneId) return;
+        const scene = this.scenes.find((s) => s.id === sceneId);
+        if (scene) {
+          this.openSceneModal(scene);
+        }
+      });
+    });
+
     // Scenes: Delete Scene
     const delSceneBtns = this.container.querySelectorAll('.admin-btn-del-scene');
     delSceneBtns.forEach((btn) => {
@@ -1486,16 +1507,71 @@ export class AdminView {
     });
   }
 
-  private openSceneModal(): void {
+  private openSceneModal(sceneToEdit?: AdminSceneDto): void {
     const modal = this.container.querySelector('#adminSceneModal') as HTMLElement | null;
-    if (modal) {
-      modal.classList.remove('admin-modal-closing');
-      modal.style.display = 'flex';
-      document.body.style.overflow = 'hidden';
-      setTimeout(() => {
-        (this.container.querySelector('#newSceneTitle') as HTMLInputElement | null)?.focus();
-      }, 60);
+    if (!modal) return;
+
+    const heading = this.container.querySelector('#adminModalHeading');
+    const saveBtn = this.container.querySelector('#adminSaveSceneBtn');
+    const titleInput = this.container.querySelector('#newSceneTitle') as HTMLInputElement | null;
+    const catInput = this.container.querySelector('#newSceneCategory') as HTMLSelectElement | null;
+    const diffInput = this.container.querySelector('#newSceneDifficulty') as HTMLSelectElement | null;
+    const accentInput = this.container.querySelector('#newSceneAccent') as HTMLSelectElement | null;
+    const videoInput = this.container.querySelector('#newSceneVideoUrl') as HTMLInputElement | null;
+    const posterInput = this.container.querySelector('#newScenePosterUrl') as HTMLInputElement | null;
+    const dialInput = this.container.querySelector('#newSceneDialogues') as HTMLTextAreaElement | null;
+
+    if (sceneToEdit) {
+      this.editingSceneId = sceneToEdit.id;
+      if (heading) {
+        heading.innerHTML = '<i class="ph ph-bold ph-pencil-simple"></i> Video Darsni Tahrirlash';
+      }
+      if (saveBtn) {
+        saveBtn.innerHTML = '<i class="ph ph-bold ph-check"></i> O‘zgarishlarni Saqlash';
+      }
+      if (titleInput) titleInput.value = sceneToEdit.title || '';
+      if (catInput) catInput.value = sceneToEdit.category || 'Movie';
+      if (diffInput) diffInput.value = sceneToEdit.difficulty || 'Intermediate';
+      if (accentInput) accentInput.value = sceneToEdit.accent || 'American';
+      if (videoInput) videoInput.value = sceneToEdit.video_url || '';
+      if (posterInput) posterInput.value = sceneToEdit.poster_url || '';
+
+      if (dialInput) {
+        try {
+          const parsed = JSON.parse(sceneToEdit.dialogues_json || '[]');
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            dialInput.value = parsed.map((d: any) => {
+              const start = d.startTime ?? 0;
+              const end = d.endTime ?? (start + 3);
+              const txt = (d.text || d.textEn || '').trim();
+              const trans = (d.uzbekTranslation || d.translation || d.textUz || '').trim();
+              return `${start} | ${end} | ${txt} | ${trans}`;
+            }).join('\n');
+          } else {
+            dialInput.value = '';
+          }
+        } catch {
+          dialInput.value = '';
+        }
+      }
+    } else {
+      this.editingSceneId = null;
+      if (heading) {
+        heading.innerHTML = '<i class="ph ph-bold ph-video"></i> Yangi Video Dars Yaratish';
+      }
+      if (saveBtn) {
+        saveBtn.innerHTML = '<i class="ph ph-bold ph-check"></i> Darsni Saqlash';
+      }
+      const form = this.container.querySelector('#adminNewSceneForm') as HTMLFormElement | null;
+      form?.reset();
     }
+
+    modal.classList.remove('admin-modal-closing');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => {
+      titleInput?.focus();
+    }, 60);
   }
 
   private closeSceneModal(): void {
@@ -1506,6 +1582,9 @@ export class AdminView {
       setTimeout(() => {
         modal.style.display = 'none';
         modal.classList.remove('admin-modal-closing');
+        this.editingSceneId = null;
+        const form = this.container.querySelector('#adminNewSceneForm') as HTMLFormElement | null;
+        form?.reset();
       }, 260);
     }
   }
@@ -1630,8 +1709,11 @@ export class AdminView {
           });
         }
 
-        const newScenePayload = {
-          id: `admin_scene_${Date.now()}`,
+        const isEditing = Boolean(this.editingSceneId);
+        const sceneId = this.editingSceneId || `admin_scene_${Date.now()}`;
+
+        const scenePayload = {
+          id: sceneId,
           title,
           category,
           difficulty,
@@ -1647,11 +1729,15 @@ export class AdminView {
         }
 
         try {
-          const res = await apiService.adminCreateScene(newScenePayload);
+          const res = isEditing
+            ? await apiService.adminUpdateScene(sceneId, scenePayload)
+            : await apiService.adminCreateScene(scenePayload);
+
           if (res.success) {
             this.closeSceneModal();
-            form.reset();
-            this.successMsg = `"${title}" darsi muvaffaqiyatli saqlandi va barcha o'quvchilar uchun chop etildi!`;
+            this.successMsg = isEditing
+              ? `"${title}" darsi muvaffaqiyatli tahrirlandi va yangilandi!`
+              : `"${title}" darsi muvaffaqiyatli saqlandi va barcha o'quvchilar uchun chop etildi!`;
             await this.loadAllData();
             this.refreshActiveTabContent();
           } else {
@@ -1662,7 +1748,9 @@ export class AdminView {
         } finally {
           if (saveBtn) {
             saveBtn.disabled = false;
-            saveBtn.innerHTML = '<i class="ph ph-bold ph-check"></i> Darsni Saqlash';
+            saveBtn.innerHTML = isEditing
+              ? '<i class="ph ph-bold ph-check"></i> O‘zgarishlarni Saqlash'
+              : '<i class="ph ph-bold ph-check"></i> Darsni Saqlash';
           }
         }
       });

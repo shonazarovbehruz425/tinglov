@@ -331,8 +331,11 @@ const adminScenesCreateHandler = (req: AdminRequest, res: Response) => {
     }
     const { title, category, difficulty, accent, video_url, poster_url, dialogues: cleanDialogues } = validation.data as any;
 
-    const sceneId = rawBody.id && typeof rawBody.id === 'string' && rawBody.id.startsWith('admin_scene_')
-      ? rawBody.id
+    const explicitId = (typeof req.params?.id === 'string' && req.params.id.trim())
+      ? req.params.id.trim()
+      : (typeof rawBody.id === 'string' && rawBody.id.trim() ? rawBody.id.trim() : null);
+    const sceneId = explicitId
+      ? explicitId.slice(0, 100)
       : `admin_scene_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
     const dialoguesJson = JSON.stringify(cleanDialogues);
 
@@ -350,7 +353,7 @@ const adminScenesCreateHandler = (req: AdminRequest, res: Response) => {
     invalidateAdminStatsCache();
     res.json({ success: true, scene: created });
   } catch (err: any) {
-    console.error('Admin create scene error:', err);
+    console.error('Admin create/update scene error:', err);
     res.status(500).json({ error: 'Darsni saqlashda xatolik yuz berdi' });
   }
 };
@@ -383,4 +386,5 @@ adminRoutes.delete('/api/admin/users/:id', requireAdminAuth, requireCsrf, adminD
 adminRoutes.post('/api/admin/users/:id/update', requireAdminAuth, requireCsrf, adminUpdateUserHandler);
 adminRoutes.get('/api/admin/scenes', requireAdminAuth, requireCsrf, adminScenesListHandler);
 adminRoutes.post('/api/admin/scenes', requireAdminAuth, requireCsrf, adminScenesCreateHandler);
+adminRoutes.put('/api/admin/scenes/:id', requireAdminAuth, requireCsrf, adminScenesCreateHandler);
 adminRoutes.delete('/api/admin/scenes/:id', requireAdminAuth, requireCsrf, adminScenesDeleteHandler);

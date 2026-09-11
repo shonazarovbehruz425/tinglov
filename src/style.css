@@ -14093,6 +14093,47 @@ body:not(.in-admin-mode) .app-skeleton-box {
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.1);
 }
 
+.admin-scene-actions {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+.admin-btn-edit-scene {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  border-radius: 10px !important;
+  padding: 0 !important;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  background: rgba(56, 189, 248, 0.14) !important;
+  border: 1px solid rgba(56, 189, 248, 0.35) !important;
+  color: #38BDF8 !important;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.1);
+}
+
+.admin-btn-edit-scene svg,
+.admin-btn-edit-scene i {
+  width: 18px !important;
+  height: 18px !important;
+  color: inherit !important;
+  pointer-events: none;
+  display: block;
+}
+
+.admin-btn-edit-scene:hover {
+  background: rgba(56, 189, 248, 0.3) !important;
+  border-color: #38BDF8 !important;
+  color: #FFFFFF !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(56, 189, 248, 0.35);
+}
+
 .admin-btn-del-scene {
   display: inline-flex !important;
   align-items: center !important;

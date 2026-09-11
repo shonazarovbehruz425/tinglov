@@ -1395,6 +1395,29 @@ class ApiService {
     }
   }
 
+  public async adminUpdateScene(id: string, scene: Record<string, unknown>): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await fetch(`/api/admin/scenes/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getCsrfHeaders(),
+          ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ ...scene, id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // Fallback to POST /api/admin/scenes with id
+        return this.adminCreateScene({ ...scene, id });
+      }
+      return { success: true };
+    } catch {
+      return this.adminCreateScene({ ...scene, id });
+    }
+  }
+
   public async adminDeleteScene(id: string): Promise<boolean> {
     const res = await fetch(`/api/admin/scenes/${encodeURIComponent(id)}`, {
       method: 'DELETE',
