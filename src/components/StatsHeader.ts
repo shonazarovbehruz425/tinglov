@@ -272,7 +272,7 @@ export class StatsHeader {
                         <img src="/flags/${curLang === 'en' ? 'gb' : (curLang === 'ru' ? 'ru' : 'uz')}.png" alt="${curLang.toUpperCase()}" class="flag-icon-img" width="14" height="14" />
                         <span>${i18n.getLanguageLabel()}</span>
                       </span>
-                      <i class="ph ph-caret-down lang-arrow-icon" id="langArrowIcon"></i>
+                      <i class="ph ph-caret-left lang-arrow-icon" id="langArrowIcon"></i>
                     </div>
                   </button>
 
@@ -461,9 +461,20 @@ export class StatsHeader {
         searchDropdown.classList.remove('show-dropdown');
       }
       const accountMenu = this.container.querySelector<HTMLElement>('#userAccountDropdownMenu');
+      const langDrawer = this.container.querySelector<HTMLElement>('#langOptionsDrawer');
+      const langArrow = this.container.querySelector<HTMLElement>('#langArrowIcon');
+
+      if (langDrawer?.classList.contains('open')
+        && !this.container.querySelector('#dropdownLangContainer')?.contains(target)) {
+        langDrawer.classList.remove('open');
+        langArrow?.classList.remove('rotated');
+      }
+
       if (accountMenu?.classList.contains('show-dropdown')
         && !this.container.querySelector('#userProfileDropdownWrapper')?.contains(target)) {
         accountMenu.classList.remove('show-dropdown');
+        langDrawer?.classList.remove('open');
+        langArrow?.classList.remove('rotated');
       }
     };
     document.addEventListener('click', this.documentClickHandler);

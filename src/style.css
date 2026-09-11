@@ -5980,11 +5980,12 @@ html.modal-open-locked {
 }
 
 .lang-arrow-icon {
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, color 0.2s ease;
 }
 
 .lang-arrow-icon.rotated {
-  transform: rotate(180deg);
+  transform: rotate(-90deg);
+  color: var(--accent-orange, #FF5B37);
 }
 
 .dropdown-lang-container {
@@ -5995,18 +5996,45 @@ html.modal-open-locked {
 
 .lang-options-drawer {
   display: none;
+  position: absolute;
+  right: calc(100% + 10px);
+  top: -6px;
+  width: 175px;
+  background: #1A1D20;
+  border: 1px solid #2F343B;
+  border-radius: 0.85rem;
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  padding: 0.4rem;
   flex-direction: column;
   gap: 0.25rem;
-  padding: 0.35rem 0.5rem 0.5rem 1.8rem;
-  background: rgba(22, 25, 28, 0.7);
-  border-radius: 0.5rem;
-  margin: 0.2rem 0.2rem 0.4rem;
-  border-left: 2px solid var(--accent-orange);
+  z-index: 1200;
+  animation: flyoutSlideIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes flyoutSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .lang-options-drawer.open {
   display: flex;
-  animation: dropdownPopIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="light"] .lang-options-drawer {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="oled"] .lang-options-drawer {
+  background: #000000;
+  border-color: #1F2327;
 }
 
 .lang-choice-btn {
@@ -13768,7 +13796,8 @@ textarea,
   }
 
   /* User Profile Dropdown on Mobile */
-  .user-profile-dropdown {
+  .user-profile-dropdown,
+  .user-account-dropdown-menu {
     position: fixed !important;
     top: auto !important;
     bottom: max(1rem, env(safe-area-inset-bottom)) !important;
@@ -13776,9 +13805,23 @@ textarea,
     right: max(1rem, env(safe-area-inset-right)) !important;
     width: auto !important;
     max-width: none !important;
+    max-height: 80vh !important;
+    overflow-y: auto !important;
     border-radius: 20px !important;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
-    z-index: 300 !important;
+    z-index: 1200 !important;
+  }
+
+  .lang-options-drawer {
+    position: static !important;
+    right: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    margin-top: 0.35rem !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    animation: none !important;
   }
 }
 
