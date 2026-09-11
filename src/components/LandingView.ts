@@ -354,7 +354,7 @@ export class LandingView {
                     <!-- Tab 1: Dictation Typing View -->
                     <div class="mockup-view-panel" id="mockupPanelDictation">
                       <div class="mockup-card-header">
-                        <span class="mockup-badge"><i class="ph ph-keyboard"></i> Jonli diktantni sinab ko'ring:</span>
+                        <span class="mockup-badge"><i class="ph ph-keyboard"></i> Harfma-harf jonli diktant:</span>
                         <span class="mockup-speed"><i class="ph ph-gauge"></i> 0.75x Qulay</span>
                       </div>
 
@@ -370,16 +370,16 @@ export class LandingView {
                         <span class="mockup-word pending" id="heroPendingWord">void</span>
                       </div>
 
-                      <!-- Interactive Try It Field -->
+                      <!-- Interactive Dictation Input Field -->
                       <div class="mockup-interactive-test-row">
                         <div class="mockup-input-wrapper">
-                          <input type="text" class="mockup-test-input" id="heroTestInput" placeholder="Shu yerga 'void' deb yozib ko'ring..." autocomplete="off" spellcheck="false" />
-                          <button class="mockup-input-check-btn" id="heroTestInputBtn" title="Tekshirish">
+                          <input type="text" class="mockup-test-input" id="heroTestInput" placeholder="Eshitgan so'zingizni yozing..." autocomplete="off" spellcheck="false" />
+                          <button class="mockup-input-check-btn" id="heroTestInputBtn" title="Kiritish">
                             <i class="ph ph-arrow-right"></i>
                           </button>
                         </div>
                         <span class="mockup-feedback-chip" id="heroTestFeedback">
-                          <i class="ph ph-info"></i> Klaviaturada yozing yoki so'zni bosing
+                          <i class="ph ph-info"></i> Klaviaturada yozing yoki so'zni tanlang
                         </span>
                       </div>
 
@@ -403,7 +403,7 @@ export class LandingView {
                         <span class="mockup-speed accent-green"><i class="ph ph-check-circle"></i> Mos kelish: 96%</span>
                       </div>
 
-                      <div class="shadowing-waveform-demo">
+                      <div class="shadowing-waveform-container">
                         <div class="waveform-lane">
                           <span class="lane-label">Aktyor ovozi:</span>
                           <div class="lane-bars actor-bars">
