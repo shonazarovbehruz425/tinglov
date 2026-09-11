@@ -241,24 +241,32 @@ export class LevelSelector {
 
   private renderCoursesGridHtml(scenes: Scene[], stats: any): string {
     if (scenes.length === 0) {
-      // Actionable empty state: the user can clear filters, import from YouTube, or create a custom lesson.
-      const t = i18n.t();
       return `
-        <div class="clean-empty-box" style="grid-column: 1 / -1;">
-          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;"><i class="ph ph-film-strip"></i></div>
-          <h3>Darslar topilmadi</h3>
-          <p>Tanlangan filtrlar yoki qidiruv so‘zi bo‘yicha darslar topilmadi.</p>
-          <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-top: 1.1rem;">
-            <button class="filter-reset-action-btn" id="emptyStateResetFiltersBtn" style="padding: 0.5rem 1rem; border-radius: 8px;">
-              <i class="ph ph-arrows-counter-clockwise"></i>
-              <span>Filtrlarni tozalash</span>
-            </button>
-            <button class="header-action-pill primary" id="emptyStateYouTubeImportBtn">
-              <i class="ph-fill ph-youtube-logo"></i> ${t.youtubeImport}
-            </button>
-            <button class="header-action-pill subtle" id="emptyStateAddBtn">
-              <i class="ph ph-plus-circle"></i> ${t.newScene}
-            </button>
+        <div class="catalog-empty-state-wrapper" style="grid-column: 1 / -1;">
+          <div class="catalog-empty-card">
+            <div class="catalog-empty-icon-halo">
+              <i class="ph ph-film-slate empty-main-icon"></i>
+              <div class="empty-sub-icon-badge">
+                <i class="ph ph-magnifying-glass"></i>
+              </div>
+            </div>
+            <h3 class="catalog-empty-title">Mos darslar topilmadi</h3>
+            <p class="catalog-empty-desc">
+              Tanlangan daraja, talaffuz yoki qidiruv so‘zi bo‘yicha hozircha hech qanday dars mavjud emas. Barcha darslarni ko‘rish uchun filtrlarni tiklashingiz mumkin.
+            </p>
+            <div class="catalog-empty-action-row">
+              <button class="catalog-empty-reset-btn glow-cta-btn" id="emptyStateResetFiltersBtn">
+                <span class="glow-effect-track" aria-hidden="true"></span>
+                <span class="btn-text-content">
+                  <i class="ph ph-arrows-counter-clockwise"></i>
+                  <span>Filtrlarni tozalash</span>
+                </span>
+              </button>
+            </div>
+            <div class="catalog-empty-hint-pill">
+              <i class="ph ph-lightbulb-filament"></i>
+              <span>Maslahat: Darajani <strong>"Barchasi"</strong> qilib ko‘ring</span>
+            </div>
           </div>
         </div>
       `;
@@ -496,12 +504,6 @@ export class LevelSelector {
     this.container.querySelector('#emptyStateResetFiltersBtn')?.addEventListener('click', () => {
       const clearBtn = this.container.querySelector('#clearAllFiltersBtn') as HTMLElement | null;
       if (clearBtn) clearBtn.click();
-    });
-    this.container.querySelector('#emptyStateYouTubeImportBtn')?.addEventListener('click', () => {
-      // YouTube import action is handled externally
-    });
-    this.container.querySelector('#emptyStateAddBtn')?.addEventListener('click', () => {
-      // Add custom scene action is handled externally
     });
   }
 

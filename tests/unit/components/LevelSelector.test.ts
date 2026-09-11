@@ -157,4 +157,30 @@ describe('LevelSelector filter toolbar', () => {
     expect(cards.length).toBe(3);
     vi.useRealTimers();
   });
+
+  it('renders modern empty state when no scenes match and resets filters properly', async () => {
+    vi.useFakeTimers();
+    selector.render();
+
+    // Search for non-existent scene
+    selector.setSearchQuery('NonExistentSceneXYZ999');
+    vi.advanceTimersByTime(200);
+
+    // Empty state card should be rendered
+    const emptyCard = container.querySelector('.catalog-empty-card');
+    expect(emptyCard).not.toBeNull();
+    expect(container.querySelector('#emptyStateYouTubeImportBtn')).toBeNull();
+    expect(container.querySelector('#emptyStateAddBtn')).toBeNull();
+
+    const emptyResetBtn = container.querySelector('#emptyStateResetFiltersBtn') as HTMLElement;
+    expect(emptyResetBtn).not.toBeNull();
+
+    // Click empty state reset button
+    emptyResetBtn.click();
+    vi.advanceTimersByTime(200);
+
+    const cards = container.querySelectorAll('.cinema-courses-grid .cinema-course-card');
+    expect(cards.length).toBe(3);
+    vi.useRealTimers();
+  });
 });

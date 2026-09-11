@@ -3261,6 +3261,169 @@ body {
   margin: 0 auto 1.5rem;
 }
 
+/* ==========================================================================
+   Catalog Modern Empty State Design
+   ========================================================================== */
+.catalog-empty-state-wrapper {
+  grid-column: 1 / -1;
+  padding: 2.5rem 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.catalog-empty-card {
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+  text-align: center;
+  padding: 3rem 2.25rem 2.5rem;
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl, 24px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.catalog-empty-icon-halo {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem auto;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 91, 55, 0.12), rgba(255, 140, 0, 0.06));
+  border: 1.5px solid rgba(255, 91, 55, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 0 24px rgba(255, 91, 55, 0.14);
+}
+
+.catalog-empty-icon-halo .empty-main-icon {
+  font-size: 2.4rem;
+  color: var(--accent-orange, #FF5B37);
+}
+
+.catalog-empty-icon-halo .empty-sub-icon-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #1A1D1F;
+  border: 2px solid #FFFFFF;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.catalog-empty-title {
+  font-family: var(--font-heading);
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--text-heading);
+  margin-bottom: 0.65rem;
+  letter-spacing: -0.02em;
+}
+
+.catalog-empty-desc {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 410px;
+  margin: 0 auto 1.75rem auto;
+}
+
+.catalog-empty-action-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.catalog-empty-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem 1.65rem;
+  border-radius: 9999px;
+  background: var(--accent-orange, #FF5B37);
+  color: #FFFFFF;
+  font-family: var(--font-heading);
+  font-size: 0.92rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(255, 91, 55, 0.35);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+  user-select: none;
+}
+
+.catalog-empty-reset-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(255, 91, 55, 0.45);
+}
+
+.catalog-empty-reset-btn:active {
+  transform: translateY(0);
+}
+
+.catalog-empty-hint-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--border-subtle);
+  padding: 0.45rem 1rem;
+  border-radius: 9999px;
+}
+
+.catalog-empty-hint-pill i {
+  color: #F59E0B;
+  font-size: 1rem;
+}
+
+/* Dark Theme Overrides for Empty State */
+[data-theme="dark"] .catalog-empty-card,
+[data-theme="oled"] .catalog-empty-card {
+  background: #16181D;
+  border-color: #272B30;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="dark"] .catalog-empty-title,
+[data-theme="oled"] .catalog-empty-title {
+  color: #FCFCFC;
+}
+
+[data-theme="dark"] .catalog-empty-desc,
+[data-theme="oled"] .catalog-empty-desc {
+  color: #9A9FA5;
+}
+
+[data-theme="dark"] .catalog-empty-icon-halo .empty-sub-icon-badge,
+[data-theme="oled"] .catalog-empty-icon-halo .empty-sub-icon-badge {
+  background: #272B30;
+  border-color: #16181D;
+  color: #FCFCFC;
+}
+
+[data-theme="dark"] .catalog-empty-hint-pill,
+[data-theme="oled"] .catalog-empty-hint-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: #272B30;
+  color: #9A9FA5;
+}
+
 /* Results & Completion Summary */
 .clean-results-grid {
   display: grid;
