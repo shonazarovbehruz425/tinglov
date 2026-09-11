@@ -34,7 +34,8 @@ const {
   getUserSavedWords, recordUserCompletedScene, getUserCompletedScenes,
   getGlobalLeaderboard, getAllUsers, deleteUserById,
   updateUserStatsAdmin, getAdminStats, getAllAdminScenes,
-  createAdminScene, deleteAdminScene, db
+  createAdminScene, deleteAdminScene, batchUpsertAdminScenes,
+  syncScenesFromFile, persistScenesToFile, db
 } = dbModule;
 
 describe('server/db', () => {
@@ -236,6 +237,37 @@ describe('server/db', () => {
     it('should return false when scene not found', () => {
       vi.mocked(db.prepare().run).mockReturnValue({ changes: 0 });
       expect(deleteAdminScene('999')).toBe(false);
+    });
+  });
+
+  describe('batchUpsertAdminScenes', () => {
+    it('should return 0 when empty array passed', () => {
+      expect(batchUpsertAdminScenes([])).toBe(0);
+    });
+
+    it('should batch insert scenes and return count', () => {
+      const runMock = vi.fn();
+      vi.mocked(db.prepare).mockImplementation(() => ({
+        run: runMock,
+        get: vi.fn(),
+        all: vi.fn().mockReturnValue([]),
+      } as any));
+
+      const count = batchUpsertAdminScenes([
+        { id: 's1', title: 'Scene 1', video_url: 'https://video1.mp4' },
+        { id: 's2', title: 'Scene 2', video_url: 'https://video2.mp4', accent: 'British' },
+      ]);
+      expect(count).toBe(2);
+      expect(db.exec).toHaveBeenCalledWith('BEGIN TRANSACTION;');
+      expect(db.exec).toHaveBeenCalledWith('COMMIT;');
+    });
+  });
+
+  describe('syncScenesFromFile & persistScenesToFile', () => {
+    it('should be callable without throwing', () => {
+      expect(typeof syncScenesFromFile).toBe('function');
+      expect(typeof persistScenesToFile).toBe('function');
+      expect(() => persistScenesToFile()).not.toThrow();
     });
   });
 });

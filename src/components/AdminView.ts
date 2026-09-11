@@ -290,6 +290,23 @@ export class AdminView {
       this.users = usersRes || [];
       this.scenes = scenesRes || [];
 
+      // Auto-restore protection: if server was wiped on redeploy (0 scenes), check local backup
+      if (this.scenes.length === 0) {
+        const backup = apiService.getScenesBackup();
+        if (backup && backup.length > 0) {
+          try {
+            const syncRes = await apiService.adminSyncScenes(backup);
+            if (syncRes.success && syncRes.count > 0) {
+              this.scenes = backup;
+              this.successMsg = `⚡ Server yangilanishi sababli xotiradagi ${syncRes.count} ta darsingiz avtomatik serverga qayta tiklandi!`;
+            }
+          } catch {
+            // Ignore background sync failure, keep backup in memory
+            this.scenes = backup;
+          }
+        }
+      }
+
       // Calculate today's users from user list as well
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
@@ -837,9 +854,18 @@ export class AdminView {
             <h2 class="admin-pane-title">Filmlar & Video Darslar</h2>
             <p class="admin-pane-desc">Platformadagi barcha foydalanuvchilar uchun yangi darslar qo‘shish va boshqarish</p>
           </div>
-          <button id="adminOpenNewSceneModalBtn" class="admin-btn admin-btn-primary">
-            <i class="ph ph-bold ph-plus-circle"></i> Yangi Dars Qo‘shish
-          </button>
+          <div class="admin-header-actions" style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+            <button id="adminExportScenesBtn" class="admin-btn admin-btn-secondary" title="Barcha darslar va dialoglarni JSON zaxira fayl sifatida yuklab olish">
+              <i class="ph ph-bold ph-download-simple"></i> Zaxirani Yuklash
+            </button>
+            <label for="adminImportScenesInput" class="admin-btn admin-btn-secondary admin-btn-file" title="Zaxira JSON faylidan darslarni qayta tiklash" style="cursor: pointer; margin: 0; display: inline-flex; align-items: center; gap: 0.4rem;">
+              <i class="ph ph-bold ph-upload-simple"></i> Zaxiradan Tiklash
+              <input type="file" id="adminImportScenesInput" accept=".json,application/json" style="display: none;" />
+            </label>
+            <button id="adminOpenNewSceneModalBtn" class="admin-btn admin-btn-primary">
+              <i class="ph ph-bold ph-plus-circle"></i> Yangi Dars Qo‘shish
+            </button>
+          </div>
         </div>
 
         <div class="admin-scenes-grid">
@@ -1418,6 +1444,58 @@ export class AdminView {
     if (openSceneModalBtn) {
       openSceneModalBtn.addEventListener('click', () => {
         this.openSceneModal();
+      });
+    }
+
+    // Scenes: Export JSON Backup
+    const exportScenesBtn = this.container.querySelector('#adminExportScenesBtn');
+    if (exportScenesBtn) {
+      exportScenesBtn.addEventListener('click', () => {
+        const scenesToExport = this.scenes.length > 0 ? this.scenes : apiService.getScenesBackup();
+        if (!scenesToExport || scenesToExport.length === 0) {
+          alert('Eksport qilish uchun hech qanday dars mavjud emas.');
+          return;
+        }
+        const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(scenesToExport, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute('href', dataStr);
+        downloadAnchor.setAttribute('download', `tinglov-darslar-zaxirasi-${new Date().toISOString().slice(0, 10)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        this.successMsg = `Barcha ${scenesToExport.length} ta dars zaxirasi muvaffaqiyatli yuklab olindi!`;
+        this.refreshActiveTabContent();
+      });
+    }
+
+    // Scenes: Import JSON Backup
+    const importScenesInput = this.container.querySelector('#adminImportScenesInput') as HTMLInputElement | null;
+    if (importScenesInput) {
+      importScenesInput.addEventListener('change', async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        try {
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          const scenes = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.scenes) ? parsed.scenes : null);
+          if (!scenes || scenes.length === 0) {
+            alert('Tanlangan JSON faylida darslar topilmadi yoki noto‘g‘ri format.');
+            return;
+          }
+          const syncRes = await apiService.adminSyncScenes(scenes);
+          if (syncRes.success) {
+            this.successMsg = `${syncRes.count} ta dars fayldan muvaffaqiyatli import qilindi va saqlandi!`;
+            await this.loadAllData();
+            this.refreshActiveTabContent();
+          } else {
+            alert(syncRes.error || 'Darslarni import qilishda xatolik yuz berdi.');
+          }
+        } catch (err: any) {
+          alert('JSON faylini o‘qishda xatolik: ' + (err?.message || 'Noto‘g‘ri format'));
+        } finally {
+          importScenesInput.value = '';
+        }
       });
     }
 

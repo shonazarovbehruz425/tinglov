@@ -1,8 +1,25 @@
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
+import fs from 'node:fs';
 
-const dbPath = process.env.DATABASE_PATH || path.resolve(process.cwd(), 'tinglov.db');
-export const db = new DatabaseSync(dbPath);
+function initDatabase(): DatabaseSync {
+  const configuredPath = process.env.DATABASE_PATH;
+  if (configuredPath) {
+    try {
+      const dir = path.dirname(configuredPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      return new DatabaseSync(configuredPath);
+    } catch (err) {
+      console.warn(`⚠️ Configured DATABASE_PATH (${configuredPath}) inaccessible, falling back to local tinglov.db:`, err);
+    }
+  }
+  const fallbackPath = path.resolve(process.cwd(), 'tinglov.db');
+  return new DatabaseSync(fallbackPath);
+}
+
+export const db = initDatabase();
 
 // Enable WAL mode for better concurrency performance
 db.exec(`PRAGMA journal_mode = WAL;`);
@@ -78,6 +95,16 @@ try {
 try {
   db.exec(`ALTER TABLE admin_scenes ADD COLUMN accent TEXT DEFAULT 'American';`);
 } catch {}
+
+// Initial auto-sync from repository/persistent JSON file on boot
+try {
+  const syncedCount = syncScenesFromFile();
+  if (syncedCount > 0) {
+    console.log(`🎬 [DB] ${syncedCount} ta dars server/data/scenes.json faylidan avtomatik yuklandi.`);
+  }
+} catch (err) {
+  console.warn('⚠️ [DB] Darslarni fayldan yuklashda ogohlantirish:', err);
+}
 
 export interface DbAdminScene {
   id: string;
@@ -389,6 +416,128 @@ export function getAdminStats(): {
   return cachedAdminStats;
 }
 
+export const SCENES_FILE_PATH = process.env.SCENES_FILE_PATH || path.resolve(process.cwd(), 'server', 'data', 'scenes.json');
+
+export function persistScenesToFile(): void {
+  try {
+    const scenes = getAllAdminScenes();
+    const dir = path.dirname(SCENES_FILE_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const tempPath = `${SCENES_FILE_PATH}.${Date.now()}.tmp`;
+    fs.writeFileSync(tempPath, JSON.stringify(scenes, null, 2), 'utf-8');
+    fs.renameSync(tempPath, SCENES_FILE_PATH);
+  } catch (err) {
+    console.error('⚠️ Failed to persist scenes to file:', err);
+  }
+}
+
+export function syncScenesFromFile(): number {
+  try {
+    if (!fs.existsSync(SCENES_FILE_PATH)) return 0;
+    const raw = fs.readFileSync(SCENES_FILE_PATH, 'utf-8');
+    if (!raw || !raw.trim()) return 0;
+    const scenes = JSON.parse(raw);
+    if (!Array.isArray(scenes) || scenes.length === 0) return 0;
+
+    const insertStmt = db.prepare(`
+      INSERT INTO admin_scenes (id, title, category, difficulty, accent, video_url, poster_url, dialogues_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        category = excluded.category,
+        difficulty = excluded.difficulty,
+        accent = excluded.accent,
+        video_url = excluded.video_url,
+        poster_url = excluded.poster_url,
+        dialogues_json = excluded.dialogues_json
+    `);
+
+    let imported = 0;
+    db.exec('BEGIN TRANSACTION;');
+    try {
+      for (const scene of scenes) {
+        if (!scene.id || !scene.title || !scene.video_url) continue;
+        const accent = scene.accent === 'British' ? 'British' : 'American';
+        const dialoguesJson = typeof scene.dialogues_json === 'string'
+          ? scene.dialogues_json
+          : JSON.stringify(scene.dialogues || []);
+        insertStmt.run(
+          String(scene.id),
+          String(scene.title).trim(),
+          String(scene.category || 'Cinema').trim(),
+          String(scene.difficulty || 'intermediate').trim(),
+          accent,
+          String(scene.video_url).trim(),
+          String(scene.poster_url || '').trim(),
+          dialoguesJson
+        );
+        imported++;
+      }
+      db.exec('COMMIT;');
+      if (imported > 0) {
+        invalidateAdminStatsCache();
+      }
+      return imported;
+    } catch (err) {
+      db.exec('ROLLBACK;');
+      throw err;
+    }
+  } catch (err) {
+    console.error('⚠️ Failed to sync scenes from file:', err);
+    return 0;
+  }
+}
+
+export function batchUpsertAdminScenes(scenes: Array<Record<string, any>>): number {
+  if (!Array.isArray(scenes) || scenes.length === 0) return 0;
+  const insertStmt = db.prepare(`
+    INSERT INTO admin_scenes (id, title, category, difficulty, accent, video_url, poster_url, dialogues_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title,
+      category = excluded.category,
+      difficulty = excluded.difficulty,
+      accent = excluded.accent,
+      video_url = excluded.video_url,
+      poster_url = excluded.poster_url,
+      dialogues_json = excluded.dialogues_json
+  `);
+
+  let count = 0;
+  db.exec('BEGIN TRANSACTION;');
+  try {
+    for (const scene of scenes) {
+      if (!scene.id || !scene.title || !scene.video_url) continue;
+      const accent = scene.accent === 'British' ? 'British' : 'American';
+      const dialoguesJson = typeof scene.dialogues_json === 'string'
+        ? scene.dialogues_json
+        : JSON.stringify(scene.dialogues || []);
+      insertStmt.run(
+        String(scene.id),
+        String(scene.title).trim(),
+        String(scene.category || 'Cinema').trim(),
+        String(scene.difficulty || 'intermediate').trim(),
+        accent,
+        String(scene.video_url).trim(),
+        String(scene.poster_url || '').trim(),
+        dialoguesJson
+      );
+      count++;
+    }
+    db.exec('COMMIT;');
+    if (count > 0) {
+      invalidateAdminStatsCache();
+      persistScenesToFile();
+    }
+    return count;
+  } catch (err) {
+    db.exec('ROLLBACK;');
+    throw err;
+  }
+}
+
 export function getAllAdminScenes(): DbAdminScene[] {
   const stmt = db.prepare(`SELECT * FROM admin_scenes ORDER BY created_at DESC`);
   return stmt.all() as unknown as DbAdminScene[];
@@ -428,6 +577,9 @@ export function createAdminScene(scene: {
     scene.dialogues_json
   );
 
+  invalidateAdminStatsCache();
+  persistScenesToFile();
+
   const getStmt = db.prepare(`SELECT * FROM admin_scenes WHERE id = ? LIMIT 1`);
   return (getStmt.get(scene.id) as DbAdminScene | undefined)!;
 }
@@ -435,5 +587,10 @@ export function createAdminScene(scene: {
 export function deleteAdminScene(id: string): boolean {
   const stmt = db.prepare(`DELETE FROM admin_scenes WHERE id = ?`);
   const result = stmt.run(id);
-  return Number(result.changes) > 0;
+  const deleted = Number(result.changes) > 0;
+  if (deleted) {
+    invalidateAdminStatsCache();
+    persistScenesToFile();
+  }
+  return deleted;
 }

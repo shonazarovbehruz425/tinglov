@@ -26,6 +26,7 @@ import {
   updateUserStatsAdmin,
   createAdminScene,
   deleteAdminScene,
+  batchUpsertAdminScenes,
   invalidateAdminStatsCache,
 } from '../db';
 import { safeValidate } from '../../src/utils/validation';
@@ -373,6 +374,47 @@ const adminScenesDeleteHandler = (req: AdminRequest, res: Response) => {
   }
 };
 
+const adminScenesSyncHandler = (req: AdminRequest, res: Response) => {
+  try {
+    const rawScenes = req.body?.scenes || req.body;
+    if (!Array.isArray(rawScenes)) {
+      res.status(400).json({ error: 'Darslar ro‘yxati (massiv) kiritilishi shart' });
+      return;
+    }
+    const count = batchUpsertAdminScenes(rawScenes);
+    res.json({ success: true, count, message: `${count} ta dars muvaffaqiyatli sinxronlandi` });
+  } catch (err: any) {
+    console.error('Admin sync scenes error:', err);
+    res.status(500).json({ error: 'Darslarni sinxronlashda xatolik yuz berdi' });
+  }
+};
+
+const adminScenesExportHandler = (_req: AdminRequest, res: Response) => {
+  try {
+    const scenes = getAllAdminScenes();
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="tinglov-scenes-backup.json"');
+    res.send(JSON.stringify(scenes, null, 2));
+  } catch (err: any) {
+    res.status(500).json({ error: 'Zaxirani eksport qilishda xatolik yuz berdi' });
+  }
+};
+
+const adminScenesImportHandler = (req: AdminRequest, res: Response) => {
+  try {
+    const rawScenes = req.body?.scenes || req.body;
+    if (!Array.isArray(rawScenes)) {
+      res.status(400).json({ error: 'Import qilinadigan fayl noto‘g‘ri formatda (massiv kutilgan)' });
+      return;
+    }
+    const count = batchUpsertAdminScenes(rawScenes);
+    res.json({ success: true, count, message: `${count} ta dars muvaffaqiyatli import qilindi` });
+  } catch (err: any) {
+    console.error('Admin import scenes error:', err);
+    res.status(500).json({ error: 'Darslarni import qilishda xatolik yuz berdi' });
+  }
+};
+
 export const adminRoutes = Router();
 
 adminRoutes.get('/api/admin/config', configHandler);
@@ -388,3 +430,7 @@ adminRoutes.get('/api/admin/scenes', requireAdminAuth, requireCsrf, adminScenesL
 adminRoutes.post('/api/admin/scenes', requireAdminAuth, requireCsrf, adminScenesCreateHandler);
 adminRoutes.put('/api/admin/scenes/:id', requireAdminAuth, requireCsrf, adminScenesCreateHandler);
 adminRoutes.delete('/api/admin/scenes/:id', requireAdminAuth, requireCsrf, adminScenesDeleteHandler);
+adminRoutes.post('/api/admin/scenes/sync', requireAdminAuth, requireCsrf, adminScenesSyncHandler);
+adminRoutes.get('/api/admin/scenes/export', requireAdminAuth, requireCsrf, adminScenesExportHandler);
+adminRoutes.post('/api/admin/scenes/import', requireAdminAuth, requireCsrf, adminScenesImportHandler);
+

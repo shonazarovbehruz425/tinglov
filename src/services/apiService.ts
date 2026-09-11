@@ -185,7 +185,47 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+const SCENES_BACKUP_STORAGE_KEY = 'tinglov_admin_scenes_backup';
 
+export function getLocalScenesBackup(): AdminSceneDto[] {
+  try {
+    const raw = localStorage.getItem(SCENES_BACKUP_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalScenesBackup(scenes: AdminSceneDto[]): void {
+  try {
+    if (Array.isArray(scenes)) {
+      localStorage.setItem(SCENES_BACKUP_STORAGE_KEY, JSON.stringify(scenes));
+    }
+  } catch {}
+}
+
+function updateLocalSceneBackupItem(scene: Partial<AdminSceneDto> & { id: string }): void {
+  try {
+    const current = getLocalScenesBackup();
+    const idx = current.findIndex((s) => s.id === scene.id);
+    if (idx >= 0) {
+      current[idx] = { ...current[idx], ...scene } as AdminSceneDto;
+    } else {
+      current.unshift(scene as AdminSceneDto);
+    }
+    saveLocalScenesBackup(current);
+  } catch {}
+}
+
+function removeLocalSceneBackupItem(id: string): void {
+  try {
+    const current = getLocalScenesBackup();
+    const filtered = current.filter((s) => s.id !== id);
+    saveLocalScenesBackup(filtered);
+  } catch {}
+}
 
 class ApiService {
   private token: string | null = null;
@@ -1360,6 +1400,10 @@ class ApiService {
     }
   }
 
+  public getScenesBackup(): AdminSceneDto[] {
+    return getLocalScenesBackup();
+  }
+
   public async adminGetScenes(): Promise<AdminSceneDto[]> {
     const res = await fetch('/api/admin/scenes', {
       headers: {
@@ -1370,7 +1414,11 @@ class ApiService {
     });
     if (!res.ok) throw new Error('Darslar yuklanmadi');
     const data = await res.json();
-    return (data.scenes || []) as AdminSceneDto[];
+    const scenes = (data.scenes || []) as AdminSceneDto[];
+    if (scenes.length > 0) {
+      saveLocalScenesBackup(scenes);
+    }
+    return scenes;
   }
 
   public async adminCreateScene(scene: Record<string, unknown>): Promise<{ success: boolean; error?: string }> {
@@ -1388,6 +1436,19 @@ class ApiService {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         return { success: false, error: data.error || `Server xatosi (${res.status})` };
+      }
+      if (data.scene) {
+        updateLocalSceneBackupItem(data.scene);
+      } else if (scene.id) {
+        updateLocalSceneBackupItem(scene as any);
+      }
+      if (supabase && (data.scene || scene.id)) {
+        const item = data.scene || scene;
+        (async () => {
+          try {
+            await supabase.from('admin_scenes').upsert(item);
+          } catch {}
+        })();
       }
       return { success: true };
     } catch (err: any) {
@@ -1412,6 +1473,19 @@ class ApiService {
         // Fallback to POST /api/admin/scenes with id
         return this.adminCreateScene({ ...scene, id });
       }
+      if (data.scene) {
+        updateLocalSceneBackupItem(data.scene);
+      } else {
+        updateLocalSceneBackupItem({ ...scene, id } as any);
+      }
+      if (supabase) {
+        const item = data.scene || { ...scene, id };
+        (async () => {
+          try {
+            await supabase.from('admin_scenes').upsert(item);
+          } catch {}
+        })();
+      }
       return { success: true };
     } catch {
       return this.adminCreateScene({ ...scene, id });
@@ -1427,13 +1501,46 @@ class ApiService {
       },
       credentials: 'include',
     });
+    if (res.ok) {
+      removeLocalSceneBackupItem(id);
+      if (supabase) {
+        (async () => {
+          try {
+            await supabase.from('admin_scenes').delete().eq('id', id);
+          } catch {}
+        })();
+      }
+    }
     return res.ok;
+  }
+
+  public async adminSyncScenes(scenes: AdminSceneDto[]): Promise<{ success: boolean; count: number; error?: string }> {
+    try {
+      const res = await fetch('/api/admin/scenes/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getCsrfHeaders(),
+          ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ scenes }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { success: false, count: 0, error: data.error || `Server xatosi (${res.status})` };
+      }
+      saveLocalScenesBackup(scenes);
+      return { success: true, count: data.count || scenes.length };
+    } catch (err: any) {
+      return { success: false, count: 0, error: err?.message || 'Tarmoq xatosi' };
+    }
   }
 
   public async getPublicScenes(): Promise<AdminSceneDto[]> {
     try {
       const abortCtrl = new AbortController();
-      const timeoutId = setTimeout(() => abortCtrl.abort(), 3000);
+      const timeoutId = setTimeout(() => abortCtrl.abort(), 4000);
       const res = await fetch('/api/scenes', {
         method: 'GET',
         cache: 'no-store',
@@ -1443,12 +1550,26 @@ class ApiService {
         },
         signal: abortCtrl.signal,
       }).finally(() => clearTimeout(timeoutId));
-      if (!res.ok) return [];
-      const data = await res.json();
-      return (data.scenes || []) as AdminSceneDto[];
+      if (res.ok) {
+        const data = await res.json();
+        const scenes = (data.scenes || []) as AdminSceneDto[];
+        if (scenes.length > 0) {
+          saveLocalScenesBackup(scenes);
+          return scenes;
+        }
+      }
     } catch {
-      return [];
+      // Fallback below
     }
+
+    const backupScenes = getLocalScenesBackup();
+    if (backupScenes.length > 0) {
+      if (this.adminToken) {
+        this.adminSyncScenes(backupScenes).catch(() => {});
+      }
+      return backupScenes;
+    }
+    return [];
   }
 }
 
