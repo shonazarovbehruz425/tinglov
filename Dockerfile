@@ -34,6 +34,8 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server ./server
 # server/index.ts `../src/utils/validation` import qiladi — src ham kerak
 COPY --from=builder /app/src ./src
+# server/middleware/securityHeaders.ts `../../shared/securityHeaders` import qiladi
+COPY --from=builder /app/shared ./shared
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/tsconfig.server.json ./tsconfig.server.json
 
