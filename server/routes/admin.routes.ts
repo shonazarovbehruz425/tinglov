@@ -208,17 +208,19 @@ const adminUpdateUserHandler = (req: AdminRequest, res: Response) => {
       xp: z.coerce.number().int().min(0).max(1000000).optional(),
       streak: z.coerce.number().int().min(1).max(3650).optional(),
       level: z.coerce.number().int().min(1).max(100).optional(),
+      email: z.string().trim().email('Noto‘g‘ri email formati').max(255).optional(),
     }).passthrough();
     const validation = safeValidate(schema, req.body);
     if (!validation.success) {
       res.status(400).json({ error: validation.error });
       return;
     }
-    const { xp, streak, level } = validation.data as any;
+    const { xp, streak, level, email } = validation.data as any;
     updateUserStatsAdmin(userId, {
       xp: xp !== undefined ? Number(xp) : undefined,
       streak: streak !== undefined ? Number(streak) : undefined,
       level: level !== undefined ? Number(level) : undefined,
+      email: email !== undefined ? String(email) : undefined,
     });
     invalidateAdminStatsCache();
     res.json({ success: true, message: 'Foydalanuvchi ma‘lumotlari yangilandi' });

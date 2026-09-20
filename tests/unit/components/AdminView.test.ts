@@ -429,4 +429,39 @@ describe('AdminView scene management & editing', () => {
     expect(secondRowText).toContain('azizaxrorov97@gmail.com');
     expect(secondRowText).toContain('Email / Parol');
   });
+
+  it('renders inline email edit button when user email is empty and allows updating it', async () => {
+    vi.spyOn(apiService, 'adminGetUsers').mockResolvedValue([
+      {
+        id: 3,
+        username: 'newuser',
+        full_name: 'New User',
+        email: '',
+        avatar_color: '#38BDF8',
+        xp: 100,
+        streak: 1,
+        level: 1,
+        auth_provider: 'email',
+        created_at: new Date().toISOString()
+      }
+    ]);
+
+    const updateSpy = vi.spyOn(apiService, 'adminUpdateUser').mockResolvedValue(true);
+    vi.spyOn(window, 'prompt').mockReturnValue('newuser@example.com');
+
+    await adminView.render();
+
+    const usersTabBtn = container.querySelector<HTMLButtonElement>('.admin-tab-btn[data-tab="users"]')!;
+    usersTabBtn.click();
+    await new Promise((r) => setTimeout(r, 120));
+
+    const emailBtn = container.querySelector<HTMLButtonElement>('.admin-btn-edit-email');
+    expect(emailBtn).not.toBeNull();
+    expect(emailBtn?.textContent).toContain('Email kiritish');
+
+    emailBtn?.click();
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(updateSpy).toHaveBeenCalledWith('3', { email: 'newuser@example.com' });
+  });
 });

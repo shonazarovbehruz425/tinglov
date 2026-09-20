@@ -352,14 +352,15 @@ export function deleteUserById(id: number): boolean {
   return Number(result.changes) > 0;
 }
 
-export function updateUserStatsAdmin(id: number, updates: { xp?: number; streak?: number; level?: number }): void {
+export function updateUserStatsAdmin(id: number, updates: { xp?: number; streak?: number; level?: number; email?: string }): void {
   const current = findUserById(id);
   if (!current) return;
   const xp = updates.xp !== undefined ? updates.xp : current.xp;
   const streak = updates.streak !== undefined ? updates.streak : current.streak;
   const level = updates.level !== undefined ? updates.level : current.level;
-  const stmt = db.prepare(`UPDATE users SET xp = ?, streak = ?, level = ? WHERE id = ?`);
-  stmt.run(xp, streak, level, id);
+  const email = updates.email !== undefined ? updates.email : current.email;
+  const stmt = db.prepare(`UPDATE users SET xp = ?, streak = ?, level = ?, email = ? WHERE id = ?`);
+  stmt.run(xp, streak, level, email, id);
 }
 
 // In-memory cache for admin dashboard stats (TTL 30s)

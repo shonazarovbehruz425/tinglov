@@ -1452,7 +1452,7 @@ class ApiService {
     }
   }
 
-  public async adminUpdateUser(id: string | number, data: { xp?: number; streak?: number; level?: number }): Promise<boolean> {
+  public async adminUpdateUser(id: string | number, data: { xp?: number; streak?: number; level?: number; email?: string }): Promise<boolean> {
     let backendSuccess = false;
     const strId = String(id);
 

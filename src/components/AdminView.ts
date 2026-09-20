@@ -1157,7 +1157,9 @@ export class AdminView {
       const regDate = u.created_at ? new Date(u.created_at).toLocaleDateString('uz-UZ') : '—';
       const cleanEmail = (u.email && !u.email.includes('@user.tinglov') && !u.email.includes('@tinglov.uz'))
         ? u.email
-        : (u.email && u.email.includes('@') ? u.email : (u.username && u.username.includes('@') ? u.username : '—'));
+        : (u.email && u.email.includes('@') ? u.email : (u.username && u.username.includes('@') ? u.username : ''));
+      const hasEmail = Boolean(cleanEmail && cleanEmail.trim().length > 0);
+
       return `
         <tr data-user-id="${u.id}">
           <td>
@@ -1169,7 +1171,15 @@ export class AdminView {
               </div>
             </div>
           </td>
-          <td>${escapeHtml(cleanEmail)}</td>
+          <td>
+            ${hasEmail ? `
+              <span class="admin-user-email-text">${escapeHtml(cleanEmail)}</span>
+            ` : `
+              <button type="button" class="admin-btn-edit-email" data-user-id="${u.id}" data-user-name="${escapeHtml(u.username)}" title="Email kiritish uchun bosing">
+                <i class="ph ph-envelope-simple"></i> Email kiritish <i class="ph ph-pencil-simple" style="font-size: 11px;"></i>
+              </button>
+            `}
+          </td>
           <td>
             ${u.auth_provider === 'google' ? `
               <span class="admin-badge-provider badge-google" title="Google hisobi orqali kirgan">
@@ -1199,7 +1209,7 @@ export class AdminView {
           </td>
           <td>${regDate}</td>
           <td class="admin-actions-cell">
-            <button class="admin-action-btn admin-btn-edit-user" data-user-id="${u.id}" data-user-xp="${u.xp}" data-user-level="${u.level}" data-user-streak="${u.streak}" title="XP / Darajani tahrirlash">
+            <button class="admin-action-btn admin-btn-edit-user" data-user-id="${u.id}" data-user-xp="${u.xp}" data-user-level="${u.level}" data-user-streak="${u.streak}" data-user-email="${escapeHtml(hasEmail ? cleanEmail : '')}" data-user-name="${escapeHtml(u.username)}" title="XP va Emailni tahrirlash">
               <svg viewBox="0 0 256 256" width="15" height="15" fill="currentColor" aria-hidden="true">
                 <path d="M227.32,73.37,182.63,28.69a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.32,96A16,16,0,0,0,227.32,73.37ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.69,147.32,64l24-24L216,84.69Z"/>
               </svg>
@@ -2098,16 +2108,48 @@ export class AdminView {
       });
     });
 
-    // Users: Edit XP/Level
+    // Users: Inline Edit Email
+    const editEmailBtns = this.container.querySelectorAll('.admin-btn-edit-email');
+    editEmailBtns.forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const target = e.currentTarget as HTMLElement;
+        const userId = target.getAttribute('data-user-id') || '';
+        const userName = target.getAttribute('data-user-name') || 'foydalanuvchi';
+        if (!userId) return;
+
+        const newEmail = prompt(`@${userName} uchun email manzilni kiriting:`, '');
+        if (newEmail === null) return;
+        const clean = newEmail.trim().toLowerCase();
+        if (!clean || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+          alert('Iltimos, to‘g‘ri email manzil kiriting (masalan: user@example.com)');
+          return;
+        }
+
+        const ok = await apiService.adminUpdateUser(userId, { email: clean });
+        if (ok) {
+          this.successMsg = `@${userName} uchun email muvaffaqiyatli saqlandi: ${clean}`;
+          await this.loadAllData();
+          this.refreshActiveTabContent();
+        } else {
+          this.errorMsg = 'Emailni saqlashda xatolik yuz berdi';
+          this.refreshActiveTabContent();
+        }
+      });
+    });
+
+    // Users: Edit XP / Level / Email
     const editUserBtns = this.container.querySelectorAll('.admin-btn-edit-user');
     editUserBtns.forEach((btn) => {
       btn.addEventListener('click', async (e) => {
         const target = e.currentTarget as HTMLElement;
         const userId = target.getAttribute('data-user-id') || '';
         const curXp = target.getAttribute('data-user-xp') || '0';
+        const curEmail = target.getAttribute('data-user-email') || '';
+        const userName = target.getAttribute('data-user-name') || 'foydalanuvchi';
         if (!userId) return;
 
-        const newXpStr = prompt('Yangi XP miqdorini kiriting:', curXp);
+        const newXpStr = prompt(`@${userName} uchun yangi XP miqdorini kiriting:`, curXp);
         if (newXpStr === null) return;
         const newXp = parseInt(newXpStr, 10);
         if (isNaN(newXp) || newXp < 0) {
@@ -2116,9 +2158,19 @@ export class AdminView {
         }
 
         const newLevel = Math.max(1, Math.floor(newXp / 100) + 1);
-        const ok = await apiService.adminUpdateUser(userId, { xp: newXp, level: newLevel });
+        const updates: { xp: number; level: number; email?: string } = { xp: newXp, level: newLevel };
+
+        const newEmailPrompt = prompt(`@${userName} uchun email manzil (o‘zgartirish uchun kiriting):`, curEmail);
+        if (newEmailPrompt !== null) {
+          const cleanEmail = newEmailPrompt.trim().toLowerCase();
+          if (cleanEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+            updates.email = cleanEmail;
+          }
+        }
+
+        const ok = await apiService.adminUpdateUser(userId, updates);
         if (ok) {
-          this.successMsg = `Foydalanuvchi tajribasi muvaffaqiyatli yangilandi: ${newXp} XP (Level ${newLevel})`;
+          this.successMsg = `Foydalanuvchi (@${userName}) ma‘lumotlari muvaffaqiyatli yangilandi`;
           await this.loadAllData();
           this.refreshActiveTabContent();
         }

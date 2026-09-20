@@ -192,14 +192,16 @@ describe('server/db', () => {
   });
 
   describe('updateUserStatsAdmin', () => {
-    it('should update admin stats', () => {
+    it('should update admin stats and email', () => {
       const mockUser = { id: 1, username: 'test', email: 'test@test.com', password_hash: 'hash', full_name: 'Test', avatar_color: '#A3E635', xp: 0, streak: 1, level: 1, last_active_date: null, created_at: '2024-01-01' };
+      const runMock = vi.fn();
       vi.mocked(db.prepare).mockImplementation((sql: string) => ({
-        run: vi.fn(),
+        run: runMock,
         get: vi.fn().mockReturnValue(mockUser),
       }));
-      updateUserStatsAdmin(1, { xp: 100 });
+      updateUserStatsAdmin(1, { xp: 100, email: 'updated@test.com' });
       expect(db.prepare).toHaveBeenCalled();
+      expect(runMock).toHaveBeenCalledWith(100, 1, 1, 'updated@test.com', 1);
     });
   });
 
