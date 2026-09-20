@@ -1155,6 +1155,9 @@ export class AdminView {
     return filteredUsers.map((u) => {
       const initials = (u.full_name || u.username || 'U').slice(0, 1).toUpperCase();
       const regDate = u.created_at ? new Date(u.created_at).toLocaleDateString('uz-UZ') : '—';
+      const cleanEmail = (u.email && !u.email.includes('@user.tinglov') && !u.email.includes('@tinglov.uz'))
+        ? u.email
+        : (u.email && u.email.includes('@') ? u.email : (u.username && u.username.includes('@') ? u.username : '—'));
       return `
         <tr data-user-id="${u.id}">
           <td>
@@ -1166,7 +1169,7 @@ export class AdminView {
               </div>
             </div>
           </td>
-          <td>${escapeHtml(u.email || '—')}</td>
+          <td>${escapeHtml(cleanEmail)}</td>
           <td>
             ${u.auth_provider === 'google' ? `
               <span class="admin-badge-provider badge-google" title="Google hisobi orqali kirgan">

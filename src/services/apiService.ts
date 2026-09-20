@@ -403,12 +403,13 @@ class ApiService {
 
       const isGoogle = supabaseUser.app_metadata?.provider === 'google'
         || (Array.isArray(supabaseUser.identities) && supabaseUser.identities.some((i: SupabaseIdentity) => i.provider === 'google'));
-      const provider: 'google' | 'email' = isGoogle ? 'google' : 'email';
+      const provider: 'google' | 'email' = isGoogle ? 'google' : ((profile?.auth_provider as 'google' | 'email') || 'email');
+      const userEmail = supabaseUser.email || profile?.email || '';
 
       const user: AuthUser = {
         id: supabaseUser.id ?? '',
-        username: profile?.username || supabaseUser.user_metadata?.username || (supabaseUser.email ? supabaseUser.email.split('@')[0] : 'foydalanuvchi'),
-        email: supabaseUser.email || '',
+        username: profile?.username || supabaseUser.user_metadata?.username || (userEmail ? userEmail.split('@')[0] : 'foydalanuvchi'),
+        email: userEmail,
         full_name: profile?.full_name || supabaseUser.user_metadata?.full_name || '',
         avatar_color: profile?.avatar_color || '#FF5722',
         xp: profile?.xp ?? 0,
@@ -418,6 +419,18 @@ class ApiService {
         created_at: supabaseUser.created_at || new Date().toISOString(),
         auth_provider: provider,
       };
+
+      // Keep Supabase profile in sync with email and provider if missing
+      if (supabaseUser.id && (userEmail || provider)) {
+        (async () => {
+          try {
+            await supabase.from('profiles').update({
+              ...(userEmail ? { email: userEmail } : {}),
+              auth_provider: provider,
+            }).eq('id', supabaseUser.id);
+          } catch {}
+        })();
+      }
 
       this.currentUser = user;
       this.saveUserToStorage(user);
@@ -506,12 +519,14 @@ class ApiService {
       }
 
       if (data.user) {
-        // Upsert profile in Supabase
+        // Upsert profile in Supabase with email and provider
         const newProfile = {
           id: data.user.id,
           username: cleanUsername,
+          email: cleanEmail,
           full_name: cleanFullName || cleanUsername,
           avatar_color: '#FF5722',
+          auth_provider: 'email' as const,
           xp: 0,
           streak: 1,
           level: 1,
@@ -1240,7 +1255,7 @@ class ApiService {
         });
         if (!res.ok) return [];
         const data = await res.json();
-        return data.users || [];
+        return (data.users || []) as (AdminUserDto & { uuid?: string | null })[];
       } catch {
         return [];
       }
@@ -1252,7 +1267,7 @@ class ApiService {
         let query = supabase.from('profiles').select('*');
         if (search && search.trim()) {
           const term = search.trim();
-          query = query.or(`username.ilike.%${term}%,full_name.ilike.%${term}%`);
+          query = query.or(`username.ilike.%${term}%,full_name.ilike.%${term}%,email.ilike.%${term}%`);
         }
         const { data, error } = await query;
         if (error || !data) return [];
@@ -1263,25 +1278,22 @@ class ApiService {
           currentAuthUser = (sessRes?.data?.session?.user ?? null) as SupabaseAuthUser | null;
         } catch {}
 
-        return (data as SupabaseProfileRow[]).map((p: SupabaseProfileRow): AdminUserDto => {
+        return (data as any[]).map((p: any): AdminUserDto => {
           let userEmail = (p.email || '').trim();
-          let provider: 'google' | 'email' = 'email';
+          let provider: 'google' | 'email' = (p.auth_provider === 'google' || p.provider === 'google') ? 'google' : 'email';
 
           if (currentAuthUser && (currentAuthUser.id === p.id || currentAuthUser.email?.split('@')[0] === p.username)) {
             userEmail = currentAuthUser.email || userEmail;
             const isGoogle = currentAuthUser.app_metadata?.provider === 'google'
               || (Array.isArray(currentAuthUser.identities) && currentAuthUser.identities.some((i: SupabaseIdentity) => i.provider === 'google'));
-            provider = isGoogle ? 'google' : 'email';
+            provider = isGoogle ? 'google' : provider;
           } else {
-            // Detect provider strictly from stored metadata. Do NOT infer Google
-            // from the default avatar color (#FF5722 is assigned at registration
-            // to every new user) and never fabricate placeholder emails.
             const isGoogle = Boolean(
-              p.raw_app_meta_data?.provider === 'google'
+              p.auth_provider === 'google'
+              || p.raw_app_meta_data?.provider === 'google'
               || (Array.isArray(p.identities) && p.identities.some((i: SupabaseIdentity) => i.provider === 'google'))
             );
-            provider = isGoogle ? 'google' : 'email';
-            userEmail = userEmail || '';
+            if (isGoogle) provider = 'google';
           }
 
           return {
@@ -1304,35 +1316,106 @@ class ApiService {
 
     const [backendUsers, supabaseUsers] = await Promise.all([backendPromise, supabasePromise]);
 
-    // Merge users by username / email / id to avoid duplicates
-    const mergedMap = new Map<string, AdminUserDto>();
+    // Unified deduplication and merge map
+    const userList: AdminUserDto[] = [];
+    const usernameIndex = new Map<string, number>();
+    const emailIndex = new Map<string, number>();
+    const idIndex = new Map<string, number>();
+
+    const findExistingIndex = (user: { id?: string | number; username?: string; email?: string; uuid?: string | null }) => {
+      if (user.username) {
+        const uKey = user.username.trim().toLowerCase();
+        if (uKey && usernameIndex.has(uKey)) return usernameIndex.get(uKey)!;
+      }
+      if (user.email) {
+        const eKey = user.email.trim().toLowerCase();
+        if (eKey && !eKey.includes('@user.tinglov') && !eKey.includes('@tinglov.uz') && emailIndex.has(eKey)) {
+          return emailIndex.get(eKey)!;
+        }
+      }
+      if (user.uuid) {
+        const uuidKey = String(user.uuid).trim().toLowerCase();
+        if (uuidKey && idIndex.has(uuidKey)) return idIndex.get(uuidKey)!;
+      }
+      if (user.id) {
+        const idKey = String(user.id).trim().toLowerCase();
+        if (idKey && idIndex.has(idKey)) return idIndex.get(idKey)!;
+      }
+      return -1;
+    };
+
+    const addOrMergeUser = (incoming: AdminUserDto & { uuid?: string | null }) => {
+      const idx = findExistingIndex(incoming);
+      if (idx === -1) {
+        const newIdx = userList.length;
+        userList.push({ ...incoming });
+        if (incoming.username) usernameIndex.set(incoming.username.trim().toLowerCase(), newIdx);
+        if (incoming.email && !incoming.email.includes('@user.tinglov') && !incoming.email.includes('@tinglov.uz')) {
+          emailIndex.set(incoming.email.trim().toLowerCase(), newIdx);
+        }
+        if (incoming.id) idIndex.set(String(incoming.id).trim().toLowerCase(), newIdx);
+        if (incoming.uuid) idIndex.set(String(incoming.uuid).trim().toLowerCase(), newIdx);
+      } else {
+        const existing = userList[idx];
+
+        // 1. Email: prefer real, non-placeholder email
+        const isRealEmail = (em?: string) => Boolean(em && !em.includes('@user.tinglov') && !em.includes('@tinglov.uz'));
+        const realEmail = isRealEmail(existing.email)
+          ? existing.email
+          : isRealEmail(incoming.email)
+            ? incoming.email
+            : (existing.email || incoming.email || '');
+
+        // 2. Auth provider: if either says 'google', it's 'google'
+        const provider: 'google' | 'email' = (existing.auth_provider === 'google' || incoming.auth_provider === 'google')
+          ? 'google'
+          : 'email';
+
+        // 3. Full name: prefer human-readable name over username
+        const isDefaultName = (name?: string, un?: string) => !name || name === un || name === 'O‘quvchi' || name === 'Noma‘lum' || name === 'Foydalanuvchi';
+        const fullName = !isDefaultName(existing.full_name, existing.username)
+          ? existing.full_name
+          : !isDefaultName(incoming.full_name, incoming.username)
+            ? incoming.full_name
+            : (existing.full_name || incoming.full_name || existing.username);
+
+        // 4. ID: keep SQLite ID (numeric) if available so backend admin endpoints work
+        const id = (typeof existing.id === 'number' || (!isNaN(Number(existing.id)) && typeof existing.id === 'string' && !existing.id.includes('-')))
+          ? existing.id
+          : incoming.id;
+
+        const merged: AdminUserDto = {
+          ...existing,
+          ...incoming,
+          id,
+          email: realEmail,
+          full_name: fullName,
+          auth_provider: provider,
+          xp: Math.max(existing.xp || 0, incoming.xp || 0),
+          streak: Math.max(existing.streak || 0, incoming.streak || 0),
+          level: Math.max(existing.level || 1, incoming.level || 1),
+          avatar_color: existing.avatar_color || incoming.avatar_color || '#A3E635',
+          created_at: existing.created_at || incoming.created_at || new Date().toISOString(),
+        };
+
+        userList[idx] = merged;
+
+        if (realEmail && !emailIndex.has(realEmail.toLowerCase())) {
+          emailIndex.set(realEmail.toLowerCase(), idx);
+        }
+        if (incoming.id) idIndex.set(String(incoming.id).trim().toLowerCase(), idx);
+        if (incoming.uuid) idIndex.set(String(incoming.uuid).trim().toLowerCase(), idx);
+      }
+    };
 
     for (const u of backendUsers) {
-      const key = (u.email || u.username || String(u.id)).toLowerCase();
-      mergedMap.set(key, u);
+      addOrMergeUser(u);
     }
-
     for (const u of supabaseUsers) {
-      const key = (u.email || u.username || String(u.id)).toLowerCase();
-      const existing = mergedMap.get(key);
-      if (existing) {
-        mergedMap.set(key, {
-          ...existing,
-          ...u,
-          xp: Math.max(existing.xp || 0, u.xp || 0),
-          streak: Math.max(existing.streak || 0, u.streak || 0),
-          level: Math.max(existing.level || 1, u.level || 1),
-          email: existing.email && !existing.email.includes('@user.tinglov') ? existing.email : u.email,
-          auth_provider: existing.auth_provider || u.auth_provider || 'email'
-        });
-      } else {
-        mergedMap.set(key, u);
-      }
+      addOrMergeUser(u);
     }
 
-    const allUsers = Array.from(mergedMap.values());
-
-    return allUsers.sort((a, b) => {
+    return userList.sort((a, b) => {
       const aXp = a.xp || 0;
       const bXp = b.xp || 0;
       return bXp - aXp;

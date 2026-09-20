@@ -381,4 +381,52 @@ describe('AdminView scene management & editing', () => {
     expect(deleteSpy).toHaveBeenCalledWith(mockScene.id);
     expect(scenesChangedSpy).toHaveBeenCalled();
   });
+
+  it('renders deduplicated users list with correct email and auth provider badges', async () => {
+    vi.spyOn(apiService, 'adminGetUsers').mockResolvedValue([
+      {
+        id: 1,
+        username: 'behruzyuldoshev691',
+        full_name: 'Behruz Yuldoshev',
+        email: 'behruzyuldoshev691@gmail.com',
+        avatar_color: '#A3E635',
+        xp: 1200,
+        streak: 5,
+        level: 3,
+        auth_provider: 'google',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        username: 'azizaxrorov97',
+        full_name: 'aziz Axrorov',
+        email: 'azizaxrorov97@gmail.com',
+        avatar_color: '#FF5722',
+        xp: 450,
+        streak: 2,
+        level: 2,
+        auth_provider: 'email',
+        created_at: new Date().toISOString()
+      }
+    ]);
+
+    await adminView.render();
+
+    const usersTabBtn = container.querySelector<HTMLButtonElement>('.admin-tab-btn[data-tab="users"]')!;
+    usersTabBtn.click();
+    await new Promise((r) => setTimeout(r, 120));
+
+    const rows = container.querySelectorAll('#adminUsersTableBody tr');
+    expect(rows.length).toBe(2);
+
+    const firstRowText = rows[0].textContent || '';
+    expect(firstRowText).toContain('Behruz Yuldoshev');
+    expect(firstRowText).toContain('behruzyuldoshev691@gmail.com');
+    expect(firstRowText).toContain('Google');
+
+    const secondRowText = rows[1].textContent || '';
+    expect(secondRowText).toContain('aziz Axrorov');
+    expect(secondRowText).toContain('azizaxrorov97@gmail.com');
+    expect(secondRowText).toContain('Email / Parol');
+  });
 });
