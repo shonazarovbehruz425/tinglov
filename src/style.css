@@ -10234,11 +10234,18 @@ body.in-landing-mode #landingViewContainer {
   position: absolute;
   inset: 0;
   background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(ellipse at 50% 30%, black 40%, transparent 80%);
   -webkit-mask-image: radial-gradient(ellipse at 50% 30%, black 40%, transparent 80%);
+}
+
+[data-theme="dark"] .cyber-grid-overlay,
+[data-theme="oled"] .cyber-grid-overlay {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 }
 
 /* 1. Sticky Navbar */
@@ -10248,14 +10255,15 @@ body.in-landing-mode #landingViewContainer {
   z-index: 100;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  background: rgba(15, 17, 21, 0.82);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid var(--border-subtle);
   transition: all 0.3s ease;
 }
 
-[data-theme="light"] .landing-navbar {
-  background: rgba(255, 255, 255, 0.9);
-  border-bottom-color: rgba(0, 0, 0, 0.06);
+[data-theme="dark"] .landing-navbar,
+[data-theme="oled"] .landing-navbar {
+  background: rgba(15, 17, 21, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .landing-nav-inner {
@@ -10580,59 +10588,31 @@ body.in-landing-mode #landingViewContainer {
   gap: 2rem;
   flex-wrap: wrap;
   padding: 1rem 2.25rem;
-  background: rgba(22, 25, 32, 0.7);
+  background: var(--bg-surface-elevated);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
   border-radius: 20px;
   max-width: 860px;
   margin: 0 auto 2.5rem;
-  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
-[data-theme="light"] .landing-stats-pills {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(0, 0, 0, 0.08);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.06);
-}
-
-.landing-stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.stat-num {
-  font-size: 1.75rem;
-  font-weight: 850;
-  color: var(--accent-orange);
-  letter-spacing: -0.025em;
-  background: linear-gradient(135deg, #FF6B4A, #FFA133);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.stat-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.stat-label i {
-  color: var(--accent-orange);
+[data-theme="dark"] .landing-stats-pills,
+[data-theme="oled"] .landing-stats-pills {
+  background: rgba(22, 25, 32, 0.7);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.3);
 }
 
 .landing-stat-divider {
   width: 1px;
   height: 38px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-subtle);
 }
 
-[data-theme="light"] .landing-stat-divider {
-  background: rgba(0, 0, 0, 0.1);
+[data-theme="dark"] .landing-stat-divider,
+[data-theme="oled"] .landing-stat-divider {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* 3. Interactive Cinema Simulator Mockup */
@@ -11237,7 +11217,7 @@ body.in-landing-mode #landingViewContainer {
   padding: 2rem 0 2.75rem;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, transparent 0%, rgba(15, 17, 21, 0.6) 50%, transparent 100%);
+  background: linear-gradient(180deg, transparent 0%, var(--bg-surface-subtle) 50%, transparent 100%);
 }
 
 .marquee-header {
@@ -11296,19 +11276,31 @@ body.in-landing-mode #landingViewContainer {
 
 .marquee-card {
   width: 260px;
-  background: rgba(22, 25, 32, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
   border-radius: 18px;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-subtle);
   flex-shrink: 0;
+}
+
+[data-theme="dark"] .marquee-card,
+[data-theme="oled"] .marquee-card {
+  background: rgba(22, 25, 32, 0.85);
+  border-color: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
 }
 
 .marquee-card:hover {
   transform: translateY(-6px) scale(1.02);
   border-color: var(--accent-orange);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.15), 0 0 25px rgba(255, 91, 55, 0.15);
+}
+
+[data-theme="dark"] .marquee-card:hover,
+[data-theme="oled"] .marquee-card:hover {
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4), 0 0 25px rgba(255, 91, 55, 0.2);
 }
 
@@ -11441,7 +11433,8 @@ body.in-landing-mode #landingViewContainer {
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: var(--accent-orange);
-  background: rgba(255, 91, 55, 0.12);
+  background: rgba(255, 91, 55, 0.1);
+  border: 1px solid rgba(255, 91, 55, 0.25);
   padding: 3px 12px;
   border-radius: 9999px;
   margin-bottom: 0.65rem;
@@ -11471,13 +11464,20 @@ body.in-landing-mode #landingViewContainer {
   flex-wrap: wrap;
   margin-bottom: 2rem;
   padding: 0.35rem;
-  background: rgba(22, 25, 32, 0.7);
+  background: var(--bg-surface-elevated);
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
   border-radius: 16px;
   max-width: 780px;
   margin-left: auto;
   margin-right: auto;
+  box-shadow: var(--shadow-subtle);
+}
+
+[data-theme="dark"] .feature-tabs-nav,
+[data-theme="oled"] .feature-tabs-nav {
+  background: rgba(22, 25, 32, 0.7);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .feature-tab-btn {
@@ -11507,7 +11507,7 @@ body.in-landing-mode #landingViewContainer {
 
 .feature-tab-btn:hover:not(.active) {
   color: var(--text-heading);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface-subtle);
 }
 
 .feature-tab-panel {
@@ -11529,11 +11529,18 @@ body.in-landing-mode #landingViewContainer {
   grid-template-columns: 1.15fr 1fr;
   gap: 2rem;
   align-items: center;
-  background: rgba(22, 25, 32, 0.6);
+  background: var(--bg-canvas);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
   border-radius: 24px;
   padding: 2.25rem;
+  box-shadow: var(--shadow-card);
+}
+
+[data-theme="dark"] .feature-showcase-grid,
+[data-theme="oled"] .feature-showcase-grid {
+  background: rgba(22, 25, 32, 0.6);
+  border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.3);
 }
 
@@ -11923,14 +11930,26 @@ body.in-landing-mode #landingViewContainer {
 }
 
 .comparison-card.old-way {
-  background: rgba(18, 20, 26, 0.8);
+  background: var(--bg-canvas);
   border: 1px solid rgba(239, 68, 68, 0.25);
+  box-shadow: var(--shadow-subtle);
+}
+
+[data-theme="dark"] .comparison-card.old-way,
+[data-theme="oled"] .comparison-card.old-way {
+  background: rgba(18, 20, 26, 0.8);
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
 }
 
 .comparison-card.new-way {
-  background: linear-gradient(135deg, rgba(22, 28, 38, 0.95), rgba(18, 32, 28, 0.95));
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.8) 0%, var(--bg-canvas) 100%);
   border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.08);
+}
+
+[data-theme="dark"] .comparison-card.new-way,
+[data-theme="oled"] .comparison-card.new-way {
+  background: linear-gradient(135deg, rgba(22, 28, 38, 0.95), rgba(18, 32, 28, 0.95));
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 0 0 30px rgba(16, 185, 129, 0.12);
 }
 
@@ -11997,11 +12016,17 @@ body.in-landing-mode #landingViewContainer {
 
 /* 7. How It Works Section */
 .landing-how-section {
-  background: rgba(22, 25, 32, 0.5);
+  background: var(--bg-surface-subtle);
   backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
   border-radius: 28px;
+  box-shadow: var(--shadow-subtle);
+}
+
+[data-theme="dark"] .landing-how-section,
+[data-theme="oled"] .landing-how-section {
+  background: rgba(22, 25, 32, 0.5);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .landing-steps-container {
@@ -12083,14 +12108,22 @@ body.in-landing-mode #landingViewContainer {
 
 .catalog-filter-btn {
   padding: 0.45rem 1.1rem;
-  background: rgba(22, 25, 32, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
   border-radius: 9999px;
   color: var(--text-secondary);
   font-size: 0.86rem;
   font-weight: 650;
   cursor: pointer;
+  box-shadow: var(--shadow-subtle);
   transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .catalog-filter-btn,
+[data-theme="oled"] .catalog-filter-btn {
+  background: rgba(22, 25, 32, 0.7);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
 }
 
 .catalog-filter-btn:hover {
@@ -12114,13 +12147,19 @@ body.in-landing-mode #landingViewContainer {
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  background: linear-gradient(135deg, rgba(255, 91, 55, 0.12) 0%, rgba(22, 25, 32, 0.85) 50%, rgba(15, 17, 21, 0.95) 100%);
+  background: linear-gradient(135deg, rgba(255, 91, 55, 0.08) 0%, var(--bg-canvas) 50%, var(--bg-surface-subtle) 100%);
   border: 1px solid rgba(255, 91, 55, 0.35);
   border-radius: 18px;
   padding: 1.25rem 1.75rem;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-card);
   position: relative;
   overflow: hidden;
+}
+
+[data-theme="dark"] .landing-continue-card,
+[data-theme="oled"] .landing-continue-card {
+  background: linear-gradient(135deg, rgba(255, 91, 55, 0.12) 0%, rgba(22, 25, 32, 0.85) 50%, rgba(15, 17, 21, 0.95) 100%);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
 }
 
 .landing-continue-glow {
@@ -12179,9 +12218,14 @@ body.in-landing-mode #landingViewContainer {
 
 .landing-continue-progress-track {
   height: 7px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border-subtle);
   border-radius: 9999px;
   overflow: hidden;
+}
+
+[data-theme="dark"] .landing-continue-progress-track,
+[data-theme="oled"] .landing-continue-progress-track {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .landing-continue-progress-fill {

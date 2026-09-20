@@ -55,7 +55,7 @@ export class LandingView {
       <div class="landing-continue-card" role="region" aria-label="Davom etayotgan dars">
         <div class="landing-continue-left">
           <div class="landing-continue-glow"></div>
-          <span class="landing-continue-kicker"><i class="ph ph-lightning-fill"></i> Davom etish</span>
+          <span class="landing-continue-kicker"><i class="ph-fill ph-lightning"></i> Davom etish</span>
           <h3 class="landing-continue-title">${escapeHtml(continueScene.title)}</h3>
           <p class="landing-continue-sub">${escapeHtml(continueScene.movieName)} • Replika ${continueIndex + 1}/${continueScene.dialogues.length}</p>
         </div>
@@ -70,7 +70,7 @@ export class LandingView {
         </div>
         <div class="landing-continue-right">
           <button class="landing-btn landing-btn-primary landing-continue-action-btn" data-continue-scene-id="${escapeHtml(continueScene.id)}">
-            <i class="ph ph-play-fill" aria-hidden="true"></i> Davom etish
+            <i class="ph-fill ph-play" aria-hidden="true"></i> Davom etish
           </button>
         </div>
       </div>
@@ -166,7 +166,7 @@ export class LandingView {
             <span class="marquee-pill-accent">${m.flag} ${m.accent === 'British' ? 'GB' : 'US'}</span>
           </div>
           <div class="marquee-card-play-overlay">
-            <i class="ph ph-play-fill"></i>
+            <i class="ph-fill ph-play"></i>
           </div>
         </div>
         <div class="marquee-card-meta">
@@ -214,14 +214,14 @@ export class LandingView {
                   <span class="landing-user-name">${userName}</span>
                 </div>
                 <button class="landing-btn landing-btn-primary" id="landingNavDashboardBtn">
-                  <i class="ph ph-squares-four-fill"></i> Dashboard
+                  <i class="ph-fill ph-squares-four"></i> Dashboard
                 </button>
               ` : `
                 <button class="landing-btn landing-btn-ghost" id="landingNavLoginBtn">
                   <i class="ph ph-sign-in"></i> Kirish
                 </button>
                 <button class="landing-btn landing-btn-primary" id="landingNavRegisterBtn">
-                  <i class="ph ph-rocket-launch-fill"></i> Bepul boshlash
+                  <i class="ph-fill ph-rocket-launch"></i> Bepul boshlash
                 </button>
               `}
             </div>
@@ -339,7 +339,7 @@ export class LandingView {
 
                     <div class="mockup-player-controls-strip">
                       <button class="mockup-play-audio-btn" id="heroMockupPlayAudioBtn" aria-label="Audioni eshitish">
-                        <i class="ph ph-play-fill" id="heroPlayIcon"></i>
+                        <i class="ph-fill ph-play" id="heroPlayIcon"></i>
                         <span id="heroPlayText">Audioni eshitish (0.75x)</span>
                       </button>
                       <div class="mockup-soundwave-bars" id="heroSoundwaveBars" aria-hidden="true">
@@ -390,7 +390,7 @@ export class LandingView {
                           <i class="ph ph-lightning"></i> 48 WPM
                         </div>
                         <div class="mockup-metric xp" id="heroMetricXp">
-                          <i class="ph ph-star-fill"></i> +35 XP
+                          <i class="ph-fill ph-star"></i> +35 XP
                         </div>
                       </div>
                     </div>
@@ -418,7 +418,7 @@ export class LandingView {
                       </div>
 
                       <div class="shadowing-verdict-box">
-                        <div class="verdict-icon"><i class="ph ph-check-circle-fill"></i></div>
+                        <div class="verdict-icon"><i class="ph-fill ph-check-circle"></i></div>
                         <div class="verdict-meta">
                           <strong>A'lo darajadagi intonatsiya!</strong>
                           <p>Urg'u 'soul-sucking' so'ziga to'g'ri qo'yildi. Native speakerga 96% o'xshashlik.</p>
@@ -442,7 +442,7 @@ export class LandingView {
                         <p class="vocab-preview-uz">Qalbni so'ruvchi, odamni behuda charchatadigan, bo'shliqqa tortuvchi</p>
                         <p class="vocab-preview-ex">"I find social media to be a <u>soul-sucking</u> void."</p>
                         <div class="vocab-preview-actions">
-                          <button class="vocab-save-preview-btn"><i class="ph ph-bookmark-simple-fill"></i> Shaxsiy lug'atga saqlangan</button>
+                          <button class="vocab-save-preview-btn"><i class="ph-fill ph-bookmark-simple"></i> Shaxsiy lug'atga saqlangan</button>
                         </div>
                       </div>
                     </div>
@@ -469,7 +469,7 @@ export class LandingView {
         <!-- Interactive Feature Showcase (Deep-Dive Tabs) -->
         <section class="landing-section" id="features">
           <div class="landing-section-header">
-            <div class="landing-chip"><i class="ph ph-sparkle-fill"></i> Inqilobiy Metodika</div>
+            <div class="landing-chip"><i class="ph-fill ph-sparkle"></i> Inqilobiy Metodika</div>
             <h2 class="landing-section-title">Ingliz tili quloqqa qanday singadi?</h2>
             <p class="landing-section-desc">
               Kino va seriallar yordamida eshitib tushunishni o'stirish uchun maxsus ishlab chiqilgan 4 bosqichli chuqur mashg'ulot tizimi.
@@ -508,9 +508,9 @@ export class LandingView {
                     Oddiy kinoni tomosha qilganda inson miyasi ko'pincha so'zlarni o'tkazib yuboradi. Harfma-harf diktantda esa siz har bir replikani to'liq terib chiqmaguningizcha keyingi sahnaga o'tmaysiz. Bu orqali <strong>chala eshitish sindromi</strong> butunlay yo'qoladi.
                   </p>
                   <ul class="feature-perks-list">
-                    <li><i class="ph ph-check-circle-fill"></i> Real vaqtda harflar to'g'riligini tekshirish</li>
-                    <li><i class="ph ph-check-circle-fill"></i> Qiyin birikmalar (wanna, gonna, could've) bo'yicha maxsus mikro-trening</li>
-                    <li><i class="ph ph-check-circle-fill"></i> Qulay tezkor klaviatura tugmalari (Space: qayta tinglash, Tab: maslahat)</li>
+                    <li><i class="ph-fill ph-check-circle"></i> Real vaqtda harflar to'g'riligini tekshirish</li>
+                    <li><i class="ph-fill ph-check-circle"></i> Qiyin birikmalar (wanna, gonna, could've) bo'yicha maxsus mikro-trening</li>
+                    <li><i class="ph-fill ph-check-circle"></i> Qulay tezkor klaviatura tugmalari (Space: qayta tinglash, Tab: maslahat)</li>
                   </ul>
                 </div>
                 <div class="feature-showcase-card">
@@ -539,7 +539,7 @@ export class LandingView {
                         <span class="f-char pending">e</span>
                       </div>
                       <div class="f-card-footer-stats">
-                        <span><i class="ph ph-fire-fill"></i> 14 ta to'g'ri ketma-ketlik</span>
+                        <span><i class="ph-fill ph-fire"></i> 14 ta to'g'ri ketma-ketlik</span>
                         <span class="xp-badge">+20 XP</span>
                       </div>
                     </div>
@@ -558,15 +558,15 @@ export class LandingView {
                     Eshitish qobiliyati talaffuz bilan chambarchas bog'liq. O'zingiz to'g'ri aytishni o'rgangan so'zni eshitganda zumda ilg'ab olasiz. Sun'iy intellekt mikrofonga aytgan har bir so'zingizni aktyor ovozi bilan qiyoslaydi.
                   </p>
                   <ul class="feature-perks-list">
-                    <li><i class="ph ph-check-circle-fill"></i> Intonatsiya, urg'u va tovushlar ravonligi bo'yicha foizli baho</li>
-                    <li><i class="ph ph-check-circle-fill"></i> Noto'g'ri aytilgan so'zlarni qizil rangda ko'rsatish</li>
-                    <li><i class="ph ph-check-circle-fill"></i> Xavfsiz: ovozingiz faqat brauzerda qayta ishlanadi</li>
+                    <li><i class="ph-fill ph-check-circle"></i> Intonatsiya, urg'u va tovushlar ravonligi bo'yicha foizli baho</li>
+                    <li><i class="ph-fill ph-check-circle"></i> Noto'g'ri aytilgan so'zlarni qizil rangda ko'rsatish</li>
+                    <li><i class="ph-fill ph-check-circle"></i> Xavfsiz: ovozingiz faqat brauzerda qayta ishlanadi</li>
                   </ul>
                 </div>
                 <div class="feature-showcase-card">
                   <div class="f-card-glow purple"></div>
                   <div class="f-card-inner">
-                    <div class="f-card-chip purple"><i class="ph ph-microphone-stage-fill"></i> AI Voice Comparator</div>
+                    <div class="f-card-chip purple"><i class="ph-fill ph-microphone-stage"></i> AI Voice Comparator</div>
                     <div class="f-shadowing-sample">
                       <div class="f-voice-circle">
                         <i class="ph ph-microphone"></i>
@@ -598,15 +598,15 @@ export class LandingView {
                     Lug'atdan qidirishga vaqt sarflamang. Film subtitridagi har qanday so'zni bitta bosish orqali o'zbekcha tarjimasi, kontekstdagi ma'nosi va ovozli talaffuzini ko'ring hamda fleshkartalaringizga bir zumda qo'shing.
                   </p>
                   <ul class="feature-perks-list">
-                    <li><i class="ph ph-check-circle-fill"></i> So'zlarning kinodagi jonli kontekstida berilishi</li>
-                    <li><i class="ph ph-check-circle-fill"></i> Intervalli takrorlash (Spaced Repetition) tizimiga integratsiya</li>
-                    <li><i class="ph ph-check-circle-fill"></i> Istalgan qurilmadan kirilganda sinxronlash</li>
+                    <li><i class="ph-fill ph-check-circle"></i> So'zlarning kinodagi jonli kontekstida berilishi</li>
+                    <li><i class="ph-fill ph-check-circle"></i> Intervalli takrorlash (Spaced Repetition) tizimiga integratsiya</li>
+                    <li><i class="ph-fill ph-check-circle"></i> Istalgan qurilmadan kirilganda sinxronlash</li>
                   </ul>
                 </div>
                 <div class="feature-showcase-card">
                   <div class="f-card-glow blue"></div>
                   <div class="f-card-inner">
-                    <div class="f-card-chip blue"><i class="ph ph-bookmark-simple-fill"></i> 1-Klik Lug'at</div>
+                    <div class="f-card-chip blue"><i class="ph-fill ph-bookmark-simple"></i> 1-Klik Lug'at</div>
                     <div class="f-vocab-card-sample">
                       <div class="vocab-bubble-header">
                         <span class="v-word">inevitable</span>
@@ -633,15 +633,15 @@ export class LandingView {
                     Aktyorlar juda tez gapirganda, 0.5x yoki 0.75x sekinlashtirish funksiyasi ovoz sifatini va balandligini (pitch) saqlagan holda sekinlashtiradi. Shuningdek Amerika va Britaniya aksentlari bo'yicha alohida filtrlash imkoniyati mavjud.
                   </p>
                   <ul class="feature-perks-list">
-                    <li><i class="ph ph-check-circle-fill"></i> Tabiiy pitch bilan 0.5x, 0.75x va 1.0x sekinlashtirish</li>
-                    <li><i class="ph ph-check-circle-fill"></i> 🇺🇸 Amerika va 🇬🇧 Britaniya aksentlarini alohida ajratish</li>
-                    <li><i class="ph ph-check-circle-fill"></i> Har bir qahramonning nutq tempiga moslashuvchan pleyer</li>
+                    <li><i class="ph-fill ph-check-circle"></i> Tabiiy pitch bilan 0.5x, 0.75x va 1.0x sekinlashtirish</li>
+                    <li><i class="ph-fill ph-check-circle"></i> 🇺🇸 Amerika va 🇬🇧 Britaniya aksentlarini alohida ajratish</li>
+                    <li><i class="ph-fill ph-check-circle"></i> Har bir qahramonning nutq tempiga moslashuvchan pleyer</li>
                   </ul>
                 </div>
                 <div class="feature-showcase-card">
                   <div class="f-card-glow green"></div>
                   <div class="f-card-inner">
-                    <div class="f-card-chip green"><i class="ph ph-gauge-fill"></i> Dynamic Pitch Preserver</div>
+                    <div class="f-card-chip green"><i class="ph-fill ph-gauge"></i> Dynamic Pitch Preserver</div>
                     <div class="f-speed-sample">
                       <div class="speed-selector-row">
                         <span class="speed-opt">0.5x</span>
@@ -667,7 +667,7 @@ export class LandingView {
         <!-- "Nega Tinglov?" Comparison Matrix Section -->
         <section class="landing-section" id="comparison">
           <div class="landing-section-header">
-            <div class="landing-chip"><i class="ph ph-scales-fill"></i> Farqni his eting</div>
+            <div class="landing-chip"><i class="ph-fill ph-scales"></i> Farqni his eting</div>
             <h2 class="landing-section-title">Nega an'anaviy usullar listeningda ish bermaydi?</h2>
             <p class="landing-section-desc">
               Kitoblardagi sun'iy audio yozuvlar va haqiqiy kino tili o'rtasidagi tafovutni Tinglov qanday hal qilishini ko'ring.
@@ -678,7 +678,7 @@ export class LandingView {
             <!-- Left: Old traditional way -->
             <div class="comparison-card old-way">
               <div class="comp-card-badge red">
-                <i class="ph ph-x-circle-fill"></i> An'anaviy usul
+                <i class="ph-fill ph-x-circle"></i> An'anaviy usul
               </div>
               <h3 class="comp-card-title">Zerikarli darsliklar va sun'iy audiolarni eshitish</h3>
               <ul class="comp-list">
@@ -692,14 +692,14 @@ export class LandingView {
             <!-- Right: The Tinglov way -->
             <div class="comparison-card new-way">
               <div class="comp-card-badge green">
-                <i class="ph ph-sparkle-fill"></i> Tinglov usuli
+                <i class="ph-fill ph-sparkle"></i> Tinglov usuli
               </div>
               <h3 class="comp-card-title">Sevimli aktyorlar orqali faol harfma-harf diktant</h3>
               <ul class="comp-list">
-                <li><i class="ph ph-check-circle-fill"></i> <strong>Haqiqiy jonli nutq:</strong> Wednesday, Interstellar, Marvel aktyorlarining tabiiy talaffuzi</li>
-                <li><i class="ph ph-check-circle-fill"></i> <strong>Faol qatnashuv:</strong> Har bir so'zni o'zingiz yozasiz, quloq 100% diqqatda bo'ladi</li>
-                <li><i class="ph ph-check-circle-fill"></i> <strong>O'yinlashtirilgan odat:</strong> Kunlik Streak, XP va do'stlar bellashuvi bilan zavq olasiz</li>
-                <li><i class="ph ph-check-circle-fill"></i> <strong>AI Ovoz tahlili:</strong> Sun'iy intellekt talaffuz va intonatsiyangizni bevosita to'g'rilaydi</li>
+                <li><i class="ph-fill ph-check-circle"></i> <strong>Haqiqiy jonli nutq:</strong> Wednesday, Interstellar, Marvel aktyorlarining tabiiy talaffuzi</li>
+                <li><i class="ph-fill ph-check-circle"></i> <strong>Faol qatnashuv:</strong> Har bir so'zni o'zingiz yozasiz, quloq 100% diqqatda bo'ladi</li>
+                <li><i class="ph-fill ph-check-circle"></i> <strong>O'yinlashtirilgan odat:</strong> Kunlik Streak, XP va do'stlar bellashuvi bilan zavq olasiz</li>
+                <li><i class="ph-fill ph-check-circle"></i> <strong>AI Ovoz tahlili:</strong> Sun'iy intellekt talaffuz va intonatsiyangizni bevosita to'g'rilaydi</li>
               </ul>
             </div>
           </div>
@@ -708,7 +708,7 @@ export class LandingView {
         <!-- How It Works Section -->
         <section class="landing-section landing-how-section" id="how-it-works">
           <div class="landing-section-header">
-            <div class="landing-chip"><i class="ph ph-steps-fill"></i> 3 Oddiy qadam</div>
+            <div class="landing-chip"><i class="ph-fill ph-steps"></i> 3 Oddiy qadam</div>
             <h2 class="landing-section-title">Tinglov qanday ishlaydi?</h2>
             <p class="landing-section-desc">
               Kuniga atigi 15 daqiqa ajratib, 1 oyda filmlarni subtitrsiz tushunish darajasiga chiqing.
@@ -719,7 +719,7 @@ export class LandingView {
             <div class="landing-step-item">
               <div class="step-number">01</div>
               <div class="step-content">
-                <div class="step-icon"><i class="ph ph-film-strip-fill"></i></div>
+                <div class="step-icon"><i class="ph-fill ph-film-strip"></i></div>
                 <h3 class="step-title">Film va darajangizni tanlang</h3>
                 <p class="step-desc">
                   Boshlang'ich (A1) darajadan ilg'or (C1) darajagacha — o'zingizga qiziq bo'lgan kino janrini yoki multfilmni tanlang.
@@ -732,7 +732,7 @@ export class LandingView {
             <div class="landing-step-item">
               <div class="step-number">02</div>
               <div class="step-content">
-                <div class="step-icon"><i class="ph ph-headphones-fill"></i></div>
+                <div class="step-icon"><i class="ph-fill ph-headphones"></i></div>
                 <h3 class="step-title">Eshiting va diktantni yozing</h3>
                 <p class="step-desc">
                   Aktyor gapirgan har bir so'zni klaviaturada tering. Xato qilsangiz, tizim to'g'ri talaffuzni qayta eshittiradi.
@@ -745,7 +745,7 @@ export class LandingView {
             <div class="landing-step-item">
               <div class="step-number">03</div>
               <div class="step-content">
-                <div class="step-icon"><i class="ph ph-chart-line-up-fill"></i></div>
+                <div class="step-icon"><i class="ph-fill ph-chart-line-up"></i></div>
                 <h3 class="step-title">AI bilan gapiring va o'sing</h3>
                 <p class="step-desc">
                   Shadowing rejimida o'z ovozingizni sinang, yangi iboralarni lug'atga saqlang va doimiy o'sishni kuzatib boring.
@@ -758,7 +758,7 @@ export class LandingView {
         <!-- Movie Catalog Showcase Section with Level Filter -->
         <section class="landing-section" id="catalog">
           <div class="landing-section-header">
-            <div class="landing-chip"><i class="ph ph-television-fill"></i> Katta Kutubxona</div>
+            <div class="landing-chip"><i class="ph-fill ph-television"></i> Katta Kutubxona</div>
             <h2 class="landing-section-title">Kutubxonamizdagi sara filmlar</h2>
             <p class="landing-section-desc">
               O'zingizga mos darajadagi filmni tanlang va listeningni darhol boshlang.
@@ -808,7 +808,7 @@ export class LandingView {
                     </div>
                     <div class="movie-card-play-hover" aria-hidden="true">
                       <div class="play-hover-circle">
-                        <i class="ph ph-play-fill"></i>
+                        <i class="ph-fill ph-play"></i>
                       </div>
                     </div>
                   </div>
@@ -828,7 +828,7 @@ export class LandingView {
                     <div class="movie-card-bottom-row">
                       <span class="landing-card-progress-caption">${realPct > 0 ? `${realPct}% yakunlangan` : 'Boshlanmagan'}</span>
                       <button class="movie-card-btn" data-scene-id="${escapeHtml(scene.id)}" aria-label="${safeTitle} darsini mashq qilish">
-                        <i class="ph ph-play-fill" aria-hidden="true"></i> ${realPct > 0 ? 'Davom etish' : 'Boshlash'}
+                        <i class="ph-fill ph-play" aria-hidden="true"></i> ${realPct > 0 ? 'Davom etish' : 'Boshlash'}
                       </button>
                     </div>
                   </div>
@@ -847,7 +847,7 @@ export class LandingView {
         <!-- FAQ Section -->
         <section class="landing-section" id="faq">
           <div class="landing-section-header">
-            <div class="landing-chip"><i class="ph ph-question-fill"></i> FAQ</div>
+            <div class="landing-chip"><i class="ph-fill ph-question"></i> FAQ</div>
             <h2 class="landing-section-title">Ko'p beriladigan savollar</h2>
             <p class="landing-section-desc">
               Platforma haqida eng muhim savollarga ochiq javoblar.
@@ -929,11 +929,11 @@ export class LandingView {
             <div class="cta-banner-actions">
               ${isAuth ? `
                 <button class="landing-btn-large landing-btn-pulse" id="landingBottomDashboardBtn">
-                  <i class="ph ph-squares-four-fill"></i> Dashboardga kirish
+                  <i class="ph-fill ph-squares-four"></i> Dashboardga kirish
                 </button>
               ` : `
                 <button class="landing-btn-large landing-btn-pulse" id="landingBottomRegisterBtn">
-                  <i class="ph ph-rocket-launch-fill"></i> Hoziroq bepul ro'yxatdan o'tish
+                  <i class="ph-fill ph-rocket-launch"></i> Hoziroq bepul ro'yxatdan o'tish
                 </button>
               `}
             </div>
@@ -1145,18 +1145,18 @@ export class LandingView {
           heroActiveWord.innerHTML = 'soul-sucking';
         }
         if (heroFeedback) {
-          heroFeedback.innerHTML = '<i class="ph ph-check-circle-fill accent-green"></i> Ajoyib! 100% to\'g\'ri!';
+          heroFeedback.innerHTML = '<i class="ph-fill ph-check-circle accent-green"></i> Ajoyib! 100% to\'g\'ri!';
           heroFeedback.classList.add('feedback-success');
         }
         if (heroXp) {
-          heroXp.innerHTML = '<i class="ph ph-star-fill"></i> +50 XP (Dars yakunlandi)';
+          heroXp.innerHTML = '<i class="ph-fill ph-star"></i> +50 XP (Dars yakunlandi)';
           heroXp.classList.add('xp-pulse');
         }
         heroInput.value = '';
         heroInput.placeholder = "Zo'r natija! Bepul boshlash uchun yuqoridagi tugmani bosing";
       } else if (val.length > 0) {
         if (heroFeedback) {
-          heroFeedback.innerHTML = '<i class="ph ph-warning-circle-fill"></i> Deyarli to\'g\'ri! Qayta eshitib ko\'ring';
+          heroFeedback.innerHTML = '<i class="ph-fill ph-warning-circle"></i> Deyarli to\'g\'ri! Qayta eshitib ko\'ring';
         }
       }
     };
@@ -1273,7 +1273,7 @@ export class LandingView {
     const resetState = () => {
       this.isDemoAudioPlaying = false;
       if (playIcon) {
-        playIcon.className = 'ph ph-play-fill';
+        playIcon.className = 'ph-fill ph-play';
       }
       if (playText) {
         playText.textContent = 'Audioni eshitish (0.75x)';
