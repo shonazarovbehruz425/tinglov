@@ -855,11 +855,11 @@ class MovieListenApp implements RouterDelegate {
   }
 
   public onDashboard(push: boolean): void {
-    this.showLibrary(push);
+    this.showLibrary(push, '/dashboard');
   }
 
   public onLibrary(push: boolean): void {
-    this.showLibrary(push);
+    this.showLibrary(push, '/library');
   }
 
   public onProfile(push: boolean): void {
@@ -1018,16 +1018,16 @@ class MovieListenApp implements RouterDelegate {
     }
   }
 
-  public showLibrary(pushHistory: boolean = true): void {
+  public showLibrary(pushHistory: boolean = true, targetUrl: string = '/dashboard'): void {
     if (!this.checkAndEnforceAuth()) return;
     this.switchView('library');
     this.levelSelector.render();
     this.setLibraryBusyState(false);
-    const targetUrl = '/dashboard';
+    const title = targetUrl === '/library' ? 'Kutubxona — Tinglov' : 'Dashboard — Tinglov';
     if (pushHistory) {
-      this.updateUrl(targetUrl, 'Dashboard — Tinglov');
+      this.updateUrl(targetUrl, title);
     } else {
-      document.title = 'Dashboard — Tinglov';
+      document.title = title;
     }
   }
 

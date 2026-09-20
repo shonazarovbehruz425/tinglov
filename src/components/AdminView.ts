@@ -297,23 +297,6 @@ export class AdminView {
       this.users = usersRes || [];
       this.scenes = scenesRes || [];
 
-      // Auto-restore protection: if server was wiped on redeploy (0 scenes), check local backup
-      if (this.scenes.length === 0) {
-        const backup = apiService.getScenesBackup();
-        if (backup && backup.length > 0) {
-          try {
-            const syncRes = await apiService.adminSyncScenes(backup);
-            if (syncRes.success && syncRes.count > 0) {
-              this.scenes = backup;
-              this.successMsg = `⚡ Server yangilanishi sababli xotiradagi ${syncRes.count} ta darsingiz avtomatik serverga qayta tiklandi!`;
-            }
-          } catch {
-            // Ignore background sync failure, keep backup in memory
-            this.scenes = backup;
-          }
-        }
-      }
-
       // Calculate today's users from user list as well
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
@@ -2070,6 +2053,7 @@ export class AdminView {
 
         if (confirm('Ushbu darsni o‘chirmoqchimisiz?')) {
           storageService.deleteCustomScene(sceneId);
+          this.scenes = this.scenes.filter((s) => s.id !== sceneId);
           const ok = await apiService.adminDeleteScene(sceneId);
           if (ok) {
             this.successMsg = 'Dars muvaffaqiyatli o‘chirildi.';

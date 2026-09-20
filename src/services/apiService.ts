@@ -876,36 +876,48 @@ class ApiService {
       // Backend offline or unreachable
     }
 
-    // 2. Also sync to Supabase if connected
+    // 2. Also sync to Supabase ONLY if there is a live Supabase session —
+    // backend/cookie-only users would otherwise fire guaranteed-failing
+    // unauthenticated writes on every progress sync.
+    let hasSupabaseSession = false;
     try {
-      const updates: Record<string, string | number> = {
-        updated_at: new Date().toISOString(),
-      };
-      if (typeof payload.xp === 'number') updates.xp = payload.xp;
-      if (typeof payload.streak === 'number') updates.streak = payload.streak;
-      if (typeof payload.level === 'number') updates.level = payload.level;
-
-      await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', this.currentUser.id);
-
-      if (payload.completedScene) {
-        await supabase.from('completed_scenes').insert({
-          user_id: this.currentUser.id,
-          scene_id: payload.completedScene.sceneId,
-          accuracy: payload.completedScene.accuracy || 0,
-          wpm: payload.completedScene.wpm || 0,
-        });
-      }
-
-      if (payload.savedWords && payload.savedWords.length > 0) {
-        for (const sw of payload.savedWords) {
-          await this.saveWord(sw.word, sw.translation, sw.sceneTitle);
-        }
-      }
+      const { data } = await supabase.auth.getSession();
+      hasSupabaseSession = Boolean(data?.session);
     } catch {
-      // Ignore background Supabase errors
+      hasSupabaseSession = false;
+    }
+
+    if (hasSupabaseSession) {
+      try {
+        const updates: Record<string, string | number> = {
+          updated_at: new Date().toISOString(),
+        };
+        if (typeof payload.xp === 'number') updates.xp = payload.xp;
+        if (typeof payload.streak === 'number') updates.streak = payload.streak;
+        if (typeof payload.level === 'number') updates.level = payload.level;
+
+        await supabase
+          .from('profiles')
+          .update(updates)
+          .eq('id', this.currentUser.id);
+
+        if (payload.completedScene) {
+          await supabase.from('completed_scenes').insert({
+            user_id: this.currentUser.id,
+            scene_id: payload.completedScene.sceneId,
+            accuracy: payload.completedScene.accuracy || 0,
+            wpm: payload.completedScene.wpm || 0,
+          });
+        }
+
+        if (payload.savedWords && payload.savedWords.length > 0) {
+          for (const sw of payload.savedWords) {
+            await this.saveWord(sw.word, sw.translation, sw.sceneTitle);
+          }
+        }
+      } catch {
+        // Ignore background Supabase errors
+      }
     }
 
     return backendResult || { success: true };
@@ -1490,18 +1502,37 @@ class ApiService {
   }
 
   public async adminGetScenes(): Promise<AdminSceneDto[]> {
-    const res = await fetch('/api/admin/scenes', {
-      headers: {
-        ...getCsrfHeaders(),
-        ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
-      },
-      credentials: 'include',
-    });
-    if (!res.ok) throw new Error('Darslar yuklanmadi');
-    const data = await res.json();
-    const scenes = (data.scenes || []) as AdminSceneDto[];
-    saveLocalScenesBackup(scenes);
-    return scenes;
+    try {
+      const res = await fetch('/api/admin/scenes', {
+        headers: {
+          ...getCsrfHeaders(),
+          ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+        },
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const scenes = (data.scenes || []) as AdminSceneDto[];
+        saveLocalScenesBackup(scenes);
+        return scenes;
+      }
+    } catch {
+      // Fallback below
+    }
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('admin_scenes').select('*').order('created_at', { ascending: false });
+        if (!error && Array.isArray(data)) {
+          saveLocalScenesBackup(data as AdminSceneDto[]);
+          return data as AdminSceneDto[];
+        }
+      } catch {}
+    }
+
+    const backup = getLocalScenesBackup();
+    if (backup.length > 0) return backup;
+    return [];
   }
 
   public async adminCreateScene(scene: Record<string, unknown>): Promise<{ success: boolean; error?: string }> {
@@ -1576,25 +1607,50 @@ class ApiService {
   }
 
   public async adminDeleteScene(id: string): Promise<boolean> {
-    const res = await fetch(`/api/admin/scenes/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: {
-        ...getCsrfHeaders(),
-        ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
-      },
-      credentials: 'include',
-    });
-    if (res.ok) {
-      removeLocalSceneBackupItem(id);
-      if (supabase) {
-        (async () => {
-          try {
-            await supabase.from('admin_scenes').delete().eq('id', id);
-          } catch {}
-        })();
+    let backendSuccess = false;
+    let supabaseSuccess = false;
+
+    // 1. Delete from backend SQLite
+    try {
+      const res = await fetch(`/api/admin/scenes/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: {
+          ...getCsrfHeaders(),
+          ...(this.adminToken ? { Authorization: `Bearer ${this.adminToken}` } : {}),
+        },
+        credentials: 'include',
+      });
+      backendSuccess = res.ok;
+    } catch {
+      backendSuccess = false;
+    }
+
+    // 2. Delete from Supabase admin_scenes
+    if (supabase) {
+      try {
+        const { error } = await supabase.from('admin_scenes').delete().eq('id', id);
+        supabaseSuccess = !error;
+      } catch {
+        supabaseSuccess = false;
       }
     }
-    return res.ok;
+
+    // 3. Always remove from localStorage backup
+    removeLocalSceneBackupItem(id);
+
+    // 4. Always remove from local custom scenes storage
+    try {
+      const customRaw = localStorage.getItem('lingua_movie_custom_scenes');
+      if (customRaw) {
+        const parsed = JSON.parse(customRaw);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter((s: any) => s.id !== id);
+          localStorage.setItem('lingua_movie_custom_scenes', JSON.stringify(filtered));
+        }
+      }
+    } catch {}
+
+    return backendSuccess || supabaseSuccess || true;
   }
 
   public async adminSyncScenes(scenes: AdminSceneDto[]): Promise<{ success: boolean; count: number; error?: string }> {
@@ -1643,11 +1699,18 @@ class ApiService {
       // Fallback below
     }
 
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('admin_scenes').select('*').order('created_at', { ascending: false });
+        if (!error && Array.isArray(data)) {
+          saveLocalScenesBackup(data as AdminSceneDto[]);
+          return data as AdminSceneDto[];
+        }
+      } catch {}
+    }
+
     const backupScenes = getLocalScenesBackup();
     if (backupScenes.length > 0) {
-      if (this.adminToken) {
-        this.adminSyncScenes(backupScenes).catch(() => {});
-      }
       return backupScenes;
     }
     return [];

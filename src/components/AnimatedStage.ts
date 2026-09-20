@@ -39,6 +39,7 @@ export class AnimatedStage {
   private videoElement: HTMLVideoElement | null = null;
   private ytIframeElement: HTMLIFrameElement | null = null;
   private animFrameId: number | null = null;
+  private ytMessageHandler: ((e: MessageEvent) => void) | null = null;
   private isSentenceCompleted: boolean = false;
   private isManualPaused: boolean = false;
   private loopTimerId: number | null = null;
@@ -311,33 +312,44 @@ export class AnimatedStage {
         event: 'listening'
       }), targetOrigin);
 
-      let startTimestamp = Date.now() + 500; // 500ms initial buffer tolerance
-      let isYtPlaying = false;
-      this.ytCurrentTime = startTime;
+    let startTimestamp = Date.now() + 500; // 500ms initial buffer tolerance
+    let isYtPlaying = false;
+    let lastKnownYtTime: number | null = null;
+    this.ytCurrentTime = startTime;
 
-      const onYtMessage = (e: MessageEvent) => {
-        if (!e.origin.includes('youtube')) return;
-        try {
-          const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-          if (data.event === 'onStateChange') {
-            if (data.info === 1) { // PLAYING
-              isYtPlaying = true;
-              startTimestamp = Date.now();
-            } else if (data.info === 2) { // PAUSED
-              isYtPlaying = false;
-            }
+    const onYtMessage = (e: MessageEvent) => {
+      if (!e.origin.includes('youtube')) return;
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (data.event === 'onStateChange') {
+          if (data.info === 1) { // PLAYING
+            isYtPlaying = true;
+            startTimestamp = Date.now();
+          } else if (data.info === 2) { // PAUSED
+            isYtPlaying = false;
           }
-          if (data.info?.currentTime !== undefined && typeof data.info.currentTime === 'number') {
-            this.ytCurrentTime = data.info.currentTime;
-          }
-        } catch {}
-      };
+        }
+        if (data.info?.currentTime !== undefined && typeof data.info.currentTime === 'number') {
+          this.ytCurrentTime = data.info.currentTime;
+          lastKnownYtTime = data.info.currentTime;
+        }
+      } catch {}
+    };
 
+      this.ytMessageHandler = onYtMessage;
       window.addEventListener('message', onYtMessage);
+
+      const stopYtTracking = () => {
+        if (this.ytMessageHandler === onYtMessage) {
+          this.ytMessageHandler = null;
+        }
+        window.removeEventListener('message', onYtMessage);
+        this.stopVideoTracking();
+      };
 
       const trackYtProgress = () => {
         if (this.isManualPaused) {
-          window.removeEventListener('message', onYtMessage);
+          stopYtTracking();
           return;
         }
 
@@ -349,18 +361,22 @@ export class AnimatedStage {
 
         const elapsed = Math.max(0, (now - startTimestamp) / 1000);
         const estimatedCurrentTime = startTime + (elapsed * this.speed);
-        const currentPos = this.ytCurrentTime > startTime ? this.ytCurrentTime : estimatedCurrentTime;
+        // Prefer the REAL player-reported time whenever it is within this
+        // segment — the wall-clock estimate races ahead of actual playback on
+        // slow networks and would pause the video before the sentence ended.
+        const currentPos = (lastKnownYtTime !== null && lastKnownYtTime > startTime && lastKnownYtTime <= endTime + 1)
+          ? lastKnownYtTime
+          : estimatedCurrentTime;
         this.updateTimelineProgress(currentPos);
 
         if (currentPos >= endTime) {
-          window.removeEventListener('message', onYtMessage);
+          stopYtTracking();
           const pauseMsg = JSON.stringify({
             event: 'command',
             func: 'pauseVideo',
             args: []
           });
           iframe.contentWindow?.postMessage(pauseMsg, targetOrigin);
-          this.stopVideoTracking();
           this.setSpeakingState(false);
           this.updateTimelineProgress(endTime);
           onEnd?.();
@@ -480,6 +496,13 @@ export class AnimatedStage {
     if (this.animFrameId !== null) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
+    }
+    // Always detach the YouTube 'message' listener — otherwise every
+    // playVideoSegment() call accumulates a new global listener (memory leak +
+    // stale closures overwriting ytCurrentTime with old session data).
+    if (this.ytMessageHandler) {
+      window.removeEventListener('message', this.ytMessageHandler);
+      this.ytMessageHandler = null;
     }
   }
 

@@ -28,7 +28,12 @@ export class SessionManager {
   public init(): void {
     if (this.unsubscribe) return;
     this.currentUser = apiService.getCurrentUser();
-    this.ready = true;
+    // NOTE: `ready` is intentionally NOT set here — it is the boot-time auth
+    // latch. It flips true only when the first waitForAuth() resolution completes
+    // (MovieListenApp.routeInitialUrl -> markReady()) or when a real auth *change*
+    // event arrives. Setting it here would break the two-phase guard: on refresh
+    // of /profile or /dashboard the router would treat auth as "resolved" before
+    // the HttpOnly cookie session is verified and wrongly bounce users to login.
     this.unsubscribe = apiService.onAuthChange((user) => {
       this.currentUser = user;
       this.ready = true;

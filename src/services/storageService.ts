@@ -270,7 +270,7 @@ export class StorageService {
     if (payload.creatorHandle) {
       params.set('h', encodeURIComponent(payload.creatorHandle));
     }
-    return `${origin}${path}/practice?${params.toString()}`;
+    return `${origin}/practice?${params.toString()}`;
   }
 
   /**
@@ -430,8 +430,15 @@ export class StorageService {
   }
 
   public addXP(amount: number): { leveledUp: boolean; newLevel: number } {
+    // Ignore non-positive/NaN amounts — previously addXP(0) or a negative value
+    // still bumped/lowered xp and triggered a pointless cloud sync.
+    const safeAmount = Number.isFinite(amount) ? Math.round(amount) : 0;
+    if (safeAmount === 0) {
+      return { leveledUp: false, newLevel: this.stats.level };
+    }
     const oldLevel = this.stats.level;
-    this.stats.xp += amount;
+    this.stats.xp += safeAmount;
+    if (this.stats.xp < 0) this.stats.xp = 0;
 
     // Single source of truth for leveling (shared with Profile/ProfileModal UI)
     const { level } = getLevelProgress(this.stats.xp);

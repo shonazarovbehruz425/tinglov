@@ -159,8 +159,41 @@ export class AppRouter {
     if (apiService.isAuthenticated()) return true;
     if (this.isAuthReady()) {
       this.delegate?.onUnauthorized(target);
+      return false;
     }
+    // Auth not resolved yet (first waitForAuth still in flight, e.g. right after
+    // login/register or a slow refresh) — DON'T bounce to login. Redirect to the
+    // SAME target without pushing history; when the session-change listener sees
+    // the restored user it re-resolves to the final view. Prevents the
+    // "login → lands on /login instead of dashboard" bug.
+    this.redirectDeferred(target);
     return false;
+  }
+
+  /** Re-route to the given target without history push, via the delegate. */
+  private redirectDeferred(target: RouteName): void {
+    const delegate = this.delegate;
+    if (!delegate) return;
+    switch (target) {
+      case 'dashboard':
+        delegate.onDashboard(false);
+        break;
+      case 'library':
+        delegate.onLibrary(false);
+        break;
+      case 'practice':
+        delegate.onPractice(false);
+        break;
+      case 'profile':
+        delegate.onProfile(false);
+        break;
+      case 'settings':
+        delegate.onSettings(false);
+        break;
+      default:
+        delegate.onUnauthorized(target);
+        break;
+    }
   }
 
   /**
@@ -266,11 +299,20 @@ export class AppRouter {
       return 'practice';
     }
 
-    // 6. Dashboard / Library View (/dashboard or /library) — protected
-    if (rawPath === '/dashboard' || rawPath === '/library' || rawHash === 'dashboard' || rawHash === 'library') {
+    // 6. Dashboard / Library View (/dashboard or /library) — protected.
+    // NOTE: /dashboard and /library render the same view, but they MUST keep their
+    // own URL — previously both funnelled to delegate.onLibrary which hard-wrote
+    // '/dashboard', so the Back button from a /library entry restored '/' while
+    // the library view was showing (URL/view mismatch + broken Back navigation).
+    if (rawPath === '/library' || rawHash === 'library') {
       if (!this.enforce('library')) return 'login';
       delegate?.onLibrary(push);
       return 'library';
+    }
+    if (rawPath === '/dashboard' || rawHash === 'dashboard') {
+      if (!this.enforce('dashboard')) return 'login';
+      delegate?.onDashboard(push);
+      return 'dashboard';
     }
 
     // 7. Fallback: auth bo'lsa dashboard, aks holda landing
