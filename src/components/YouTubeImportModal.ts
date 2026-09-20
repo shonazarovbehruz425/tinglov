@@ -1,7 +1,8 @@
 // internal
-import { Scene, Difficulty } from '../types';
+import { Scene, Difficulty, DialogueSentence } from '../types';
 import { BaseModal } from './BaseModal';
 import { youtubeService, YOUTUBE_PRESETS, YouTubeVideoMetadata } from '../services/youtubeService';
+import { subtitleService } from '../services/subtitleService';
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
 import { i18n } from '../services/i18nService';
@@ -11,6 +12,7 @@ import { logger } from '../utils/logger';
 
 export class YouTubeImportModal extends BaseModal {
   private currentMetadata: YouTubeVideoMetadata | null = null;
+  private parsedCustomDialogues: DialogueSentence[] | null = null;
   private isLoading: boolean = false;
   private onCloseCallback: (() => void) | null = null;
   private onLessonCreatedCallback: ((scene: Scene) => void) | null = null;
@@ -29,6 +31,7 @@ export class YouTubeImportModal extends BaseModal {
 
   public open(): void {
     this.currentMetadata = null;
+    this.parsedCustomDialogues = null;
     this.isLoading = false;
     this.markOpened();
     this.enableEscapeClose();
@@ -86,6 +89,23 @@ export class YouTubeImportModal extends BaseModal {
 
             <!-- Video Live Preview Card -->
             <div class="youtube-preview-container" id="youtubePreviewContainer" style="display: none;"></div>
+
+            <!-- Optional Subtitle Upload (.srt / .vtt) -->
+            <div style="background: var(--bg-surface-subtle); border: 1.5px dashed var(--accent-primary, #3B82F6); border-radius: var(--radius-md); padding: 0.85rem; display: flex; flex-direction: column; gap: 0.6rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.4rem;">
+                <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-heading); display: flex; align-items: center; gap: 0.4rem;">
+                  <i class="ph ph-subtitles" style="color: #3B82F6;"></i> ⚡ Aniq Subtitr (.SRT / .VTT) — Ixtiyoriy
+                </label>
+                <span id="ytSubtitleBadge" style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 600;">100% aniq replikalar</span>
+              </div>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <label for="ytSubtitleFileInput" class="clean-btn" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.4rem; cursor: pointer; padding: 0.45rem 0.75rem; font-size: 0.8rem; background: var(--bg-card);">
+                  <i class="ph ph-file-text"></i>
+                  <span id="ytSubtitleLabel">Subtitr fayl yuklash...</span>
+                </label>
+                <input type="file" id="ytSubtitleFileInput" accept=".srt,.vtt,text/vtt,text/plain" style="display: none;" />
+              </div>
+            </div>
 
             <!-- Options Grid (Difficulty & Category) -->
             <div class="youtube-options-grid">
@@ -177,6 +197,50 @@ export class YouTubeImportModal extends BaseModal {
     urlInput?.addEventListener('input', () => {
       if (urlInput) {
         this.handleUrlChanged(urlInput.value.trim());
+      }
+    });
+
+    // Subtitle file input for YouTube
+    const ytSubInput = this.container.querySelector<HTMLInputElement>('#ytSubtitleFileInput');
+    const ytSubLabel = this.container.querySelector<HTMLElement>('#ytSubtitleLabel');
+    const ytSubBadge = this.container.querySelector<HTMLElement>('#ytSubtitleBadge');
+
+    ytSubInput?.addEventListener('change', async () => {
+      const file = ytSubInput.files?.[0];
+      if (file) {
+        try {
+          const text = await file.text();
+          const parsed = subtitleService.parseSubtitles(text);
+          if (!parsed || parsed.length === 0) {
+            soundEffects.triggerErrorFeedback();
+            alert('Subtitr faylidan replikalar topilmadi. To\'g\'ri .srt yoki .vtt fayl tanlang.');
+            return;
+          }
+          const optimized = subtitleService.optimizeForLearning(parsed);
+          this.parsedCustomDialogues = optimized.map((entry, idx) => ({
+            id: `yt-sub-${Date.now()}-${idx}`,
+            character: entry.character || `Speaker ${idx + 1}`,
+            characterAvatar: '🗣️',
+            startTime: entry.startTime,
+            endTime: entry.endTime,
+            text: entry.text,
+            cleanText: entry.text.replace(/[.,/#!$%^&*;:{}=\-_`~()?"'’]/g, ''),
+            uzbekTranslation: `Tarjima: ${entry.text}`,
+            wordDictionary: {}
+          }));
+
+          if (ytSubBadge) {
+            ytSubBadge.textContent = `⚡ ${optimized.length} ta replika ulandi!`;
+            ytSubBadge.style.color = '#10B981';
+          }
+          if (ytSubLabel) {
+            ytSubLabel.textContent = `Subtitr: ${file.name.slice(0, 18)}...`;
+          }
+          soundEffects.playCorrectWord();
+        } catch {
+          soundEffects.triggerErrorFeedback();
+          alert('Subtitr faylini o\'qishda xatolik yuz berdi.');
+        }
       }
     });
 
@@ -292,12 +356,16 @@ export class YouTubeImportModal extends BaseModal {
       const difficulty = (diffSelect?.value as Difficulty) || 'intermediate';
       const category = (catSelect?.value as 'Cartoon' | 'Cinema' | 'Anime' | 'Daily Life') || 'Cinema';
 
-      // Construct interactive Scene with dialogues & vocabulary
-      const scene = youtubeService.createSceneFromYouTube(this.currentMetadata, {
-        difficulty,
-        category,
-        accent: 'American'
-      });
+      // Construct interactive Scene with dialogues & vocabulary (or custom parsed subtitles)
+      const scene = youtubeService.createSceneFromYouTube(
+        this.currentMetadata,
+        {
+          difficulty,
+          category,
+          accent: 'American'
+        },
+        this.parsedCustomDialogues || undefined
+      );
 
       // Save to user's personal storage
       storageService.saveCustomScene(scene);

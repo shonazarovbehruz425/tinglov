@@ -4,7 +4,8 @@ import { BaseModal } from './BaseModal';
 import { storageService } from '../services/storageService';
 import { soundEffects } from '../services/soundEffects';
 import { audioVadService } from '../services/audioVadService';
-import { sanitizeUrl } from '../utils/sanitize';
+import { subtitleService } from '../services/subtitleService';
+import { escapeHtml, sanitizeUrl } from '../utils/sanitize';
 import { safeValidate, customSceneSchema } from '../utils/validation';
 
 export class CustomSceneModal extends BaseModal {
@@ -36,6 +37,34 @@ export class CustomSceneModal extends BaseModal {
     this.onCloseCallback?.();
   }
 
+  private createDialogueRowElement(data: {
+    character: string;
+    startTime: number;
+    endTime: number;
+    textEn: string;
+    textUz: string;
+  }): HTMLElement {
+    const newRow = document.createElement('div');
+    newRow.className = 'dialogue-row-item';
+    newRow.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+        <input type="text" class="form-clean-input char-name-input" placeholder="Personaj nomi" value="${escapeHtml(data.character)}" required style="flex: 2;" />
+        <div style="display: flex; align-items: center; gap: 0.25rem; flex: 1.5;">
+          <input type="number" step="0.1" min="0" class="form-clean-input start-time-input" placeholder="Boshlanish" value="${data.startTime.toFixed(1)}" title="Boshlanish vaqti (soniya)" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.8rem;" />
+          <span>-</span>
+          <input type="number" step="0.1" min="0.5" class="form-clean-input end-time-input" placeholder="Tugash" value="${data.endTime.toFixed(1)}" title="Tugash vaqti (soniya)" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.8rem;" />
+          <span style="font-size: 0.75rem; color: var(--text-secondary);">sek</span>
+        </div>
+        <button type="button" class="clean-btn remove-row-btn" style="color: #EF4444; padding: 0.4rem;" title="O'chirish"><i class="ph ph-trash"></i></button>
+      </div>
+      <textarea class="form-clean-input sentence-en-input" placeholder="Inglizcha replika..." required rows="2">${escapeHtml(data.textEn)}</textarea>
+      <input type="text" class="form-clean-input sentence-uz-input" placeholder="O'zbekcha tarjimasi..." value="${escapeHtml(data.textUz)}" required />
+    `;
+
+    newRow.querySelector('.remove-row-btn')?.addEventListener('click', () => newRow.remove());
+    return newRow;
+  }
+
   private render(): void {
     this.container.innerHTML = `
       <div class="modal-backdrop" id="customSceneModalBackdrop">
@@ -43,7 +72,7 @@ export class CustomSceneModal extends BaseModal {
           <div class="modal-header">
             <div>
               <h3>Yangi Dars yoki Lavha Qo'shish</h3>
-              <p>Multfilm, kino yoki matnlarni kiritib yangi listening darsi yarating</p>
+              <p>Multfilm, kino yoki subtitrli videolarni kiritib 100% aniq listening darsi yarating</p>
             </div>
             <button class="close-modal-round-btn" id="closeCustomModalBtn" title="Yopish"><i class="ph ph-x"></i></button>
           </div>
@@ -68,7 +97,7 @@ export class CustomSceneModal extends BaseModal {
             <div style="background: var(--bg-surface-subtle); border: 1.5px dashed var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-heading); display: flex; align-items: center; gap: 0.4rem;">
-                  <i class="ph ph-video" style="color: var(--accent-orange);"></i> Video Manbasi (Ixtiyoriy)
+                  <i class="ph ph-video" style="color: var(--accent-orange);"></i> 1. Video Fayli yoki Havola (Ixtiyoriy)
                 </label>
                 <span id="customVideoStatusBadge" style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Audio/Speech sintez rejimi</span>
               </div>
@@ -83,6 +112,43 @@ export class CustomSceneModal extends BaseModal {
                 </div>
                 <div style="position: relative;">
                   <input type="url" id="customVideoUrlInput" class="form-clean-input" placeholder="yoki Video URL (https://...)" style="width: 100%; font-size: 0.82rem; padding: 0.5rem 0.75rem;" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Subtitle (.srt / .vtt) Upload & Paste Section -->
+            <div style="background: var(--bg-surface-subtle); border: 1.5px dashed var(--accent-primary, #3B82F6); border-radius: var(--radius-md); padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-heading); display: flex; align-items: center; gap: 0.4rem;">
+                  <i class="ph ph-subtitles" style="color: #3B82F6;"></i> 2. ⚡ Aniq Subtitr Fayli (.SRT / .VTT)
+                </label>
+                <span id="customSubtitleStatusBadge" style="font-size: 0.75rem; color: #3B82F6; font-weight: 600;">100% kafolatlangan aniq vaqtlar</span>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; align-items: center;">
+                <div>
+                  <label for="customSubtitleFileInput" class="clean-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; padding: 0.55rem 0.85rem; font-size: 0.82rem; background: var(--bg-card);">
+                    <i class="ph ph-file-text"></i>
+                    <span id="customSubtitleUploadLabel">.srt yoki .vtt fayl yuklash...</span>
+                  </label>
+                  <input type="file" id="customSubtitleFileInput" accept=".srt,.vtt,text/vtt,text/plain" style="display: none;" />
+                </div>
+                <div>
+                  <button type="button" class="clean-btn" id="toggleSubtitlePasteBtn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.55rem 0.85rem; font-size: 0.82rem;">
+                    <i class="ph ph-clipboard-text"></i>
+                    <span>Subtitr matnini qo'yish (Paste)</span>
+                  </button>
+                </div>
+              </div>
+
+              <div id="customSubtitlePasteArea" style="display: none; flex-direction: column; gap: 0.5rem;">
+                <textarea id="customSubtitleRawText" class="form-clean-input" rows="4" placeholder="SRT yoki VTT matnini shu yerga qo'ying... (Masalan:
+1
+00:00:01,000 --> 00:00:04,500
+Hello, how are you?)" style="font-size: 0.8rem; font-family: monospace;"></textarea>
+                <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                  <button type="button" class="clean-btn" id="cancelSubtitlePasteBtn" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">Bekor qilish</button>
+                  <button type="button" class="card-continue-btn" id="applySubtitlePasteBtn" style="font-size: 0.75rem; padding: 0.3rem 0.8rem;">Replikalar sifatida yuklash</button>
                 </div>
               </div>
             </div>
@@ -137,24 +203,13 @@ export class CustomSceneModal extends BaseModal {
       const rowCount = listContainer?.querySelectorAll('.dialogue-row-item').length || 0;
       const defaultStart = rowCount * 6;
       const defaultEnd = (rowCount + 1) * 6;
-      const newRow = document.createElement('div');
-      newRow.className = 'dialogue-row-item';
-      newRow.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-          <input type="text" class="form-clean-input char-name-input" placeholder="Personaj nomi" value="Character ${rowCount + 1}" required style="flex: 2;" />
-          <div style="display: flex; align-items: center; gap: 0.25rem; flex: 1.5;">
-            <input type="number" step="0.1" min="0" class="form-clean-input start-time-input" placeholder="Boshlanish" value="${defaultStart.toFixed(1)}" title="Boshlanish vaqti (soniya)" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.8rem;" />
-            <span>-</span>
-            <input type="number" step="0.1" min="0.5" class="form-clean-input end-time-input" placeholder="Tugash" value="${defaultEnd.toFixed(1)}" title="Tugash vaqti (soniya)" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.8rem;" />
-            <span style="font-size: 0.75rem; color: var(--text-secondary);">sek</span>
-          </div>
-          <button type="button" class="clean-btn remove-row-btn" style="color: #EF4444; padding: 0.4rem;"><i class="ph ph-trash"></i></button>
-        </div>
-        <textarea class="form-clean-input sentence-en-input" placeholder="Inglizcha replika..." required rows="2"></textarea>
-        <input type="text" class="form-clean-input sentence-uz-input" placeholder="O'zbekcha tarjimasi..." required />
-      `;
-
-      newRow.querySelector('.remove-row-btn')?.addEventListener('click', () => newRow.remove());
+      const newRow = this.createDialogueRowElement({
+        character: `Character ${rowCount + 1}`,
+        startTime: defaultStart,
+        endTime: defaultEnd,
+        textEn: '',
+        textUz: ''
+      });
       listContainer?.appendChild(newRow);
     });
 
@@ -162,6 +217,97 @@ export class CustomSceneModal extends BaseModal {
     const urlInput = this.container.querySelector<HTMLInputElement>('#customVideoUrlInput');
     const uploadLabel = this.container.querySelector<HTMLElement>('#customVideoUploadLabel');
     const statusBadge = this.container.querySelector<HTMLElement>('#customVideoStatusBadge');
+
+    // Subtitle inputs & elements
+    const subFileInput = this.container.querySelector<HTMLInputElement>('#customSubtitleFileInput');
+    const subUploadLabel = this.container.querySelector<HTMLElement>('#customSubtitleUploadLabel');
+    const subStatusBadge = this.container.querySelector<HTMLElement>('#customSubtitleStatusBadge');
+    const toggleSubPasteBtn = this.container.querySelector('#toggleSubtitlePasteBtn');
+    const subPasteArea = this.container.querySelector<HTMLElement>('#customSubtitlePasteArea');
+    const subRawText = this.container.querySelector<HTMLTextAreaElement>('#customSubtitleRawText');
+    const cancelSubPasteBtn = this.container.querySelector('#cancelSubtitlePasteBtn');
+    const applySubPasteBtn = this.container.querySelector('#applySubtitlePasteBtn');
+
+    const handleApplySubtitles = (content: string, filename?: string) => {
+      const parsed = subtitleService.parseSubtitles(content);
+      if (!parsed || parsed.length === 0) {
+        soundEffects.triggerErrorFeedback();
+        alert('Subtitr faylidan replikalar topilmadi. Iltimos to\'g\'ri .srt yoki .vtt fayl tanlang.');
+        return;
+      }
+
+      const entries = subtitleService.optimizeForLearning(parsed);
+      if (listContainer) {
+        listContainer.innerHTML = '';
+        entries.forEach((entry, idx) => {
+          const row = this.createDialogueRowElement({
+            character: entry.character || `Character ${idx + 1}`,
+            startTime: entry.startTime,
+            endTime: entry.endTime,
+            textEn: entry.text,
+            textUz: entry.text // user can customize or edit
+          });
+          listContainer.appendChild(row);
+        });
+      }
+
+      if (subStatusBadge) {
+        subStatusBadge.textContent = `⚡ ${entries.length} ta replika 100% aniq vaqtlar bilan yuklandi!`;
+        subStatusBadge.style.color = '#10B981';
+      }
+      if (subUploadLabel && filename) {
+        subUploadLabel.textContent = `Subtitr: ${filename.slice(0, 20)}...`;
+      }
+      soundEffects.playCorrectWord();
+    };
+
+    // Subtitle File Change
+    subFileInput?.addEventListener('change', async () => {
+      const file = subFileInput.files?.[0];
+      if (file) {
+        try {
+          const text = await file.text();
+          handleApplySubtitles(text, file.name);
+        } catch {
+          soundEffects.triggerErrorFeedback();
+          alert('Subtitr faylini o\'qishda xatolik yuz berdi.');
+        }
+      }
+    });
+
+    // Subtitle Paste Toggle
+    toggleSubPasteBtn?.addEventListener('click', async () => {
+      if (subPasteArea) {
+        const isHidden = subPasteArea.style.display === 'none';
+        subPasteArea.style.display = isHidden ? 'flex' : 'none';
+        if (isHidden) {
+          // Attempt clipboard paste
+          try {
+            if (navigator.clipboard && navigator.clipboard.readText) {
+              const clip = await navigator.clipboard.readText();
+              if (clip && subRawText && (clip.includes('-->') || clip.includes('WEBVTT'))) {
+                subRawText.value = clip;
+              }
+            }
+          } catch {}
+          subRawText?.focus();
+        }
+      }
+    });
+
+    cancelSubPasteBtn?.addEventListener('click', () => {
+      if (subPasteArea) subPasteArea.style.display = 'none';
+    });
+
+    applySubPasteBtn?.addEventListener('click', () => {
+      const raw = subRawText?.value.trim() || '';
+      if (!raw) {
+        alert('Iltimos avval subtitr matnini kiriting!');
+        return;
+      }
+      handleApplySubtitles(raw);
+      if (subPasteArea) subPasteArea.style.display = 'none';
+    });
 
     let selectedVideoBlobUrl = '';
 
@@ -183,7 +329,7 @@ export class CustomSceneModal extends BaseModal {
           urlInput.value = '';
         }
 
-        // Automatically detect where characters speak, filtering music
+        // Automatically detect where characters speak, filtering music if no subtitles loaded yet
         try {
           const rows = listContainer?.querySelectorAll('.dialogue-row-item');
           const rowCount = rows?.length || 1;

@@ -374,13 +374,16 @@ class YouTubeService {
       difficulty: Difficulty;
       category: 'Cartoon' | 'Cinema' | 'Anime' | 'Daily Life';
       accent?: 'American' | 'British' | 'Neutral';
-    }
+    },
+    customDialogues?: DialogueSentence[]
   ): Scene {
-    const dialogues = this.generateDialoguesForVideo(
-      metadata.videoId,
-      metadata.title,
-      metadata.authorName
-    );
+    const dialogues = customDialogues && customDialogues.length > 0
+      ? customDialogues
+      : this.generateDialoguesForVideo(
+          metadata.videoId,
+          metadata.title,
+          metadata.authorName
+        );
 
     const totalSeconds = dialogues.length > 0 ? dialogues[dialogues.length - 1].endTime : 60;
     const durationM = Math.floor(totalSeconds / 60);
