@@ -366,8 +366,10 @@ export class StorageService {
     // 3. User-created local custom scenes (only if not deleted and not already provided by server/initial)
     for (const s of this.customScenes) {
       if (!this.deletedSceneIds.has(s.id) && !existingIds.has(s.id)) {
-        existingIds.add(s.id);
-        result.push(s);
+        if (!s.id.startsWith('admin_scene_')) {
+          existingIds.add(s.id);
+          result.push(s);
+        }
       }
     }
 
@@ -399,18 +401,17 @@ export class StorageService {
 
   public setServerScenes(scenes: Scene[]): void {
     this.serverScenes = Array.isArray(scenes) ? scenes : [];
-    if (this.serverScenes.length > 0) {
-      let changed = false;
-      for (const s of this.serverScenes) {
-        if (this.deletedSceneIds.has(s.id)) {
-          this.deletedSceneIds.delete(s.id);
-          changed = true;
-        }
+    const validServerIds = new Set(this.serverScenes.map(s => s.id));
+    // Prune stale customScenes that were admin scenes but deleted on server
+    this.customScenes = this.customScenes.filter(s => {
+      if (s.id.startsWith('admin_scene_') && !validServerIds.has(s.id)) {
+        return false;
       }
-      if (changed) {
-        this.saveDeletedSceneIds();
-      }
-    }
+      return !this.deletedSceneIds.has(s.id);
+    });
+    try {
+      localStorage.setItem(CUSTOM_SCENES_KEY, JSON.stringify(this.customScenes));
+    } catch {}
   }
 
   public mergeServerScenes(scenes: Scene[]): void {
@@ -424,6 +425,14 @@ export class StorageService {
     this.saveDeletedSceneIds();
     try {
       localStorage.setItem(CUSTOM_SCENES_KEY, JSON.stringify(this.customScenes));
+      const backupRaw = localStorage.getItem('tinglov_admin_scenes_backup');
+      if (backupRaw) {
+        const backup = JSON.parse(backupRaw);
+        if (Array.isArray(backup)) {
+          const filtered = backup.filter((s: any) => s.id !== sceneId);
+          localStorage.setItem('tinglov_admin_scenes_backup', JSON.stringify(filtered));
+        }
+      }
     } catch {
       // Ignore
     }
