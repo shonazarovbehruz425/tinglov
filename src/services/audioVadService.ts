@@ -284,9 +284,10 @@ export class AudioVadService {
       const firstHalf: SpeechSegment = {
         startTime: target.startTime,
         endTime: Math.max(target.startTime + 1.0, mid - 0.2),
-        duration: Math.round((mid - 0.2 - target.startTime) * 10) / 10,
+        duration: 0, // set below so duration always equals endTime - startTime
         confidence: 0.85
       };
+      firstHalf.duration = Math.round((firstHalf.endTime - firstHalf.startTime) * 10) / 10;
       const secondHalf: SpeechSegment = {
         startTime: mid,
         endTime: target.endTime,

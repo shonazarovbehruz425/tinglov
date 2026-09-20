@@ -17,7 +17,9 @@ class SoundEffectsService {
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {
+        // Autoplay policy may reject — sound stays silent until next user gesture
+      });
     }
     return this.ctx;
   }

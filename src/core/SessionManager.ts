@@ -28,6 +28,7 @@ export class SessionManager {
   public init(): void {
     if (this.unsubscribe) return;
     this.currentUser = apiService.getCurrentUser();
+    this.ready = true;
     this.unsubscribe = apiService.onAuthChange((user) => {
       this.currentUser = user;
       this.ready = true;

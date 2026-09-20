@@ -64,6 +64,11 @@ export class ShadowingModal extends BaseModal {
   private recordingStartTime: number = 0;
   private transcript: string = '';
   private isSpeechSupported: boolean = false;
+  private hadError: boolean = false;
+  private suppressAssessment: boolean = false;
+  private restarting: boolean = false;
+  private wantListening: boolean = false;
+  private restartTimeoutId: number | null = null;
   private onCloseCallback: (() => void) | null = null;
   private onPassedCallback: ((score: number) => void) | null = null;
 
@@ -105,11 +110,16 @@ export class ShadowingModal extends BaseModal {
     this.sentenceIndex = index;
     this.transcript = '';
     this.isListening = false;
+    this.hadError = false;
+    this.suppressAssessment = false;
     this.markOpened();
     this.render();
   }
 
   public override close(): void {
+    // Prevent the async `onend` (triggered by stopListening) from running an
+    // assessment / re-rendering into an already closed modal.
+    this.suppressAssessment = true;
     this.stopListening();
     super.close();
   }
@@ -121,9 +131,17 @@ export class ShadowingModal extends BaseModal {
   private startListening(): void {
     if (!this.recognition || !this.currentSentence) return;
 
+    // A restart-after-"already started" is pending; keep the user's intent so
+    // the scheduled restart still fires (the modal isn't closed).
+    if (this.restarting) {
+      this.wantListening = true;
+      return;
+    }
+
     this.transcript = '';
     this.recordingStartTime = Date.now();
     this.isListening = true;
+    this.hadError = false;
 
     // Set recognition language matching scene accent
     this.recognition.lang = this.currentScene?.accent === 'British' ? 'en-GB' : 'en-US';
@@ -134,26 +152,26 @@ export class ShadowingModal extends BaseModal {
     };
 
     this.recognition.onresult = (event: SpeechRecognitionEventLike) => {
-      let finalTranscript = '';
       let interimTranscript = '';
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
+          // Accumulate final chunks — they are never re-sent by the recognizer,
+          // so overwriting `this.transcript` with only the latest chunk loses them.
+          this.transcript += event.results[i][0].transcript;
         } else {
           interimTranscript += event.results[i][0].transcript;
         }
       }
 
-      const activeText = finalTranscript || interimTranscript;
-      this.transcript = activeText;
-      this.updateLiveTranscription(activeText);
+      this.updateLiveTranscription(this.transcript + interimTranscript);
     };
 
     this.recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
       this.isListening = false;
+      this.hadError = true;
       this.updateMicUiState('idle');
-      
+
       const errorNote = this.container.querySelector('#shadowingErrorNote');
       if (errorNote) {
         let msg = '';
@@ -185,6 +203,14 @@ export class ShadowingModal extends BaseModal {
       this.isListening = false;
       this.updateMicUiState('idle');
 
+      // If an error (no-speech, network, etc.) already surfaced a message,
+      // don't run an assessment on a partial/empty transcript on top of it.
+      // Also skip when the modal was closed while still listening.
+      if (this.hadError || this.suppressAssessment) {
+        this.hadError = false;
+        return;
+      }
+
       const durationSec = Math.max(0.8, (Date.now() - this.recordingStartTime) / 1000);
       this.finishAssessment(this.transcript, durationSec);
     };
@@ -194,16 +220,39 @@ export class ShadowingModal extends BaseModal {
     } catch {
       // In case already started, restart
       const rec = this.recognition;
+      this.restarting = true;
       try {
         rec.stop();
-        setTimeout(() => rec.start(), 150);
       } catch {
-        this.isListening = false;
+        // Ignore — stop() on an idle recognizer may throw
       }
+      this.restartTimeoutId = window.setTimeout(() => {
+        this.restartTimeoutId = null;
+        this.restarting = false;
+        // Don't restart if the user cancelled (stopListening) or closed the modal meanwhile
+        if (!this.wantListening && !this.isListening) {
+          this.isListening = false;
+          return;
+        }
+        this.wantListening = false;
+        this.recordingStartTime = Date.now();
+        try {
+          rec.start();
+        } catch {
+          this.isListening = false;
+        }
+      }, 150);
     }
   }
 
   private stopListening(): void {
+    this.wantListening = false;
+    if (this.restartTimeoutId !== null) {
+      window.clearTimeout(this.restartTimeoutId);
+      this.restartTimeoutId = null;
+      this.restarting = false;
+    }
+    this.hadError = false;
     if (this.recognition && this.isListening) {
       try {
         this.recognition.stop();

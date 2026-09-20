@@ -261,10 +261,17 @@ class ApiService {
 
   public async waitForAuth(): Promise<MeResponse | null> {
     if (!this.authReadyPromise) {
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000));
-      this.authReadyPromise = Promise.race([this.getMe(), timeoutPromise]);
+      this.authReadyPromise = this.getMe();
     }
-    return this.authReadyPromise;
+    const result = await Promise.race([
+      this.authReadyPromise,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+    ]);
+    if (result === null) {
+      // Timeout won the race — don't permanently cache "logged out"; retry on next call.
+      this.authReadyPromise = null;
+    }
+    return result;
   }
 
   // Restore session from localStorage synchronously on startup
@@ -548,10 +555,14 @@ class ApiService {
         };
 
         this.currentUser = authUser;
+        this.saveUserToStorage(authUser);
         await this.syncBackendSession({
+          id: data.user.id,
           email: cleanEmail,
           user_metadata: { username: cleanUsername, full_name: cleanFullName, avatar_color: '#FF5722' }
         }, data.session?.access_token);
+        // Invalidate cached auth snapshot so the next waitForAuth() refetches real state
+        this.authReadyPromise = null;
         this.notifyAuthChange();
 
         return {
@@ -847,7 +858,7 @@ class ApiService {
         'Content-Type': 'application/json',
         ...getCsrfHeaders(),
       };
-      if (this.token && this.token !== 'session_authenticated' && this.token !== 'httponly_session') {
+      if (this.token && !['session_authenticated', 'httponly_session', 'local_session'].includes(this.token)) {
         headers['Authorization'] = `Bearer ${this.token}`;
       }
 
@@ -910,7 +921,7 @@ class ApiService {
         'Content-Type': 'application/json',
         ...getCsrfHeaders(),
       };
-      if (this.token && this.token !== 'session_authenticated' && this.token !== 'httponly_session') {
+      if (this.token && !['session_authenticated', 'httponly_session', 'local_session'].includes(this.token)) {
         headers['Authorization'] = `Bearer ${this.token}`;
       }
 
@@ -954,7 +965,7 @@ class ApiService {
         'Content-Type': 'application/json',
         ...getCsrfHeaders(),
       };
-      if (this.token && this.token !== 'session_authenticated' && this.token !== 'httponly_session') {
+      if (this.token && !['session_authenticated', 'httponly_session', 'local_session'].includes(this.token)) {
         headers['Authorization'] = `Bearer ${this.token}`;
       }
 
@@ -1151,31 +1162,21 @@ class ApiService {
     // 2. Fetch Supabase metrics (profiles, saved_words, completed_scenes)
     const supabasePromise = (async () => {
       try {
-        const [profilesRes, wordsRes, scenesRes] = await Promise.all([
-          supabase.from('profiles').select('*', { count: 'exact' }),
-          supabase.from('saved_words').select('*', { count: 'exact', head: true }),
-          supabase.from('completed_scenes').select('*', { count: 'exact', head: true }),
-        ]);
-
-        const profiles = profilesRes.data || [];
-        const profilesCount = profilesRes.count ?? profiles.length;
-        const wordsCount = wordsRes.count ?? 0;
-        const scenesCount = scenesRes.count ?? 0;
-
-        // Calculate users registered today
+        // Calculate users registered today (server-side count — avoids downloading all profile rows)
         const todayMidnight = new Date();
         todayMidnight.setHours(0, 0, 0, 0);
 
-        let usersToday = 0;
-        for (const p of profiles) {
-          const timestamp = p.created_at || p.updated_at;
-          if (timestamp) {
-            const d = new Date(timestamp);
-            if (!isNaN(d.getTime()) && d >= todayMidnight) {
-              usersToday++;
-            }
-          }
-        }
+        const [profilesRes, wordsRes, scenesRes, todayRes] = await Promise.all([
+          supabase.from('profiles').select('*', { count: 'exact', head: true }),
+          supabase.from('saved_words').select('*', { count: 'exact', head: true }),
+          supabase.from('completed_scenes').select('*', { count: 'exact', head: true }),
+          supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', todayMidnight.toISOString()),
+        ]);
+
+        const profilesCount = profilesRes.count ?? 0;
+        const wordsCount = wordsRes.count ?? 0;
+        const scenesCount = scenesRes.count ?? 0;
+        const usersToday = todayRes.count ?? 0;
 
         return {
           profilesCount,

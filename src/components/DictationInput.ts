@@ -25,6 +25,7 @@ export class DictationInput {
   private onSlowDownRequestCallback: (() => void) | null = null;
   private onSubtitleModeChangeCallback: ((mode: 'both' | 'en' | 'uz' | 'off') => void) | null = null;
   private previousInput: string = '';
+  private completeTimeoutId: number | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -53,6 +54,10 @@ export class DictationInput {
   }
 
   public setSceneAndSentence(scene: Scene, sentence: DialogueSentence, index: number): void {
+    if (this.completeTimeoutId !== null) {
+      window.clearTimeout(this.completeTimeoutId);
+      this.completeTimeoutId = null;
+    }
     this.currentScene = scene;
     this.currentSentence = sentence;
     this.sentenceIndex = index;
@@ -177,6 +182,8 @@ export class DictationInput {
       this.hintsUsed++;
 
       const userWords = splitIntoWords(this.userInput);
+      // Avoid sparse-array holes when the hint index is beyond the typed words
+      while (userWords.length < hint.index) userWords.push('');
       userWords[hint.index] = hint.hintWord;
       this.userInput = userWords.join(' ') + ' ';
 
@@ -234,7 +241,10 @@ export class DictationInput {
       const wordsCount = splitIntoWords(this.currentSentence.text).length;
       const wpm = Math.round(wordsCount / timeMinutes);
 
-      setTimeout(() => {
+      this.completeTimeoutId = window.setTimeout(() => {
+        this.completeTimeoutId = null;
+        // Skip if a new sentence replaced this one before the delay elapsed
+        if (!this.isCompleted) return;
         this.onCompleteCallback?.(feedback.accuracy, wpm, this.hintsUsed);
       }, 1000);
     }
@@ -445,6 +455,7 @@ export class DictationInput {
 
     this.container.querySelector('#dictationClearBtn')?.addEventListener('click', () => {
       this.userInput = '';
+      this.previousInput = '';
       this.updateInputDisplay();
     });
 

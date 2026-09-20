@@ -125,8 +125,9 @@ const adminLoginHandler = async (req: Request, res: Response) => {
 const adminLogoutHandler = (_req: Request, res: Response) => {
   res.clearCookie('admin_token', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production' || process.env.RENDER === 'true',
     sameSite: 'strict',
+    path: '/',
   });
   res.json({ success: true, message: 'Admin tizimidan muvaffaqiyatli chiqildi' });
 };

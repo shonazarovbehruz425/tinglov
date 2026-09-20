@@ -305,8 +305,9 @@ const sessionHandler = async (req: Request, res: Response) => {
 const logoutHandler = (_req: Request, res: Response) => {
   res.clearCookie('token', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production' || process.env.RENDER === 'true',
+    sameSite: 'lax',
+    path: '/',
   });
   res.json({ success: true, message: 'Muvaffaqiyatli tizimdan chiqildi' });
 };

@@ -327,11 +327,12 @@ export function getAllUsers(search?: string, limit = 50, offset = 0): Array<Omit
   const safeLimit = Math.max(1, Math.min(50, Math.floor(Number(limit) || 50)));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   if (search && search.trim()) {
-    const term = `%${search.trim().toLowerCase()}%`;
+    const escaped = search.trim().toLowerCase().replace(/[\\%_]/g, (ch) => `\\${ch}`);
+    const term = `%${escaped}%`;
     const stmt = db.prepare(`
       SELECT id, uuid, username, email, full_name, avatar_color, xp, streak, level, last_active_date, auth_provider, created_at
       FROM users
-      WHERE username LIKE ? OR email LIKE ? OR full_name LIKE ?
+      WHERE username LIKE ? ESCAPE '\' OR email LIKE ? ESCAPE '\' OR full_name LIKE ? ESCAPE '\'
       ORDER BY id DESC
       LIMIT ? OFFSET ?
     `);

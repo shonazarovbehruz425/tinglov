@@ -47,9 +47,14 @@ export class SubtitleService {
    * Formats decimal seconds to a clean display string (e.g. "01:23.4").
    */
   public formatSecondsToDisplay(seconds: number): string {
-    const mins = Math.floor(seconds / 60);
-    const secs = (seconds % 60).toFixed(1);
-    const paddedSecs = parseFloat(secs) < 10 ? `0${secs}` : `${secs}`;
+    let mins = Math.floor(seconds / 60);
+    let secs = Math.round((seconds % 60) * 10) / 10;
+    if (secs >= 60) {
+      mins += 1;
+      secs = 0;
+    }
+    const secsStr = secs.toFixed(1);
+    const paddedSecs = parseFloat(secsStr) < 10 ? `0${secsStr}` : secsStr;
     return `${mins < 10 ? '0' : ''}${mins}:${paddedSecs}`;
   }
 
