@@ -24,6 +24,12 @@ export const STATS_KEY = 'lingua_movie_user_stats';
 /** Foydalanuvchi yaratgan maxsus darslar. */
 export const CUSTOM_SCENES_KEY = 'lingua_movie_custom_scenes';
 
+/** O'chirilgan darslar ID ro'yxati. */
+export const DELETED_SCENES_KEY = 'tinglov_deleted_scenes';
+
+/** Admin darslarining lokal zaxira nusxasi. */
+export const SCENES_BACKUP_KEY = 'tinglov_admin_scenes_backup';
+
 /** Sahna bo'yicha TOP rekordlar. */
 export const HIGH_SCORES_KEY = 'lingua_movie_scene_highscores';
 
@@ -79,6 +85,8 @@ export const SUBTITLE_MODE_KEY = 'lingua_subtitle_mode';
 export const STORAGE_KEYS = {
   stats: STATS_KEY,
   customScenes: CUSTOM_SCENES_KEY,
+  deletedScenes: DELETED_SCENES_KEY,
+  scenesBackup: SCENES_BACKUP_KEY,
   highScores: HIGH_SCORES_KEY,
   pendingSync: PENDING_SYNC_KEY,
   authToken: AUTH_TOKEN_KEY,

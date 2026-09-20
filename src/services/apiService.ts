@@ -8,6 +8,7 @@ import {
   LEGACY_TOKEN_KEY,
   USER_SESSION_KEY,
   ADMIN_JWT_KEY,
+  SCENES_BACKUP_KEY,
 } from './storageKeys';
 
 export interface AuthUser {
@@ -185,7 +186,7 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-const SCENES_BACKUP_STORAGE_KEY = 'tinglov_admin_scenes_backup';
+const SCENES_BACKUP_STORAGE_KEY = SCENES_BACKUP_KEY;
 
 export function getLocalScenesBackup(): AdminSceneDto[] {
   try {
@@ -1415,9 +1416,7 @@ class ApiService {
     if (!res.ok) throw new Error('Darslar yuklanmadi');
     const data = await res.json();
     const scenes = (data.scenes || []) as AdminSceneDto[];
-    if (scenes.length > 0) {
-      saveLocalScenesBackup(scenes);
-    }
+    saveLocalScenesBackup(scenes);
     return scenes;
   }
 
@@ -1553,10 +1552,8 @@ class ApiService {
       if (res.ok) {
         const data = await res.json();
         const scenes = (data.scenes || []) as AdminSceneDto[];
-        if (scenes.length > 0) {
-          saveLocalScenesBackup(scenes);
-          return scenes;
-        }
+        saveLocalScenesBackup(scenes);
+        return scenes;
       }
     } catch {
       // Fallback below

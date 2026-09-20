@@ -5,6 +5,7 @@ import {
   AdminUserDto,
   AdminSceneDto,
 } from '../services/apiService';
+import { storageService } from '../services/storageService';
 import { youtubeService } from '../services/youtubeService';
 import { escapeHtml } from '../utils/sanitize';
 
@@ -52,14 +53,19 @@ export class AdminView {
   private errorMsg: string | null = null;
   private successMsg: string | null = null;
   private onNavigateHomeCallback?: () => void;
+  private onScenesChangedCallback?: () => void | Promise<void>;
 
   constructor(container: HTMLElement) {
     this.container = container;
     this.adminPath = apiService.getAdminRoutePath();
   }
 
-  public setCallbacks(callbacks: { onNavigateHome: () => void }): void {
+  public setCallbacks(callbacks: {
+    onNavigateHome: () => void;
+    onScenesChanged?: () => void | Promise<void>;
+  }): void {
     this.onNavigateHomeCallback = callbacks.onNavigateHome;
+    this.onScenesChangedCallback = callbacks.onScenesChanged;
   }
 
   public async render(): Promise<void> {
@@ -2017,6 +2023,7 @@ export class AdminView {
             this.successMsg = `${syncRes.count} ta dars fayldan muvaffaqiyatli import qilindi va saqlandi!`;
             await this.loadAllData();
             this.refreshActiveTabContent();
+            await this.onScenesChangedCallback?.();
           } else {
             alert(syncRes.error || 'Darslarni import qilishda xatolik yuz berdi.');
           }
@@ -2049,11 +2056,13 @@ export class AdminView {
         if (!sceneId) return;
 
         if (confirm('Ushbu darsni o‘chirmoqchimisiz?')) {
+          storageService.deleteCustomScene(sceneId);
           const ok = await apiService.adminDeleteScene(sceneId);
           if (ok) {
             this.successMsg = 'Dars muvaffaqiyatli o‘chirildi.';
             await this.loadAllData();
             this.refreshActiveTabContent();
+            await this.onScenesChangedCallback?.();
           } else {
             this.errorMsg = 'Darsni o‘chirishda xatolik yuz berdi.';
             this.refreshActiveTabContent();
@@ -2934,6 +2943,7 @@ export class AdminView {
               : `"${title}" darsi muvaffaqiyatli saqlandi va barcha o'quvchilar uchun chop etildi!`;
             await this.loadAllData();
             this.refreshActiveTabContent();
+            await this.onScenesChangedCallback?.();
           } else {
             alert(res.error || 'Darsni saqlashda xatolik yuz berdi');
           }

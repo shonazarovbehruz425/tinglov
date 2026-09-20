@@ -2,7 +2,7 @@
 import { UserStats, SavedWord, Scene, HighScoreRecord, ChallengePayload, getLevelProgress } from '../types';
 import { INITIAL_SCENES } from '../data/scenes';
 import { apiService, MeResponse, SyncProgressPayload } from './apiService';
-import { STATS_KEY, CUSTOM_SCENES_KEY, HIGH_SCORES_KEY, PENDING_SYNC_KEY } from './storageKeys';
+import { STATS_KEY, CUSTOM_SCENES_KEY, HIGH_SCORES_KEY, PENDING_SYNC_KEY, DELETED_SCENES_KEY } from './storageKeys';
 
 /**
  * Decodes legacy HTML-escaped values. Older builds stored userName/userHandle
@@ -23,6 +23,7 @@ export class StorageService {
   private stats: UserStats;
   private customScenes: Scene[];
   private serverScenes: Scene[] = [];
+  private deletedSceneIds: Set<string>;
   private highScores: Record<string, HighScoreRecord[]>; // sceneId -> HighScoreRecord[]
   private syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private isSyncing = false;
@@ -30,6 +31,7 @@ export class StorageService {
   constructor() {
     this.stats = this.loadStats();
     this.customScenes = this.loadCustomScenes();
+    this.deletedSceneIds = this.loadDeletedSceneIds();
     this.highScores = this.loadHighScores();
     this.checkAndUpdateStreak();
 
@@ -94,6 +96,29 @@ export class StorageService {
       // Fallback
     }
     return [];
+  }
+
+  private loadDeletedSceneIds(): Set<string> {
+    try {
+      const data = localStorage.getItem(DELETED_SCENES_KEY);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          return new Set(parsed.filter((id): id is string => typeof id === 'string'));
+        }
+      }
+    } catch {
+      // Fallback
+    }
+    return new Set<string>();
+  }
+
+  private saveDeletedSceneIds(): void {
+    try {
+      localStorage.setItem(DELETED_SCENES_KEY, JSON.stringify(Array.from(this.deletedSceneIds)));
+    } catch {
+      // Ignore
+    }
   }
 
   private loadHighScores(): Record<string, HighScoreRecord[]> {
@@ -317,26 +342,30 @@ export class StorageService {
     const existingIds = new Set<string>();
     const result: Scene[] = [];
 
-    // 1. Hardcoded initial scenes
+    // 1. Hardcoded initial scenes (filtered by deleted blacklist)
     for (const s of INITIAL_SCENES) {
-      existingIds.add(s.id);
-      result.push(s);
-    }
-
-    // 2. Server scenes (override initial if same id, or add as new)
-    for (const s of this.serverScenes) {
-      const existingIdx = result.findIndex(existing => existing.id === s.id);
-      if (existingIdx >= 0) {
-        result[existingIdx] = s;
-      } else {
+      if (!this.deletedSceneIds.has(s.id)) {
         existingIds.add(s.id);
         result.push(s);
       }
     }
 
-    // 3. User-created local custom scenes (only if not already provided by server/initial)
+    // 2. Server scenes (override initial if same id, or add as new; filtered by deleted blacklist)
+    for (const s of this.serverScenes) {
+      if (!this.deletedSceneIds.has(s.id)) {
+        const existingIdx = result.findIndex(existing => existing.id === s.id);
+        if (existingIdx >= 0) {
+          result[existingIdx] = s;
+        } else {
+          existingIds.add(s.id);
+          result.push(s);
+        }
+      }
+    }
+
+    // 3. User-created local custom scenes (only if not deleted and not already provided by server/initial)
     for (const s of this.customScenes) {
-      if (!existingIds.has(s.id)) {
+      if (!this.deletedSceneIds.has(s.id) && !existingIds.has(s.id)) {
         existingIds.add(s.id);
         result.push(s);
       }
@@ -346,6 +375,10 @@ export class StorageService {
   }
 
   public saveCustomScene(scene: Scene): void {
+    if (this.deletedSceneIds.has(scene.id)) {
+      this.deletedSceneIds.delete(scene.id);
+      this.saveDeletedSceneIds();
+    }
     const idx = this.customScenes.findIndex(s => s.id === scene.id);
     if (idx >= 0) {
       this.customScenes[idx] = scene;
@@ -366,6 +399,18 @@ export class StorageService {
 
   public setServerScenes(scenes: Scene[]): void {
     this.serverScenes = Array.isArray(scenes) ? scenes : [];
+    if (this.serverScenes.length > 0) {
+      let changed = false;
+      for (const s of this.serverScenes) {
+        if (this.deletedSceneIds.has(s.id)) {
+          this.deletedSceneIds.delete(s.id);
+          changed = true;
+        }
+      }
+      if (changed) {
+        this.saveDeletedSceneIds();
+      }
+    }
   }
 
   public mergeServerScenes(scenes: Scene[]): void {
@@ -374,6 +419,9 @@ export class StorageService {
 
   public deleteCustomScene(sceneId: string): void {
     this.customScenes = this.customScenes.filter(s => s.id !== sceneId);
+    this.serverScenes = this.serverScenes.filter(s => s.id !== sceneId);
+    this.deletedSceneIds.add(sceneId);
+    this.saveDeletedSceneIds();
     try {
       localStorage.setItem(CUSTOM_SCENES_KEY, JSON.stringify(this.customScenes));
     } catch {

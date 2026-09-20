@@ -381,7 +381,16 @@ class MovieListenApp implements RouterDelegate {
     const adminContainer = document.getElementById('adminViewContainer')!;
     this.adminView = new AdminView(adminContainer);
     this.adminView.setCallbacks({
-      onNavigateHome: () => this.showLandingPage(true),
+      onNavigateHome: async () => {
+        await this.loadServerScenes(true);
+        this.showLandingPage(true);
+      },
+      onScenesChanged: async () => {
+        await this.loadServerScenes(true);
+        if (this.currentView === 'library') {
+          this.levelSelector.render();
+        }
+      },
     });
 
     // Warm up admin config and fetch global custom scenes from server

@@ -357,4 +357,28 @@ describe('AdminView scene management & editing', () => {
     expect(container.textContent).toContain('1. Darslarga Kirish');
     expect(container.textContent).toContain('5. Darsni Yakunlash & XP');
   });
+
+  it('clicking delete scene confirms, deletes from server and storageService, and fires onScenesChanged', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const deleteSpy = vi.spyOn(apiService, 'adminDeleteScene').mockResolvedValue(true);
+    const scenesChangedSpy = vi.fn();
+    adminView.setCallbacks({
+      onNavigateHome: () => {},
+      onScenesChanged: scenesChangedSpy,
+    });
+
+    await adminView.render();
+
+    const scenesTabBtn = container.querySelector<HTMLButtonElement>('.admin-tab-btn[data-tab="scenes"]')!;
+    scenesTabBtn.click();
+    await new Promise((r) => setTimeout(r, 120));
+
+    const delBtn = container.querySelector<HTMLButtonElement>(`.admin-btn-del-scene[data-scene-id="${mockScene.id}"]`)!;
+    delBtn.click();
+
+    await new Promise((r) => setTimeout(r, 120));
+
+    expect(deleteSpy).toHaveBeenCalledWith(mockScene.id);
+    expect(scenesChangedSpy).toHaveBeenCalled();
+  });
 });

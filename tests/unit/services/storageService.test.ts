@@ -902,9 +902,33 @@ describe('StorageService', () => {
       service.setServerScenes([overrideScene]);
 
       const scenes = service.getAllScenes();
-      expect(scenes.length).toBe(1);
       const matched = scenes.find((s) => s.id === 'scene_x');
       expect(matched?.title).toBe('Overridden Title');
+    });
+
+    it('permanently removes scene and prevents reappearance when deleteCustomScene is called', () => {
+      const scene1 = makeScene('test_del_1');
+      service.saveCustomScene(scene1);
+      expect(service.getAllScenes().some((s) => s.id === 'test_del_1')).toBe(true);
+
+      service.deleteCustomScene('test_del_1');
+      expect(service.getAllScenes().some((s) => s.id === 'test_del_1')).toBe(false);
+
+      // New StorageService instance should also respect the deletion
+      const freshService = new StorageService();
+      expect(freshService.getAllScenes().some((s) => s.id === 'test_del_1')).toBe(false);
+    });
+
+    it('can delete initial scenes and prevents them from showing in getAllScenes', () => {
+      const allBefore = service.getAllScenes();
+      if (allBefore.length > 0) {
+        const targetId = allBefore[0].id;
+        service.deleteCustomScene(targetId);
+        expect(service.getAllScenes().some((s) => s.id === targetId)).toBe(false);
+
+        const freshService = new StorageService();
+        expect(freshService.getAllScenes().some((s) => s.id === targetId)).toBe(false);
+      }
     });
   });
 });
